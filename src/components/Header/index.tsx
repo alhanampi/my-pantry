@@ -184,7 +184,7 @@ export default function Header({
                   '&:hover': { bgcolor: 'var(--scheme-on-primary-hover)' },
                 }}
               >
-                {i18n.language === 'es' ? 'EN' : 'ES'}
+                {i18n.language === 'es' ? 'ES' : 'EN'}
               </Button>
             </Tooltip>
 
