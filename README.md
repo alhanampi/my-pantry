@@ -1,6 +1,10 @@
-# Mi Despensa 🧺
+# My Pantry 🧺
 
 A Progressive Web App (PWA) for managing your household pantry. Track what you have at home, when products expire, build your shopping list, and find nearby supermarkets — all from your phone, no installation required.
+
+## see a live demo! 
+
+https://my-pantry-j9zkt3bw2-pamina-goldenberg-thierys-projects.vercel.app/
 
 ---
 
