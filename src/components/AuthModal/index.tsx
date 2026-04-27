@@ -72,7 +72,7 @@ export default function AuthModal({
     try {
       await fn()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth.errorGeneric'))
+      setError(err instanceof Error ? t(err.message, { defaultValue: err.message }) : t('auth.errorGeneric'))
     } finally {
       setLoading(false)
     }

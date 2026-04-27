@@ -30,7 +30,7 @@ function extractMessage(err: unknown): string {
     if (data?.errors?.length) return data.errors[0].msg
     if (data?.error) return data.error
   }
-  return 'error.generic'
+  return 'auth.errorGeneric'
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────────

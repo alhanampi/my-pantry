@@ -6,6 +6,8 @@ A Progressive Web App (PWA) for managing your household pantry. Track what you h
 
 https://my-pantry-j9zkt3bw2-pamina-goldenberg-thierys-projects.vercel.app/
 
+
+(for now with mocked users!)
 ---
 
 ## What is a PWA?
