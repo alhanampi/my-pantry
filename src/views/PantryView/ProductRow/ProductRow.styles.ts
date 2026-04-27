@@ -21,7 +21,7 @@ export const Cell = styled.div<{ $flex?: number; $minWidth?: string }>`
   min-width: ${({ $minWidth }) => $minWidth ?? '80px'};
   padding: 10px 8px;
   font-size: 0.875rem;
-  color: #212121;
+  color: var(--scheme-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -36,9 +36,9 @@ export const ExpiryText = styled.span<{ $status: ExpiryStatus }>`
   font-size: 0.875rem;
   font-weight: ${({ $status }) => ($status !== 'none' ? 600 : 400)};
   color: ${({ $status }) => {
-    if ($status === 'expired') return '#c62828'
-    if ($status === 'soon') return '#e65100'
-    return '#424242'
+    if ($status === 'expired') return 'var(--scheme-error)'
+    if ($status === 'soon') return 'var(--scheme-warning)'
+    return 'var(--scheme-text-primary)'
   }};
 `
 

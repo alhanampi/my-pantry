@@ -8,10 +8,7 @@ export default function BottomNav({ value, onChange }: BottomNavProps) {
 
   return (
     <NavPaper elevation={4}>
-      <StyledBottomNavigation
-        value={value}
-        onChange={(_, newValue: number) => onChange(newValue)}
-      >
+      <StyledBottomNavigation value={value} onChange={(_, newValue: number) => onChange(newValue)}>
         <NavAction label={t('nav.pantry')} icon={<MdStorefront size={24} />} />
         <NavAction label={t('nav.shopping')} icon={<MdShoppingCart size={24} />} />
       </StyledBottomNavigation>

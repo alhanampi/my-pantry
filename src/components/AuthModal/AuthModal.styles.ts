@@ -23,8 +23,8 @@ export const AuthBody = styled.div`
 `
 
 export const ErrorBanner = styled.div`
-  background: #fdecea;
-  color: #b71c1c;
+  background: var(--scheme-error-bg);
+  color: var(--scheme-error);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 0.85rem;

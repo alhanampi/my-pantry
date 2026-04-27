@@ -30,7 +30,9 @@ export const SwatchCircle = styled.span<{ $color: string; $active: boolean }>`
   background: ${({ $color }) => $color};
   border: 3px solid ${({ $active }) => ($active ? 'rgba(0,0,0,0.45)' : 'transparent')};
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  transition: transform 0.15s, border-color 0.15s;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
   transform: ${({ $active }) => ($active ? 'scale(1.15)' : 'scale(1)')};
 `
 

@@ -16,7 +16,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const USER_KEY = 'mi-despensa-auth-user'
+const USER_KEY = 'my-pantry-auth-user'
 
 function loadUser(): AuthUser | null {
   try {

@@ -34,57 +34,57 @@ export default function AboutView() {
 
   const features: Feature[] = [
     {
-      icon: <MdInventory2 size={24} color="#2e7d32" />,
+      icon: <MdInventory2 size={24} color="var(--scheme-primary)" />,
       label: t('about.features.quantity'),
       desc: t('about.features.quantityDesc'),
     },
     {
-      icon: <MdCalendarToday size={24} color="#2e7d32" />,
+      icon: <MdCalendarToday size={24} color="var(--scheme-primary)" />,
       label: t('about.features.purchaseDate'),
       desc: t('about.features.purchaseDateDesc'),
     },
     {
-      icon: <MdLocationOn size={24} color="#2e7d32" />,
+      icon: <MdLocationOn size={24} color="var(--scheme-primary)" />,
       label: t('about.features.location'),
       desc: t('about.features.locationDesc'),
     },
     {
-      icon: <MdEventBusy size={24} color="#e65100" />,
+      icon: <MdEventBusy size={24} color="var(--scheme-warning)" />,
       label: t('about.features.expiry'),
       desc: t('about.features.expiryDesc'),
     },
     {
-      icon: <MdSearch size={24} color="#2e7d32" />,
+      icon: <MdSearch size={24} color="var(--scheme-primary)" />,
       label: t('about.features.search'),
       desc: t('about.features.searchDesc'),
     },
     {
-      icon: <MdShoppingCart size={24} color="#2e7d32" />,
+      icon: <MdShoppingCart size={24} color="var(--scheme-primary)" />,
       label: t('about.features.shoppingList'),
       desc: t('about.features.shoppingListDesc'),
     },
     {
-      icon: <MdMap size={24} color="#2e7d32" />,
+      icon: <MdMap size={24} color="var(--scheme-primary)" />,
       label: t('about.features.nearbyStores'),
       desc: t('about.features.nearbyStoresDesc'),
     },
     {
-      icon: <MdViewAgenda size={24} color="#2e7d32" />,
+      icon: <MdViewAgenda size={24} color="var(--scheme-primary)" />,
       label: t('about.features.mobile'),
       desc: t('about.features.mobileDesc'),
     },
     {
-      icon: <MdTranslate size={24} color="#2e7d32" />,
+      icon: <MdTranslate size={24} color="var(--scheme-primary)" />,
       label: t('about.features.language'),
       desc: t('about.features.languageDesc'),
     },
     {
-      icon: <MdPeopleOutline size={24} color="#2e7d32" />,
+      icon: <MdPeopleOutline size={24} color="var(--scheme-primary)" />,
       label: t('about.features.sharing'),
       desc: t('about.features.sharingDesc'),
     },
     {
-      icon: <MdPhoneAndroid size={24} color="#2e7d32" />,
+      icon: <MdPhoneAndroid size={24} color="var(--scheme-primary)" />,
       label: t('about.features.pwa'),
       desc: t('about.features.pwaDesc'),
     },
@@ -93,7 +93,7 @@ export default function AboutView() {
   return (
     <Container>
       <HeroCard elevation={0}>
-        <MdStorefront size={52} color="rgba(255,255,255,0.9)" />
+        <MdStorefront size={52} color="var(--scheme-on-primary)" />
         <HeroTitle>{t('appName')}</HeroTitle>
         <HeroSubtitle>{t('about.subtitle')}</HeroSubtitle>
         <VersionChip

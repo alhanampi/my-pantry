@@ -33,7 +33,7 @@ export const EmptyState = styled.div`
   justify-content: center;
   padding: 56px 24px;
   gap: 12px;
-  color: #9e9e9e;
+  color: var(--scheme-text-muted);
 `
 
 export const ActionBar = styled.div`
@@ -67,7 +67,7 @@ export const EmptyHeading = styled(Typography).attrs({ variant: 'body1' as const
 
 export const EmptySubtext = styled(Typography).attrs({ variant: 'body2' as const })`
   && {
-    color: #bdbdbd;
+    color: var(--scheme-text-muted);
     text-align: center;
   }
 `

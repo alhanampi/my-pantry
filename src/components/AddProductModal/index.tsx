@@ -102,17 +102,19 @@ export default function AddProductModal({
   const TitleIcon = context === 'shopping' ? MdAddShoppingCart : MdStorefront
 
   const titleKey = isEditMode
-    ? context === 'shopping' ? 'modal.editShopping' : 'modal.editPantry'
-    : context === 'shopping' ? 'modal.addShopping' : 'modal.addPantry'
+    ? context === 'shopping'
+      ? 'modal.editShopping'
+      : 'modal.editPantry'
+    : context === 'shopping'
+      ? 'modal.addShopping'
+      : 'modal.addPantry'
 
   return (
     <>
       <StyledDialog open={open} onClose={handleCancelClick} maxWidth="sm" fullWidth>
         <StyledDialogTitle>
-          <TitleIcon size={22} color="#2e7d32" />
-          <ModalTitleText>
-            {t(titleKey)}
-          </ModalTitleText>
+          <TitleIcon size={22} color="var(--scheme-primary)" />
+          <ModalTitleText>{t(titleKey)}</ModalTitleText>
           <IconButton size="small" onClick={handleCancelClick} aria-label="close">
             <MdClose size={18} />
           </IconButton>
@@ -129,19 +131,17 @@ export default function AddProductModal({
                 freeSolo
                 options={suggestions}
                 groupBy={(option) => option.category}
-                getOptionLabel={(option) =>
-                  typeof option === 'string' ? option : option.name
-                }
+                getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
                 inputValue={form.name}
                 onInputChange={(_, value) => handleChange('name', value)}
                 onChange={(_, value) => {
                   if (value && typeof value !== 'string') handleChange('name', value.name)
                 }}
-                filterOptions={(options, { inputValue }) =>
-                  options.filter((o) =>
-                    o.name.toLowerCase().includes(inputValue.toLowerCase())
-                  )
-                }
+                filterOptions={(options, { inputValue }) => {
+                  const normalize = (s: string) =>
+                    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+                  return options.filter((o) => normalize(o.name).includes(normalize(inputValue)))
+                }}
                 renderOption={(props, option) => (
                   <li {...props} key={`${option.name}-${option.category}`}>
                     {option.name}
@@ -237,7 +237,11 @@ export default function AddProductModal({
         </StyledDialogActions>
       </StyledDialog>
 
-      <StyledDialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} maxWidth="xs">
+      <StyledDialog
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+        maxWidth="xs"
+      >
         <StyledDialogTitle>{t('modal.exitTitle')}</StyledDialogTitle>
         <StyledDialogContent>
           <DialogContentText>{t('modal.exitBody')}</DialogContentText>

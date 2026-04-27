@@ -81,7 +81,12 @@ export function useAppState() {
     if (!product) return
     const context = shoppingList.some((i) => i.id === id) ? 'shopping' : 'pantry'
     const { name, quantity, brand, purchaseDate, expiryDate, location, details } = product
-    setEditModal({ open: true, context, id, initialData: { name, quantity, brand, purchaseDate, expiryDate, location, details } })
+    setEditModal({
+      open: true,
+      context,
+      id,
+      initialData: { name, quantity, brand, purchaseDate, expiryDate, location, details },
+    })
   }
 
   const handleEditProduct = (data: ProductFormData): void => {

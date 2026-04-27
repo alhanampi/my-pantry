@@ -29,7 +29,7 @@ export default function ThemePicker() {
           size="medium"
           aria-label={t('header.colorScheme')}
         >
-          <MdPalette size={22} color="rgba(255,255,255,0.85)" />
+          <MdPalette size={22} color="var(--scheme-on-primary)" />
         </IconButton>
       </Tooltip>
 

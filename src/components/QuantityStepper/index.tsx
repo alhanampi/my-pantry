@@ -10,9 +10,12 @@ export default function QuantityStepper({ value, onIncrement, onDecrement }: Qua
     <StepperWrapper>
       <IconButton
         size="small"
-        onClick={(e) => { e.stopPropagation(); onDecrement() }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onDecrement()
+        }}
         disabled={numValue <= 0}
-        sx={{ p: 0.25, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46,125,50,0.12)' } }}
+        sx={{ p: 0.25, color: 'primary.main', '&:hover': { bgcolor: 'var(--scheme-accent-light)' } }}
         aria-label="decrease quantity"
       >
         <MdRemove size={14} />
@@ -20,8 +23,11 @@ export default function QuantityStepper({ value, onIncrement, onDecrement }: Qua
       <StepperValue>{numValue}</StepperValue>
       <IconButton
         size="small"
-        onClick={(e) => { e.stopPropagation(); onIncrement() }}
-        sx={{ p: 0.25, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46,125,50,0.12)' } }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onIncrement()
+        }}
+        sx={{ p: 0.25, color: 'primary.main', '&:hover': { bgcolor: 'var(--scheme-accent-light)' } }}
         aria-label="increase quantity"
       >
         <MdAdd size={14} />

@@ -33,7 +33,7 @@ export default function ProductCard({
   const expiryStatus = getExpiryStatus(product.expiryDate)
 
   const expiryColor =
-    expiryStatus === 'expired' ? '#c62828' : expiryStatus === 'soon' ? '#e65100' : '#616161'
+    expiryStatus === 'expired' ? 'var(--scheme-error)' : expiryStatus === 'soon' ? 'var(--scheme-warning)' : 'var(--scheme-text-secondary)'
 
   return (
     <Card
@@ -81,7 +81,7 @@ export default function ProductCard({
                 e.stopPropagation()
                 onAddToCart(product)
               }}
-              sx={{ color: '#2e7d32', flexShrink: 0 }}
+              sx={{ color: 'primary.main', flexShrink: 0 }}
               aria-label={t('card.addToCart')}
             >
               <MdAddShoppingCart size={20} />

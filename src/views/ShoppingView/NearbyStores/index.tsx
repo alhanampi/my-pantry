@@ -31,9 +31,9 @@ import {
 
 function getShopIcon(type: string) {
   if (type === 'supermarket' || type === 'grocery') {
-    return <MdLocalGroceryStore size={20} color="#2e7d32" />
+    return <MdLocalGroceryStore size={20} color="var(--scheme-primary)" />
   }
-  return <MdStorefront size={20} color="#757575" />
+  return <MdStorefront size={20} color="var(--scheme-text-secondary)" />
 }
 
 export default function NearbyStores() {

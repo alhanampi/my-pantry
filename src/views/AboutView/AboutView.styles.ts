@@ -15,7 +15,7 @@ export const HeroCard = styled(Paper)`
     border-radius: 14px;
     text-align: center;
     background: linear-gradient(135deg, var(--scheme-primary) 0%, var(--scheme-primary-light) 100%);
-    color: white;
+    color: var(--scheme-on-primary);
     margin-bottom: 16px;
   }
 `
@@ -54,8 +54,8 @@ export const HeroSubtitle = styled(Typography).attrs({ variant: 'body2' as const
 export const VersionChip = styled(Chip)`
   && {
     margin-top: 16px;
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
+    background-color: var(--scheme-on-primary-overlay);
+    color: var(--scheme-on-primary);
     font-weight: 600;
   }
 `

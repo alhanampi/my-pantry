@@ -15,7 +15,7 @@ export const EmptyState = styled.div`
   justify-content: center;
   padding: 48px 24px;
   gap: 10px;
-  color: #9e9e9e;
+  color: var(--scheme-text-muted);
   text-align: center;
 `
 
@@ -35,8 +35,8 @@ export const CountText = styled(Typography).attrs({ variant: 'caption' as const 
 
 export const ClearButton = styled(Button)`
   && {
-    color: #757575;
-    border-color: #bdbdbd;
+    color: var(--scheme-text-secondary);
+    border-color: var(--scheme-text-muted);
   }
 `
 

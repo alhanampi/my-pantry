@@ -45,7 +45,7 @@ export default function ProductRow({ product, onDelete, onEdit, onAddToCart, onQ
             size="small"
             onClick={() => onAddToCart(product)}
             aria-label={t('card.addToCart')}
-            sx={{ color: '#81c784', '&:hover': { color: '#2e7d32', bgcolor: '#e8f5e9' } }}
+            sx={{ color: 'var(--scheme-primary-light)', '&:hover': { color: 'var(--scheme-primary)', bgcolor: 'var(--scheme-accent-light)' } }}
           >
             <MdAddShoppingCart size={18} />
           </IconButton>
@@ -55,7 +55,7 @@ export default function ProductRow({ product, onDelete, onEdit, onAddToCart, onQ
             size="small"
             onClick={() => onEdit(product.id)}
             aria-label={`${t('card.edit')} ${product.name}`}
-            sx={{ color: '#90caf9', '&:hover': { color: '#1565c0', bgcolor: '#e3f2fd' } }}
+            sx={{ color: 'var(--scheme-info-light)', '&:hover': { color: 'var(--scheme-info-dark)', bgcolor: 'var(--scheme-info-bg)' } }}
           >
             <MdModeEditOutline size={18} />
           </IconButton>
@@ -65,7 +65,7 @@ export default function ProductRow({ product, onDelete, onEdit, onAddToCart, onQ
             size="small"
             onClick={() => onDelete(product.id)}
             aria-label={`${t('card.delete')} ${product.name}`}
-            sx={{ color: '#ef9a9a', '&:hover': { color: '#c62828', bgcolor: '#ffebee' } }}
+            sx={{ color: 'var(--scheme-error-light)', '&:hover': { color: 'var(--scheme-error)', bgcolor: 'var(--scheme-error-bg)' } }}
           >
             <MdDeleteOutline size={18} />
           </IconButton>

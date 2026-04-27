@@ -25,6 +25,6 @@ export const HeaderCell = styled.div<{ $flex?: number; $minWidth?: string }>`
 export const SortIcon = styled.span<{ $active: boolean }>`
   display: flex;
   align-items: center;
-  color: ${({ $active }) => ($active ? 'var(--scheme-primary)' : '#bdbdbd')};
+  color: ${({ $active }) => ($active ? 'var(--scheme-primary)' : 'var(--scheme-text-muted)')};
   font-size: 16px;
 `

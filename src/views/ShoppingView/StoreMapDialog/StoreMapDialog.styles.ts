@@ -51,7 +51,7 @@ export const UserMarker = styled.div`
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #1565c0;
+  background: var(--scheme-info-dark);
   border: 3px solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 `

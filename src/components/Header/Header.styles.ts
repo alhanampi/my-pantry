@@ -27,14 +27,14 @@ export const TitleGroup = styled.div`
 export const SearchBox = styled.div`
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--scheme-on-primary-search);
   border-radius: 20px;
   padding: 3px 12px;
   flex: 1;
   min-width: 0;
   transition: background 0.2s;
   &:focus-within {
-    background: rgba(255, 255, 255, 0.28);
+    background: var(--scheme-on-primary-search-focus);
   }
   @media (max-width: 599px) {
     display: none;
@@ -46,26 +46,26 @@ export const SearchBoxMobile = styled.div`
   @media (max-width: 599px) {
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.18);
+    background: var(--scheme-on-primary-search);
     border-radius: 20px;
     padding: 3px 12px;
     width: 100%;
     margin: 0 0 6px;
     &:focus-within {
-      background: rgba(255, 255, 255, 0.28);
+      background: var(--scheme-on-primary-search-focus);
     }
   }
 `
 
 export const StyledInputBase = styled(InputBase)`
   && {
-    color: white;
+    color: var(--scheme-on-primary);
     flex: 1;
     font-size: 14px;
     & .MuiInputBase-input {
       padding: 4px 0;
       &::placeholder {
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--scheme-on-primary-muted);
         opacity: 1;
       }
     }
@@ -83,7 +83,7 @@ export const DesktopTabs = styled.div`
   display: none;
   @media (min-width: 600px) {
     display: block;
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--scheme-on-primary-tabs);
   }
 `
 
@@ -95,7 +95,7 @@ export const SearchIconWrapper = styled.span`
 
 export const UserGreeting = styled.span`
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--scheme-on-primary);
   white-space: nowrap;
   @media (max-width: 599px) {
     display: none;

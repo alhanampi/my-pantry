@@ -64,7 +64,7 @@ export default function Header({
   const searchInput = (
     <>
       <SearchIconWrapper>
-        <MdSearch size={18} color="rgba(255,255,255,0.7)" />
+        <MdSearch size={18} color="var(--scheme-on-primary-muted)" />
       </SearchIconWrapper>
       <StyledInputBase
         placeholder={t('header.searchPlaceholder')}
@@ -76,7 +76,7 @@ export default function Header({
         <IconButton
           size="small"
           onClick={() => onSearchChange('')}
-          sx={{ color: 'rgba(255,255,255,0.7)', p: 0.5 }}
+          sx={{ color: 'var(--scheme-on-primary-muted)', p: 0.5 }}
         >
           <MdClear size={16} />
         </IconButton>
@@ -120,7 +120,7 @@ export default function Header({
                     onClick={() => openAuthModal('link')}
                     size="small"
                     aria-label={t('auth.linkTab')}
-                    sx={{ color: user.partner ? '#a5d6a7' : 'rgba(255,255,255,0.8)' }}
+                    sx={{ color: user.partner ? 'var(--scheme-accent-medium)' : 'var(--scheme-on-primary)' }}
                   >
                     <MdPersonAddAlt1 size={20} />
                   </IconButton>
@@ -130,7 +130,7 @@ export default function Header({
                     onClick={() => setLogoutConfirm(true)}
                     size="small"
                     aria-label={t('auth.signOut')}
-                    sx={{ color: 'rgba(255,255,255,0.8)' }}
+                    sx={{ color: 'var(--scheme-on-primary)' }}
                   >
                     <MdLogout size={18} />
                   </IconButton>
@@ -145,13 +145,13 @@ export default function Header({
                     size="small"
                     startIcon={<MdPersonOutline size={16} />}
                     sx={{
-                      color: 'rgba(255,255,255,0.85)',
+                      color: 'var(--scheme-on-primary)',
                       minWidth: 0,
                       px: 1,
                       py: 0.5,
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
+                      '&:hover': { bgcolor: 'var(--scheme-on-primary-hover)' },
                     }}
                   >
                     <Typography
@@ -173,7 +173,7 @@ export default function Header({
                 size="small"
                 startIcon={<MdTranslate size={16} />}
                 sx={{
-                  color: 'rgba(255,255,255,0.85)',
+                  color: 'var(--scheme-on-primary)',
                   minWidth: 0,
                   px: 1,
                   py: 0.5,
@@ -181,7 +181,7 @@ export default function Header({
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
+                  '&:hover': { bgcolor: 'var(--scheme-on-primary-hover)' },
                 }}
               >
                 {i18n.language === 'es' ? 'EN' : 'ES'}
@@ -197,7 +197,7 @@ export default function Header({
               >
                 <MdInfoOutline
                   size={24}
-                  color={currentView === 'about' ? '#a5d6a7' : 'rgba(255,255,255,0.8)'}
+                  color={currentView === 'about' ? 'var(--scheme-accent-medium)' : 'var(--scheme-on-primary)'}
                 />
               </IconButton>
             </Tooltip>
@@ -212,7 +212,7 @@ export default function Header({
           value={tabValue}
           onChange={handleTabChange}
           textColor="inherit"
-          TabIndicatorProps={{ style: { backgroundColor: '#a5d6a7', height: 3 } }}
+          TabIndicatorProps={{ style: { backgroundColor: 'var(--scheme-accent-medium)', height: 3 } }}
           sx={{ minHeight: 40 }}
         >
           <Tab
@@ -222,8 +222,8 @@ export default function Header({
             sx={{
               minHeight: 40,
               fontSize: '0.85rem',
-              color: 'rgba(255,255,255,0.75)',
-              '&.Mui-selected': { color: 'white' },
+              color: 'var(--scheme-on-primary-muted)',
+              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
               py: 0,
             }}
           />
@@ -234,20 +234,15 @@ export default function Header({
             sx={{
               minHeight: 40,
               fontSize: '0.85rem',
-              color: 'rgba(255,255,255,0.75)',
-              '&.Mui-selected': { color: 'white' },
+              color: 'var(--scheme-on-primary-muted)',
+              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
               py: 0,
             }}
           />
         </Tabs>
       </DesktopTabs>
 
-      <Dialog
-        open={logoutConfirm}
-        onClose={() => setLogoutConfirm(false)}
-        maxWidth="xs"
-        fullWidth
-      >
+      <Dialog open={logoutConfirm} onClose={() => setLogoutConfirm(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>{t('auth.logoutConfirmTitle')}</DialogTitle>
         <DialogContent>
           <DialogContentText>{t('auth.logoutConfirmBody')}</DialogContentText>
@@ -257,7 +252,10 @@ export default function Header({
             {t('modal.cancel')}
           </Button>
           <Button
-            onClick={() => { logout(); setLogoutConfirm(false) }}
+            onClick={() => {
+              logout()
+              setLogoutConfirm(false)
+            }}
             variant="contained"
             color="error"
             disableElevation

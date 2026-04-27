@@ -33,10 +33,10 @@ export const ItemName = styled(Typography).attrs({ variant: 'body2' as const })<
 
 export const DeleteButton = styled(IconButton)`
   && {
-    color: #ef9a9a;
+    color: var(--scheme-error-light);
     &:hover {
-      color: #c62828;
-      background-color: #ffebee;
+      color: var(--scheme-error);
+      background-color: var(--scheme-error-bg);
     }
   }
 `

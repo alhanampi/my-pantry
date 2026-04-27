@@ -45,7 +45,7 @@ export default function ShoppingItem({ item, onToggle, onDelete, onEdit, onQuant
           size="small"
           onClick={() => onEdit(item.id)}
           aria-label={t('card.edit')}
-          sx={{ color: '#90caf9', '&:hover': { color: '#1565c0', bgcolor: '#e3f2fd' } }}
+          sx={{ color: 'var(--scheme-info-light)', '&:hover': { color: 'var(--scheme-info-dark)', bgcolor: 'var(--scheme-info-bg)' } }}
         >
           <MdModeEditOutline size={20} />
         </IconButton>

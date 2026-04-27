@@ -52,7 +52,7 @@ export const SectionLabel = styled(Typography)`
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #9e9e9e;
+    color: var(--scheme-text-muted);
     margin: 12px 0 4px;
   }
 `

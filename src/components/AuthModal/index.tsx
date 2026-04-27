@@ -185,7 +185,10 @@ export default function AuthModal({
               {t('modal.cancel')}
             </Button>
             <Button
-              onClick={() => { setLinkConfirm(false); void handleLink() }}
+              onClick={() => {
+                setLinkConfirm(false)
+                void handleLink()
+              }}
               variant="contained"
               disableElevation
               startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
@@ -218,7 +221,10 @@ export default function AuthModal({
         </Typography>
         <Tabs
           value={authTab}
-          onChange={(_, v: number) => { setAuthTab(v); setError('') }}
+          onChange={(_, v: number) => {
+            setAuthTab(v)
+            setError('')
+          }}
           variant="fullWidth"
           TabIndicatorProps={{ style: { height: 3 } }}
           sx={{ borderBottom: 1, borderColor: 'divider' }}
@@ -264,7 +270,15 @@ export default function AuthModal({
             <Divider />
             <Typography variant="body2" textAlign="center" color="text.secondary">
               {t('auth.noAccount')}{' '}
-              <Button size="small" onClick={() => { setAuthTab(1); setError('') }} disabled={loading} sx={{ p: 0 }}>
+              <Button
+                size="small"
+                onClick={() => {
+                  setAuthTab(1)
+                  setError('')
+                }}
+                disabled={loading}
+                sx={{ p: 0 }}
+              >
                 {t('auth.registerTab')}
               </Button>
             </Typography>
@@ -300,7 +314,9 @@ export default function AuthModal({
             <Button
               variant="contained"
               onClick={() => void handleRegister()}
-              disabled={loading || !registerForm.username || !registerForm.email || !registerForm.password}
+              disabled={
+                loading || !registerForm.username || !registerForm.email || !registerForm.password
+              }
               disableElevation
               fullWidth
               sx={{ py: 1.2 }}
@@ -311,7 +327,15 @@ export default function AuthModal({
             <Divider />
             <Typography variant="body2" textAlign="center" color="text.secondary">
               {t('auth.hasAccount')}{' '}
-              <Button size="small" onClick={() => { setAuthTab(0); setError('') }} disabled={loading} sx={{ p: 0 }}>
+              <Button
+                size="small"
+                onClick={() => {
+                  setAuthTab(0)
+                  setError('')
+                }}
+                disabled={loading}
+                sx={{ p: 0 }}
+              >
                 {t('auth.loginTab')}
               </Button>
             </Typography>

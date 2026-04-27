@@ -15,9 +15,9 @@ export default function ConfirmDialog({ open, type, data, onClose }: ConfirmDial
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <StyledDialogTitle>
         {isSuccess ? (
-          <MdCheckCircle size={28} color="#2e7d32" />
+          <MdCheckCircle size={28} color="var(--scheme-primary)" />
         ) : (
-          <MdErrorOutline size={28} color="#e65100" />
+          <MdErrorOutline size={28} color="var(--scheme-warning)" />
         )}
         {isSuccess ? t('confirm.successTitle') : t('confirm.cancelTitle')}
       </StyledDialogTitle>

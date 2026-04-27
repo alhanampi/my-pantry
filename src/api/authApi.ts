@@ -75,9 +75,7 @@ export async function apiRegister(
   }
 }
 
-export async function apiLinkUser(
-  username: string
-): Promise<{ id: number; username: string }> {
+export async function apiLinkUser(username: string): Promise<{ id: number; username: string }> {
   if (MOCK) {
     await delay()
     if (!username.trim()) throw new Error('Username is required')

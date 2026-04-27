@@ -45,7 +45,7 @@ export default function PantryView({
 
   const empty = (
     <EmptyState>
-      <MdInventory2 size={52} color="#c8e6c9" />
+      <MdInventory2 size={52} color="var(--scheme-accent-medium)" />
       <EmptyHeading>{t('table.emptyTitle')}</EmptyHeading>
       <EmptySubtext>{t('table.emptySubtitle')}</EmptySubtext>
     </EmptyState>
@@ -54,7 +54,7 @@ export default function PantryView({
   const addButton = (
     <Tooltip title={t('header.addProduct')}>
       <IconButton onClick={onAddClick} size="small" aria-label={t('header.addProduct')}>
-        <MdAddCircle size={28} color="#2e7d32" />
+        <MdAddCircle size={28} color="var(--scheme-primary)" />
       </IconButton>
     </Tooltip>
   )

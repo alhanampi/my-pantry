@@ -23,18 +23,15 @@ export async function fetchProductSuggestions(
   query: string,
   language: string
 ): Promise<ProductSuggestion[]> {
-  const { data } = await axios.get<OFFResponse>(
-    'https://world.openfoodfacts.org/api/v2/search',
-    {
-      params: {
-        search_terms: query,
-        page_size: 8,
-        fields: 'product_name,generic_name,categories_tags',
-        lc: language,
-      },
-      timeout: 6000,
-    }
-  )
+  const { data } = await axios.get<OFFResponse>('https://world.openfoodfacts.org/api/v2/search', {
+    params: {
+      search_terms: query,
+      page_size: 8,
+      fields: 'product_name,generic_name,categories_tags',
+      lc: language,
+    },
+    timeout: 6000,
+  })
 
   return data.products
     .map((p) => ({

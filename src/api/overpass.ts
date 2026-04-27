@@ -1,5 +1,11 @@
 import axios from 'axios'
-import type { Coordinates, OverpassResponse, OverpassElement, RawNearbyStore, ShopType } from '../utils/types'
+import type {
+  Coordinates,
+  OverpassResponse,
+  OverpassElement,
+  RawNearbyStore,
+  ShopType,
+} from '../utils/types'
 
 export const ALL_SHOP_TYPES: ShopType[] = [
   'supermarket',
