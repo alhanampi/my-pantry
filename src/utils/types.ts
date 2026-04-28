@@ -71,11 +71,17 @@ export interface ProductSuggestion {
 export type ShopType =
   | 'supermarket'
   | 'grocery'
+  | 'marketplace'
+  | 'wholesale'
   | 'convenience'
   | 'greengrocer'
   | 'butcher'
   | 'seafood'
   | 'bakery'
+  | 'deli'
+  | 'cheese'
+  | 'health_food'
+  | 'organic'
 
 export interface Coordinates {
   lat: number

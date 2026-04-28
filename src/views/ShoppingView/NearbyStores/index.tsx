@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import type { ComponentType } from 'react'
+import Box from '@mui/material/Box'
 import List from '@mui/material/List'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
@@ -9,7 +11,12 @@ import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import type { SelectChangeEvent } from '@mui/material/Select'
-import { MdStorefront, MdLocalGroceryStore, MdLocationOn } from 'react-icons/md'
+import {
+  MdStorefront, MdLocalGroceryStore, MdLocationOn,
+  MdShoppingCart, MdStore, MdWarehouse, MdEco,
+  MdOutdoorGrill, MdSetMeal, MdBakeryDining, MdLunchDining,
+  MdRestaurant, MdFavorite, MdNature,
+} from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { useNearbyStores } from '../../../hooks/useNearbyStores'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
@@ -29,11 +36,35 @@ import {
   ChipsRow,
 } from './NearbyStores.styles'
 
+type IconComponent = ComponentType<{ size: number; color?: string }>
+
+const SHOP_ICONS: Record<string, IconComponent> = {
+  supermarket:        MdLocalGroceryStore,
+  grocery:            MdShoppingCart,
+  marketplace:        MdStorefront,
+  wholesale:          MdWarehouse,
+  convenience:        MdStore,
+  greengrocer:        MdEco,
+  fruit_and_vegetable: MdEco,
+  butcher:            MdOutdoorGrill,
+  seafood:            MdSetMeal,
+  bakery:             MdBakeryDining,
+  deli:               MdLunchDining,
+  cheese:             MdRestaurant,
+  cheese_and_dairy:   MdRestaurant,
+  health_food:        MdFavorite,
+  organic:            MdNature,
+}
+
+function ShopTypeIcon({ type, size = 18 }: { type: string; size?: number }) {
+  const Icon = SHOP_ICONS[type] ?? MdStorefront
+  return <Icon size={size} />
+}
+
 function getShopIcon(type: string) {
-  if (type === 'supermarket' || type === 'grocery') {
-    return <MdLocalGroceryStore size={20} color="var(--scheme-primary)" />
-  }
-  return <MdStorefront size={20} color="var(--scheme-text-secondary)" />
+  const Icon = SHOP_ICONS[type] ?? MdStorefront
+  const color = type in SHOP_ICONS ? 'var(--scheme-primary)' : 'var(--scheme-text-secondary)'
+  return <Icon size={20} color={color} />
 }
 
 export default function NearbyStores() {
@@ -79,7 +110,16 @@ export default function NearbyStores() {
           renderValue={(selected) => (
             <ChipsRow>
               {selected.map((v) => (
-                <Chip key={v} label={t(`stores.shopTypes.${v}`)} size="small" />
+                <Chip
+                  key={v}
+                  label={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <ShopTypeIcon type={v} size={12} />
+                      {t(`stores.shopTypes.${v}`)}
+                    </span>
+                  }
+                  size="small"
+                />
               ))}
             </ChipsRow>
           )}
@@ -87,7 +127,10 @@ export default function NearbyStores() {
           {ALL_SHOP_TYPES.map((type) => (
             <MenuItem key={type} value={type}>
               <Checkbox checked={shopTypes.includes(type)} size="small" sx={{ py: 0 }} />
-              <ListItemText primary={t(`stores.shopTypes.${type}`)} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ShopTypeIcon type={type} size={18} />
+                <span>{t(`stores.shopTypes.${type}`)}</span>
+              </Box>
             </MenuItem>
           ))}
         </Select>

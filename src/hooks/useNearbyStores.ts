@@ -30,6 +30,6 @@ export function useNearbyStores(
           distance: haversine(coords!.lat, coords!.lng, s.lat, s.lon),
         }))
         .sort((a, b) => a.distance - b.distance)
-        .slice(0, 15),
+        .slice(0, 25),
   })
 }

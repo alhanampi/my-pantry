@@ -3,23 +3,35 @@ import type { Coordinates, RawNearbyStore, ShopType } from '../utils/types'
 export const ALL_SHOP_TYPES: ShopType[] = [
   'supermarket',
   'grocery',
+  'marketplace',
+  'wholesale',
   'convenience',
   'greengrocer',
   'butcher',
   'seafood',
   'bakery',
+  'deli',
+  'cheese',
+  'health_food',
+  'organic',
 ]
 
-export const DEFAULT_SHOP_TYPES: ShopType[] = ['supermarket', 'grocery']
+export const DEFAULT_SHOP_TYPES: ShopType[] = ['supermarket', 'grocery', 'marketplace']
 
 const CATEGORY_MAP: Record<ShopType, string> = {
   supermarket: 'commercial.supermarket',
-  grocery:     'commercial.supermarket',
+  grocery:     'commercial.convenience',
+  marketplace: 'commercial.marketplace',
+  wholesale:   'commercial.wholesale',
   convenience: 'commercial.convenience',
-  greengrocer: 'commercial.food_and_drink.greengrocer',
+  greengrocer: 'commercial.food_and_drink.fruit_and_vegetable',
   butcher:     'commercial.food_and_drink.butcher',
   seafood:     'commercial.food_and_drink.seafood',
   bakery:      'commercial.food_and_drink.bakery',
+  deli:        'commercial.food_and_drink.deli',
+  cheese:      'commercial.food_and_drink.cheese_and_dairy',
+  health_food: 'commercial.food_and_drink.health_food',
+  organic:     'commercial.food_and_drink.organic',
 }
 
 interface GeoapifyFeature {
@@ -45,8 +57,9 @@ export async function fetchNearbyStores(
 
   const params = new URLSearchParams({
     categories,
-    filter: `circle:${lng},${lat},3000`,
-    limit: '20',
+    filter:  `circle:${lng},${lat},3000`,
+    bias:    `proximity:${lng},${lat}`,
+    limit:   '100',
     apiKey,
   })
 

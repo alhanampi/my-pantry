@@ -95,11 +95,17 @@
     "shopTypes": {
       "supermarket": "Supermarket",
       "grocery": "Grocery store",
+      "marketplace": "Marketplace",
+      "wholesale": "Wholesale club",
       "convenience": "Convenience store",
       "greengrocer": "Greengrocer",
       "butcher": "Butcher",
       "seafood": "Fishmonger",
-      "bakery": "Bakery"
+      "bakery": "Bakery",
+      "deli": "Deli",
+      "cheese": "Cheese & dairy",
+      "health_food": "Health food store",
+      "organic": "Organic store"
     }
   },
   "auth": {

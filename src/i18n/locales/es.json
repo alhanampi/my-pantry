@@ -95,11 +95,17 @@
     "shopTypes": {
       "supermarket": "Supermercado",
       "grocery": "Almacén",
+      "marketplace": "Mercado",
+      "wholesale": "Mayorista",
       "convenience": "Kiosco",
       "greengrocer": "Verdulería",
       "butcher": "Carnicería",
       "seafood": "Pescadería",
-      "bakery": "Panadería"
+      "bakery": "Panadería",
+      "deli": "Fiambrería",
+      "cheese": "Quesería / Lácteos",
+      "health_food": "Dietética",
+      "organic": "Tienda orgánica"
     }
   },
   "auth": {
