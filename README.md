@@ -199,11 +199,12 @@ JWT_SECRET="your_secret"
 - [ ] Push notifications for products expiring soon
 - [ ] Weekly expiration dashboard
 - [ ] Deleted products history
+- [ ] Calendar tab, to see what's about to expire and when the discounts are
 
 ### v1.4 — Sharing & Export
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
-- [ ] Recipe suggestions based on available ingredients using spoonacular
+- [ ] Recipe suggestions tag based on available ingredients using spoonacular
 
 ---
 
