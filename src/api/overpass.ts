@@ -1,4 +1,3 @@
-import axios from 'axios'
 import type {
   Coordinates,
   OverpassResponse,
@@ -19,33 +18,26 @@ export const ALL_SHOP_TYPES: ShopType[] = [
 
 export const DEFAULT_SHOP_TYPES: ShopType[] = ['supermarket', 'grocery']
 
+const MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+]
+
 export async function fetchNearbyStores(
   { lat, lng }: Coordinates,
   shopTypes: ShopType[]
 ): Promise<RawNearbyStore[]> {
   const typeFilter = shopTypes.join('|')
-  const query = `
-    [out:json][timeout:20];
-    (
-      node["shop"~"${typeFilter}"](around:3000,${lat},${lng});
-      way["shop"~"${typeFilter}"](around:3000,${lat},${lng});
-    );
-    out center;
-  `
-  const MIRRORS = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-  ]
+  const query = `[out:json][timeout:20];(node["shop"~"${typeFilter}"](around:3000,${lat},${lng});way["shop"~"${typeFilter}"](around:3000,${lat},${lng}););out center;`
 
   let elements: OverpassElement[] | null = null
 
   for (const url of MIRRORS) {
     try {
-      const { data } = await axios.get<OverpassResponse>(url, {
-        params: { data: query },
-        timeout: 25000,
-      })
-      elements = data.elements
+      const res = await fetch(`${url}?${new URLSearchParams({ data: query })}`)
+      if (!res.ok) continue
+      const json = (await res.json()) as OverpassResponse
+      elements = json.elements
       break
     } catch {
       continue
