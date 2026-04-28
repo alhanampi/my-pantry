@@ -14,7 +14,7 @@ export const StepperValue = styled.span`
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--scheme-primary);
-  min-width: 22px;
+  min-width: 28px;
   text-align: center;
   line-height: 1;
 `

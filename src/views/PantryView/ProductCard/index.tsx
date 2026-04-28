@@ -5,6 +5,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
+import Box from '@mui/material/Box'
 import { MdExpandMore, MdExpandLess, MdAddShoppingCart, MdDeleteOutline, MdModeEditOutline } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { formatDate, getExpiryStatus } from '../../../utils/helpers'
@@ -58,21 +59,22 @@ export default function ProductCard({
             )}
           </div>
 
+          {product.expiryDate && (
+            <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, minWidth: '100px', justifyContent: 'flex-end' }}>
+              <Typography variant="caption" sx={{ minWidth: '1.2em', textAlign: 'center' }}>
+                {expiryStatus === 'expired' ? '⚠' : expiryStatus === 'soon' ? '⏳' : ''}
+              </Typography>
+              <Typography variant="caption" sx={{ color: expiryColor, fontWeight: 600 }}>
+                {formatDate(product.expiryDate)}
+              </Typography>
+            </Box>
+          )}
+
           <QuantityStepper
             value={product.quantity}
             onIncrement={() => onQuantityChange(product.id, 1)}
             onDecrement={() => onQuantityChange(product.id, -1)}
           />
-
-          {product.expiryDate && (
-            <Typography
-              variant="caption"
-              sx={{ color: expiryColor, fontWeight: 600, flexShrink: 0 }}
-            >
-              {expiryStatus === 'expired' ? '⚠ ' : expiryStatus === 'soon' ? '⏳ ' : ''}
-              {formatDate(product.expiryDate)}
-            </Typography>
-          )}
 
           <Tooltip title={t('card.addToCart')}>
             <IconButton

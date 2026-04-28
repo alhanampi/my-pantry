@@ -46,7 +46,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 ### Internationalization
 - Full Spanish and English support.
 - Language persists across sessions via `localStorage`.
-- Over 130 product suggestions per language.
+- Over 300 product suggestions per language.
 
 ### Authentication
 - Registration and login with JWT.
@@ -186,6 +186,9 @@ JWT_SECRET="your_secret"
 - [x] Account linking model (partner / family)
 - [ ] Persist pantry data in the database (currently localStorage)
 - [ ] Real-time sync between linked accounts
+- [ ] Multiple shopping lists, to decide where to buy what
+- [ ] Send from shopping list to pantry automatically
+- [ ] Auto expiry date for some products
 
 ### v1.2 — Maps & Location
 - [x] Nearby supermarkets via Overpass API
@@ -200,7 +203,7 @@ JWT_SECRET="your_secret"
 ### v1.4 — Sharing & Export
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
-- [ ] Recipe suggestions based on available ingredients
+- [ ] Recipe suggestions based on available ingredients using spoonacular
 
 ---
 

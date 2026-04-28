@@ -32,12 +32,27 @@ export async function fetchNearbyStores(
     );
     out center;
   `
-  const { data } = await axios.post<OverpassResponse>(
+  const MIRRORS = [
     'https://overpass-api.de/api/interpreter',
-    `data=${encodeURIComponent(query)}`,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 25000 }
-  )
-  return data.elements
+    'https://overpass.kumi.systems/api/interpreter',
+  ]
+
+  const body = new URLSearchParams({ data: query })
+  let elements: OverpassElement[] | null = null
+
+  for (const url of MIRRORS) {
+    try {
+      const { data } = await axios.post<OverpassResponse>(url, body, { timeout: 25000 })
+      elements = data.elements
+      break
+    } catch {
+      continue
+    }
+  }
+
+  if (elements === null) throw new Error('overpass_unavailable')
+
+  return elements
     .map((el: OverpassElement): RawNearbyStore | null => {
       const name = el.tags?.name ?? el.tags?.brand
       if (!name) return null
