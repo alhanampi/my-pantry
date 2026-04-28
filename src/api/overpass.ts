@@ -1,10 +1,4 @@
-import type {
-  Coordinates,
-  OverpassResponse,
-  OverpassElement,
-  RawNearbyStore,
-  ShopType,
-} from '../utils/types'
+import type { Coordinates, RawNearbyStore, ShopType } from '../utils/types'
 
 export const ALL_SHOP_TYPES: ShopType[] = [
   'supermarket',
@@ -18,42 +12,56 @@ export const ALL_SHOP_TYPES: ShopType[] = [
 
 export const DEFAULT_SHOP_TYPES: ShopType[] = ['supermarket', 'grocery']
 
-const MIRRORS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-]
+const CATEGORY_MAP: Record<ShopType, string> = {
+  supermarket: 'commercial.supermarket',
+  grocery:     'commercial.supermarket',
+  convenience: 'commercial.convenience',
+  greengrocer: 'commercial.food_and_drink.greengrocer',
+  butcher:     'commercial.food_and_drink.butcher',
+  seafood:     'commercial.food_and_drink.seafood',
+  bakery:      'commercial.food_and_drink.bakery',
+}
+
+interface GeoapifyFeature {
+  properties: {
+    place_id: string
+    name?: string
+    categories: string[]
+    lon: number
+    lat: number
+  }
+}
+
+interface GeoapifyResponse {
+  features: GeoapifyFeature[]
+}
 
 export async function fetchNearbyStores(
   { lat, lng }: Coordinates,
   shopTypes: ShopType[]
 ): Promise<RawNearbyStore[]> {
-  const typeFilter = shopTypes.join('|')
-  const query = `[out:json][timeout:20];(node["shop"~"${typeFilter}"](around:3000,${lat},${lng});way["shop"~"${typeFilter}"](around:3000,${lat},${lng}););out center;`
+  const apiKey = import.meta.env.VITE_GEOAPIFY_KEY as string
+  const categories = [...new Set(shopTypes.map((t) => CATEGORY_MAP[t]))].join(',')
 
-  let elements: OverpassElement[] | null = null
+  const params = new URLSearchParams({
+    categories,
+    filter: `circle:${lng},${lat},3000`,
+    limit: '20',
+    apiKey,
+  })
 
-  for (const url of MIRRORS) {
-    try {
-      const res = await fetch(`${url}?${new URLSearchParams({ data: query })}`)
-      if (!res.ok) continue
-      const json = (await res.json()) as OverpassResponse
-      elements = json.elements
-      break
-    } catch {
-      continue
-    }
-  }
+  const res = await fetch(`https://api.geoapify.com/v2/places?${params}`)
+  if (!res.ok) throw new Error('geoapify_unavailable')
 
-  if (elements === null) throw new Error('overpass_unavailable')
+  const json = (await res.json()) as GeoapifyResponse
 
-  return elements
-    .map((el: OverpassElement): RawNearbyStore | null => {
-      const name = el.tags?.name ?? el.tags?.brand
-      if (!name) return null
-      const storeLat = el.type === 'node' ? el.lat : el.center?.lat
-      const storeLon = el.type === 'node' ? el.lon : el.center?.lon
-      if (!storeLat || !storeLon) return null
-      return { id: el.id, name, type: el.tags?.shop ?? '', lat: storeLat, lon: storeLon }
-    })
-    .filter((s): s is RawNearbyStore => s !== null)
+  return json.features
+    .filter((f) => Boolean(f.properties.name))
+    .map((f) => ({
+      id:   f.properties.place_id,
+      name: f.properties.name!,
+      type: f.properties.categories[0]?.split('.').slice(-1)[0] ?? '',
+      lat:  f.properties.lat,
+      lon:  f.properties.lon,
+    }))
 }

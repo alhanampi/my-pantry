@@ -82,25 +82,8 @@ export interface Coordinates {
   lng: number
 }
 
-export interface OverpassElement {
-  id: number
-  type: 'node' | 'way' | 'relation'
-  lat?: number
-  lon?: number
-  center?: { lat: number; lon: number }
-  tags?: {
-    name?: string
-    brand?: string
-    shop?: string
-  }
-}
-
-export interface OverpassResponse {
-  elements: OverpassElement[]
-}
-
 export interface RawNearbyStore {
-  id: number
+  id: string
   name: string
   type: string
   lat: number
