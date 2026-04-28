@@ -37,12 +37,14 @@ export async function fetchNearbyStores(
     'https://overpass.kumi.systems/api/interpreter',
   ]
 
-  const body = new URLSearchParams({ data: query })
   let elements: OverpassElement[] | null = null
 
   for (const url of MIRRORS) {
     try {
-      const { data } = await axios.post<OverpassResponse>(url, body, { timeout: 25000 })
+      const { data } = await axios.get<OverpassResponse>(url, {
+        params: { data: query },
+        timeout: 25000,
+      })
       elements = data.elements
       break
     } catch {
