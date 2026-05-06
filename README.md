@@ -2,12 +2,12 @@
 
 A Progressive Web App (PWA) for managing your household pantry. Track what you have at home, when products expire, build your shopping list, and find nearby supermarkets — all from your phone, no installation required.
 
+Still in development!
+
 ## See a live demo! 
 
 https://my-pantry-j9zkt3bw2-pamina-goldenberg-thierys-projects.vercel.app/
 
-
-(for now with mocked users!)
 ---
 
 ## What is a PWA?
@@ -39,7 +39,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 
 ### Nearby Supermarkets
 - Device geolocation.
-- Supermarket search via **Overpass API** (OpenStreetMap, no API key required).
+- Supermarket search via **Geoapify Places API**.
 - Distance calculated with the Haversine formula.
 - 5-minute cache with React Query.
 
@@ -49,8 +49,10 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Over 300 product suggestions per language.
 
 ### Authentication
-- Registration and login with JWT.
-- Account linking between users (to share the pantry with a partner or family).
+- Sign-up and login managed by **Clerk** (email + password + username).
+- Clerk handles email verification, password security, and session management.
+- Account linking between users (to share the pantry with a partner or family member).
+- Backend verifies Clerk JWTs on every protected request; user data for sync is fetched directly from Clerk's API (never trusted from the client).
 
 ### Customization
 - Color theme picker.
@@ -68,7 +70,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 | MUI v5 | UI components |
 | styled-components v6 | Layout and container styles |
 | TanStack React Query v5 | Fetching, caching, and server state |
-| axios | HTTP client |
+| Clerk (`@clerk/clerk-react`) | Authentication UI and session management |
 | i18next + react-i18next | Internationalization (ES / EN) |
 | react-map-gl + MapLibre GL | Nearby supermarkets map |
 | vite-plugin-pwa | Service worker and PWA manifest |
@@ -80,9 +82,8 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 | TypeScript | Type safety |
 | Prisma 5 | ORM |
 | SQLite | Database |
-| bcrypt | Password hashing |
-| JWT | Stateless authentication |
-| helmet + cors + express-rate-limit | Security |
+| Clerk (`@clerk/backend`) | JWT verification + user data fetch |
+| helmet + cors + express-rate-limit | Security headers, CORS, rate limiting |
 
 ---
 
@@ -92,29 +93,29 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 mi-despensa-app/
 ├── backend/                  # REST API
 │   ├── prisma/
-│   │   ├── schema.prisma     # Models: User, UserLink
+│   │   ├── schema.prisma     # Models: User (Clerk ID), UserLink
 │   │   └── migrations/
 │   ├── src/
 │   │   ├── index.ts          # Express server entry point
 │   │   ├── db/               # Prisma Client instance
 │   │   ├── middleware/
-│   │   │   └── auth.ts       # JWT verification
+│   │   │   └── auth.ts       # Clerk JWT verification
 │   │   └── routes/
-│   │       └── auth.ts       # /register, /login, /link-account
+│   │       └── auth.ts       # /sync, /me, /link
 │   └── data/                 # SQLite file (git-ignored)
 │
 └── src/                      # Frontend
-    ├── main.tsx              # Entry point: QueryClient + i18n setup
+    ├── main.tsx              # Entry point: ClerkProvider + QueryClient
     ├── App.tsx               # Routes and global state
     ├── api/
-    │   ├── authApi.ts        # Auth backend calls
+    │   ├── authApi.ts        # Sync and link backend calls
     │   ├── overpass.ts       # OpenStreetMap API queries
     │   └── productSuggestionsApi.ts
     ├── components/
     │   ├── Header/           # AppBar with search, language toggle, and tabs
     │   ├── BottomNav/        # Bottom navigation bar (mobile)
     │   ├── AddProductModal/  # Add product modal
-    │   ├── AuthModal/        # Login / register modal
+    │   ├── AuthModal/        # Account linking modal
     │   ├── ConfirmDialog/    # Generic confirmation dialog
     │   ├── QuantityStepper/  # +/- quantity control
     │   └── ThemePicker/      # Color theme selector
@@ -123,13 +124,13 @@ mi-despensa-app/
     │   ├── ShoppingView/     # Shopping list view
     │   └── AboutView/        # App info screen
     ├── context/
-    │   └── AuthContext.tsx   # Global authentication state
+    │   └── AuthContext.tsx   # Partner state and link modal
     ├── contexts/
     │   └── ThemeContext.tsx  # Active color theme
     ├── hooks/
     │   ├── useAppState.ts    # Central pantry and list state
     │   ├── useLocalStorage.ts # localStorage persistence
-    │   ├── useNearbyStores.ts # React Query → Overpass API
+    │   ├── useNearbyStores.ts # React Query → Geoapify API
     │   ├── useProductSuggestions.ts
     │   └── useDebounce.ts
     ├── i18n/
@@ -148,25 +149,61 @@ mi-despensa-app/
 
 ## Getting Started
 
+### Prerequisites
+
+- A [Clerk](https://clerk.com) account with an application configured:
+  - Enable **Email + Password** authentication
+  - Enable **Username** as a required sign-up field
+  - Copy the **Publishable Key** and **Secret Key** from the Clerk dashboard
+
 ### Frontend
+
 ```bash
 npm install
 npm run dev
 ```
 
+Frontend environment variables (`.env`):
+```
+VITE_API_URL=http://localhost:3001
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+VITE_GEOAPIFY_KEY=your_geoapify_key
+```
+
 ### Backend
+
 ```bash
 cd backend
 npm install
-npx prisma migrate dev
+npx prisma db push
 npm run dev
 ```
 
 Backend environment variables (`backend/.env`):
 ```
-DATABASE_URL="file:./data/dev.db"
-JWT_SECRET="your_secret"
+PORT=3001
+CLERK_SECRET_KEY=sk_test_...
+FRONTEND_ORIGIN=http://localhost:5173
+DATABASE_URL="file:./data/app.db"
 ```
+
+---
+
+## Security
+
+Authentication is fully delegated to Clerk:
+
+| Concern | Handled by |
+|---|---|
+| Password hashing | Clerk (bcrypt-equivalent, managed) |
+| Email verification | Clerk (configurable, on by default) |
+| Brute-force protection | Clerk (automatic lockout) |
+| Session rotation | Clerk (short-lived JWTs, auto-refresh) |
+| JWT verification | `@clerk/backend` on every protected request |
+| User data integrity | Backend fetches user info from Clerk's API directly — never trusts client-provided values |
+| HTTP security headers | `helmet` |
+| CORS | Restricted to `FRONTEND_ORIGIN` |
+| Rate limiting | `express-rate-limit` (60 req / 15 min) |
 
 ---
 
@@ -182,7 +219,7 @@ JWT_SECRET="your_secret"
 
 ### v1.1 — Auth & Sync 🚧
 - [x] Express + Prisma + SQLite backend
-- [x] Registration / login with JWT
+- [x] Authentication via Clerk (email + password + username)
 - [x] Account linking model (partner / family)
 - [ ] Persist pantry data in the database (currently localStorage)
 - [ ] Real-time sync between linked accounts
@@ -191,7 +228,7 @@ JWT_SECRET="your_secret"
 - [ ] Auto expiry date for some products
 
 ### v1.2 — Maps & Location
-- [x] Nearby supermarkets via Overpass API
+- [x] Nearby supermarkets via Geoapify Places API
 - [ ] Filter supermarkets by maximum distance
 - [ ] Save a preferred store per product
 

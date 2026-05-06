@@ -9,7 +9,8 @@
     "searchPlaceholder": "Buscar producto...",
     "addProduct": "Agregar producto",
     "about": "Acerca de",
-    "colorScheme": "Esquema de color"
+    "colorScheme": "Esquema de color",
+    "switchLanguage": "Cambiar a inglés"
   },
   "table": {
     "name": "Nombre",
@@ -143,7 +144,10 @@
     "logoutConfirmBody": "Vas a tener que iniciar sesión de nuevo para acceder a tu cuenta.",
     "linkConfirmTitle": "¿Vincular con @{{username}}?",
     "linkConfirmBody": "Ambos van a compartir la misma despensa y lista de súper.",
-    "confirmAction": "Confirmar"
+    "confirmAction": "Confirmar",
+    "notSignedIn": "No iniciaste sesión",
+    "noPartnerYet": "Sin cuenta vinculada",
+    "manageLinkTab": "Gestionar vínculo"
   },
   "about": {
     "subtitle": "Tu gestión de despensa personal. Llevá el control de todo lo que tenés en casa.",

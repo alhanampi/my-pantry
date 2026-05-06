@@ -103,10 +103,10 @@ export interface NearbyStore extends RawNearbyStore {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export interface AuthUser {
-  id: number
+  id: string
   username: string
   email: string
-  partner: { id: number; username: string } | null
+  partner: { id: string; username: string } | null
 }
 
 // ─── Component props ──────────────────────────────────────────────────────────

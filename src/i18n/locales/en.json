@@ -9,7 +9,8 @@
     "searchPlaceholder": "Search product...",
     "addProduct": "Add product",
     "about": "About",
-    "colorScheme": "Color scheme"
+    "colorScheme": "Color scheme",
+    "switchLanguage": "Switch to Spanish"
   },
   "table": {
     "name": "Name",
@@ -143,7 +144,10 @@
     "logoutConfirmBody": "You'll need to sign in again to access your account.",
     "linkConfirmTitle": "Link with @{{username}}?",
     "linkConfirmBody": "You'll both share the same pantry and shopping list.",
-    "confirmAction": "Confirm"
+    "confirmAction": "Confirm",
+    "notSignedIn": "You're not signed in",
+    "noPartnerYet": "No linked account",
+    "manageLinkTab": "Manage link"
   },
   "about": {
     "subtitle": "Your personal pantry manager. Keep track of everything you have at home.",

@@ -11,6 +11,15 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
+import Drawer from '@mui/material/Drawer'
+import Box from '@mui/material/Box'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
+import Divider from '@mui/material/Divider'
+import Chip from '@mui/material/Chip'
 import {
   MdSearch,
   MdInfoOutline,
@@ -21,6 +30,8 @@ import {
   MdPersonOutline,
   MdPersonAddAlt1,
   MdLogout,
+  MdMenu,
+  MdPeopleOutline,
 } from 'react-icons/md'
 import appIcon from '../../assets/icon.png'
 import { useTranslation } from 'react-i18next'
@@ -31,12 +42,14 @@ import {
   SearchBox,
   SearchBoxMobile,
   StyledInputBase,
-  ActionsGroup,
+  DesktopActions,
+  MobileHamburger,
   DesktopTabs,
   SearchIconWrapper,
   UserGreeting,
 } from './Header.styles'
 import ThemePicker from '../ThemePicker'
+import { useUser, useClerk } from '@clerk/clerk-react'
 import { useAuth } from '../../context/AuthContext'
 import type { HeaderProps } from '../../utils/types'
 
@@ -48,8 +61,11 @@ export default function Header({
   onViewChange,
 }: HeaderProps) {
   const { t, i18n } = useTranslation()
-  const { user, logout, openAuthModal } = useAuth()
+  const { user, isSignedIn } = useUser()
+  const { openSignIn, signOut } = useClerk()
+  const { partner, openLinkModal } = useAuth()
   const [logoutConfirm, setLogoutConfirm] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const toggleLanguage = (): void => {
     void i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
@@ -60,6 +76,8 @@ export default function Header({
   const handleTabChange = (_: React.SyntheticEvent, newValue: number): void => {
     onViewChange(newValue === 0 ? 'pantry' : 'shopping')
   }
+
+  const displayName = user?.username ?? user?.firstName ?? t('auth.guest')
 
   const searchInput = (
     <>
@@ -84,6 +102,141 @@ export default function Header({
     </>
   )
 
+  const mobileDrawer = (
+    <Box sx={{ width: 272, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Cierre */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1, pt: 1 }}>
+        <IconButton onClick={() => setDrawerOpen(false)} size="small">
+          <MdClear size={20} />
+        </IconButton>
+      </Box>
+
+      {/* Estado de auth */}
+      <Box sx={{ px: 2.5, pt: 1, pb: 2 }}>
+        {isSignedIn ? (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              {t('auth.greeting', { name: displayName })}
+            </Typography>
+            {partner ? (
+              <Chip
+                icon={<MdPeopleOutline size={14} />}
+                label={`@${partner.username}`}
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{ fontWeight: 600 }}
+              />
+            ) : (
+              <Typography variant="caption" color="text.disabled">
+                {t('auth.noPartnerYet')}
+              </Typography>
+            )}
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            {t('auth.notSignedIn')}
+          </Typography>
+        )}
+      </Box>
+
+      <Divider />
+
+      {/* Acciones de cuenta */}
+      <List dense disablePadding>
+        {isSignedIn ? (
+          <>
+            <ListItemButton
+              onClick={() => {
+                openLinkModal()
+                setDrawerOpen(false)
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <MdPersonAddAlt1
+                  size={20}
+                  color={partner ? 'var(--scheme-accent-medium)' : undefined}
+                />
+              </ListItemIcon>
+              <ListItemText
+                primary={partner ? t('auth.manageLinkTab') : t('auth.linkTab')}
+                primaryTypographyProps={{ fontSize: '0.9rem' }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              onClick={() => {
+                setLogoutConfirm(true)
+                setDrawerOpen(false)
+              }}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: 'error.main' }}>
+                <MdLogout size={20} />
+              </ListItemIcon>
+              <ListItemText
+                primary={t('auth.signOut')}
+                primaryTypographyProps={{ fontSize: '0.9rem' }}
+              />
+            </ListItemButton>
+          </>
+        ) : (
+          <ListItemButton
+            onClick={() => {
+              openSignIn()
+              setDrawerOpen(false)
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <MdPersonOutline size={20} />
+            </ListItemIcon>
+            <ListItemText
+              primary={t('auth.signIn')}
+              primaryTypographyProps={{ fontSize: '0.9rem' }}
+            />
+          </ListItemButton>
+        )}
+      </List>
+
+      <Divider />
+
+      {/* Preferencias */}
+      <List dense disablePadding>
+        <ListItemButton onClick={toggleLanguage}>
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <MdTranslate size={20} />
+          </ListItemIcon>
+          <ListItemText
+            primary={t('header.switchLanguage')}
+            primaryTypographyProps={{ fontSize: '0.9rem' }}
+          />
+        </ListItemButton>
+
+        <ListItem sx={{ py: 0.5 }}>
+          <ListItemIcon sx={{ minWidth: 36 }} />
+          <ThemePicker />
+        </ListItem>
+
+        <ListItemButton
+          onClick={() => {
+            onAboutClick()
+            setDrawerOpen(false)
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <MdInfoOutline
+              size={20}
+              color={currentView === 'about' ? 'var(--scheme-accent-medium)' : undefined}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primary={currentView === 'about' ? t('nav.pantry') : t('header.about')}
+            primaryTypographyProps={{ fontSize: '0.9rem' }}
+          />
+        </ListItemButton>
+      </List>
+    </Box>
+  )
+
   return (
     <StyledAppBar>
       <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', py: 1, gap: 0 }}>
@@ -105,22 +258,23 @@ export default function Header({
 
           <SearchBox>{searchInput}</SearchBox>
 
-          <ActionsGroup>
-            {user ? (
+          {/* Acciones desktop */}
+          <DesktopActions>
+            {isSignedIn ? (
               <>
-                <UserGreeting>{t('auth.greeting', { name: user.username })}</UserGreeting>
+                <UserGreeting>{t('auth.greeting', { name: displayName })}</UserGreeting>
                 <Tooltip
                   title={
-                    user.partner
-                      ? t('auth.linkedWith') + ' @' + user.partner.username
+                    partner
+                      ? t('auth.linkedWith') + ' @' + partner.username
                       : t('auth.linkTab')
                   }
                 >
                   <IconButton
-                    onClick={() => openAuthModal('link')}
+                    onClick={openLinkModal}
                     size="small"
                     aria-label={t('auth.linkTab')}
-                    sx={{ color: user.partner ? 'var(--scheme-accent-medium)' : 'var(--scheme-on-primary)' }}
+                    sx={{ color: partner ? 'var(--scheme-accent-medium)' : 'var(--scheme-on-primary)' }}
                   >
                     <MdPersonAddAlt1 size={20} />
                   </IconButton>
@@ -141,7 +295,7 @@ export default function Header({
                 <UserGreeting>{t('auth.greeting', { name: t('auth.guest') })}</UserGreeting>
                 <Tooltip title={t('auth.signIn')}>
                   <Button
-                    onClick={() => openAuthModal('login')}
+                    onClick={() => openSignIn()}
                     size="small"
                     startIcon={<MdPersonOutline size={16} />}
                     sx={{
@@ -167,7 +321,7 @@ export default function Header({
 
             <ThemePicker />
 
-            <Tooltip title={i18n.language === 'es' ? 'Switch to English' : 'Switch to Spanish'}>
+            <Tooltip title={t('header.switchLanguage')}>
               <Button
                 onClick={toggleLanguage}
                 size="small"
@@ -201,7 +355,19 @@ export default function Header({
                 />
               </IconButton>
             </Tooltip>
-          </ActionsGroup>
+          </DesktopActions>
+
+          {/* Hamburguesa mobile */}
+          <MobileHamburger>
+            <IconButton
+              onClick={() => setDrawerOpen(true)}
+              size="medium"
+              aria-label="Menú"
+              sx={{ color: 'var(--scheme-on-primary)' }}
+            >
+              <MdMenu size={24} />
+            </IconButton>
+          </MobileHamburger>
         </TopRow>
 
         <SearchBoxMobile>{searchInput}</SearchBoxMobile>
@@ -242,6 +408,17 @@ export default function Header({
         </Tabs>
       </DesktopTabs>
 
+      {/* Drawer mobile */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={{ display: { sm: 'none' } }}
+      >
+        {mobileDrawer}
+      </Drawer>
+
+      {/* Confirmación logout */}
       <Dialog open={logoutConfirm} onClose={() => setLogoutConfirm(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>{t('auth.logoutConfirmTitle')}</DialogTitle>
         <DialogContent>
@@ -253,7 +430,7 @@ export default function Header({
           </Button>
           <Button
             onClick={() => {
-              logout()
+              void signOut()
               setLogoutConfirm(false)
             }}
             variant="contained"

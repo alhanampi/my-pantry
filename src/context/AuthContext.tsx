@@ -1,80 +1,61 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
-import { apiLogin, apiRegister, apiLinkUser } from '../api/authApi'
-import type { AuthUser } from '../utils/types'
-import AuthModal from '../components/AuthModal'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react'
+import { apiSyncUser, apiLinkUser } from '../api/authApi'
+import LinkModal from '../components/AuthModal'
 
-export type AuthTab = 'login' | 'register' | 'link'
+interface Partner {
+  id: string
+  username: string
+}
 
 interface AuthContextValue {
-  user: AuthUser | null
-  login: (email: string, password: string) => Promise<void>
-  register: (username: string, email: string, password: string) => Promise<void>
+  partner: Partner | null
   linkUser: (username: string) => Promise<void>
-  logout: () => void
-  openAuthModal: (tab?: AuthTab) => void
+  openLinkModal: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const USER_KEY = 'my-pantry-auth-user'
-
-function loadUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY)
-    return raw ? (JSON.parse(raw) as AuthUser) : null
-  } catch {
-    return null
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(loadUser)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalTab, setModalTab] = useState<AuthTab>('login')
+  const { user, isSignedIn, isLoaded } = useUser()
+  const { getToken } = useClerkAuth()
+  const [partner, setPartner] = useState<Partner | null>(null)
+  const [linkModalOpen, setLinkModalOpen] = useState(false)
 
-  const persist = (u: AuthUser) => {
-    localStorage.setItem(USER_KEY, JSON.stringify(u))
-    setUser(u)
-  }
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) {
+      setPartner(null)
+      return
+    }
 
-  const login = async (email: string, password: string) => {
-    const u = await apiLogin(email, password)
-    persist(u)
-    setModalOpen(false)
-  }
+    const sync = async () => {
+      const token = await getToken()
+      if (!token) return
+      try {
+        const { partner: p } = await apiSyncUser(token)
+        setPartner(p)
+      } catch {
+        // sync failures are non-fatal
+      }
+    }
 
-  const register = async (username: string, email: string, password: string) => {
-    const u = await apiRegister(username, email, password)
-    persist(u)
-    setModalOpen(false)
-  }
+    void sync()
+  }, [isLoaded, isSignedIn, user?.id])
 
   const linkUser = async (username: string) => {
-    const partner = await apiLinkUser(username)
-    if (user) persist({ ...user, partner })
-  }
-
-  const logout = () => {
-    localStorage.removeItem('mi-despensa-token')
-    localStorage.removeItem(USER_KEY)
-    setUser(null)
-  }
-
-  const openAuthModal = (tab: AuthTab = 'register') => {
-    setModalTab(tab)
-    setModalOpen(true)
+    const token = await getToken()
+    if (!token) throw new Error('Not authenticated')
+    const p = await apiLinkUser(token, username)
+    setPartner(p)
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, linkUser, logout, openAuthModal }}>
+    <AuthContext.Provider value={{ partner, linkUser, openLinkModal: () => setLinkModalOpen(true) }}>
       {children}
-      <AuthModal
-        open={modalOpen}
-        initialTab={modalTab}
-        user={user}
-        onClose={() => setModalOpen(false)}
-        onLogin={login}
-        onRegister={register}
+      <LinkModal
+        open={linkModalOpen}
+        partner={partner}
+        onClose={() => setLinkModalOpen(false)}
         onLink={linkUser}
       />
     </AuthContext.Provider>

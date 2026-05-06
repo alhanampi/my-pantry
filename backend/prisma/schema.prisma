@@ -8,19 +8,19 @@ generator client {
 }
 
 model User {
-  id           Int        @id @default(autoincrement())
-  username     String     @unique
-  email        String     @unique
-  passwordHash String
-  createdAt    DateTime   @default(now())
-  linksAsUser  UserLink[] @relation("UserLinks")
+  id        String   @id  // Clerk user ID (e.g., "user_2abc...")
+  username  String   @unique
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  linksAsUser    UserLink[] @relation("UserLinks")
   linksAsPartner UserLink[] @relation("PartnerLinks")
 }
 
 model UserLink {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  partnerId Int
+  userId    String
+  partnerId String
   createdAt DateTime @default(now())
 
   user    User @relation("UserLinks",   fields: [userId],    references: [id], onDelete: Cascade)

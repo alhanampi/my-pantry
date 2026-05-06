@@ -72,11 +72,23 @@ export const StyledInputBase = styled(InputBase)`
   }
 `
 
-export const ActionsGroup = styled.div`
+export const DesktopActions = styled.div`
   display: flex;
   align-items: center;
   flex-shrink: 0;
   margin-left: auto;
+  @media (max-width: 599px) {
+    display: none;
+  }
+`
+
+export const MobileHamburger = styled.div`
+  display: none;
+  margin-left: auto;
+  @media (max-width: 599px) {
+    display: flex;
+    align-items: center;
+  }
 `
 
 export const DesktopTabs = styled.div`
