@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// En producción (Vercel) la API está en el mismo origen → URL relativa.
+// En local apunta al servidor Express separado.
+const API_URL = import.meta.env.VITE_API_URL ?? ''
 
 function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
