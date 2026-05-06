@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useLocalStorage from './useLocalStorage'
+import { usePantry } from './usePantry'
 import type {
   Product,
   ShoppingListItem,
@@ -27,12 +27,8 @@ function sortProducts(products: Product[], sortConfig: SortConfig): Product[] {
 
 export function useAppState() {
   const { t } = useTranslation()
+  const pantry = usePantry()
 
-  const [products, setProducts] = useLocalStorage<Product[]>('mi-despensa-products', [])
-  const [shoppingList, setShoppingList] = useLocalStorage<ShoppingListItem[]>(
-    'mi-despensa-shopping',
-    []
-  )
   const [searchQuery, setSearchQuery] = useState('')
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' })
   const [currentView, setCurrentView] = useState<AppView>('pantry')
@@ -50,6 +46,8 @@ export function useAppState() {
   })
   const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '' })
 
+  const showError = () => setSnackbar({ open: true, message: t('errors.saveFailed', 'Error saving. Try again.') })
+
   const handleSort = (key: keyof Product): void => {
     setSortConfig((prev) => ({
       key,
@@ -58,17 +56,24 @@ export function useAppState() {
   }
 
   const handleAddPantryProduct = (product: ProductFormData): void => {
-    const newProduct: Product = { ...product, id: Date.now() }
-    setProducts((prev) => [...prev, newProduct])
-    setAddModal({ open: false, context: 'pantry' })
-    setConfirmDialog({ open: true, type: 'success', data: newProduct })
+    pantry.createProduct.mutate(product, {
+      onSuccess: (newProduct) => {
+        setAddModal({ open: false, context: 'pantry' })
+        setConfirmDialog({ open: true, type: 'success', data: newProduct })
+      },
+      onError: showError,
+    })
   }
 
   const handleAddShoppingItem = (item: ProductFormData): void => {
-    const newItem: ShoppingListItem = { ...item, id: Date.now(), purchased: false }
-    setShoppingList((prev) => [...prev, newItem])
-    setAddModal({ open: false, context: 'shopping' })
-    setConfirmDialog({ open: true, type: 'success', data: newItem })
+    const newItem: Omit<ShoppingListItem, 'id'> = { ...item, purchased: false }
+    pantry.createShoppingItem.mutate(newItem, {
+      onSuccess: (created) => {
+        setAddModal({ open: false, context: 'shopping' })
+        setConfirmDialog({ open: true, type: 'success', data: created })
+      },
+      onError: showError,
+    })
   }
 
   const handleCancelAdd = (): void => {
@@ -77,9 +82,9 @@ export function useAppState() {
   }
 
   const openEditModal = (id: number): void => {
-    const product = products.find((p) => p.id === id) ?? shoppingList.find((i) => i.id === id)
+    const product = pantry.products.find((p) => p.id === id) ?? pantry.shoppingList.find((i) => i.id === id)
     if (!product) return
-    const context = shoppingList.some((i) => i.id === id) ? 'shopping' : 'pantry'
+    const context = pantry.shoppingList.some((i) => i.id === id) ? 'shopping' : 'pantry'
     const { name, quantity, brand, purchaseDate, expiryDate, location, details } = product
     setEditModal({
       open: true,
@@ -91,14 +96,22 @@ export function useAppState() {
 
   const handleEditProduct = (data: ProductFormData): void => {
     if (editModal.id === null) return
-    setProducts((prev) => prev.map((p) => (p.id === editModal.id ? { ...p, ...data } : p)))
-    setEditModal({ open: false, context: 'pantry', id: null, initialData: null })
+    pantry.updateProduct.mutate({ id: editModal.id, data }, {
+      onSuccess: () => {
+        setEditModal({ open: false, context: 'pantry', id: null, initialData: null })
+      },
+      onError: showError,
+    })
   }
 
   const handleEditShoppingItem = (data: ProductFormData): void => {
     if (editModal.id === null) return
-    setShoppingList((prev) => prev.map((i) => (i.id === editModal.id ? { ...i, ...data } : i)))
-    setEditModal({ open: false, context: 'shopping', id: null, initialData: null })
+    pantry.updateShoppingItem.mutate({ id: editModal.id, data }, {
+      onSuccess: () => {
+        setEditModal({ open: false, context: 'shopping', id: null, initialData: null })
+      },
+      onError: showError,
+    })
   }
 
   const handleCancelEdit = (): void => {
@@ -106,74 +119,59 @@ export function useAppState() {
   }
 
   const handleDeleteProduct = (id: number): void => {
-    setProducts((prev) => prev.filter((p) => p.id !== id))
+    pantry.deleteProduct.mutate(id, { onError: showError })
   }
 
   const handleAddToCart = (product: Product): void => {
-    setShoppingList((prev) => {
-      const existing = prev.find((i) => i.name.toLowerCase() === product.name.toLowerCase())
-      if (existing) {
-        return prev.map((i) =>
-          i.id === existing.id
-            ? {
-                ...i,
-                quantity: String(
-                  (parseFloat(i.quantity) || 0) + (parseFloat(product.quantity) || 1)
-                ),
-              }
-            : i
-        )
-      }
-      return [
-        ...prev,
-        {
-          id: Date.now(),
-          name: product.name,
-          quantity: product.quantity,
-          brand: product.brand,
-          details: '',
-          purchaseDate: '',
-          expiryDate: '',
-          location: '',
-          purchased: false,
-        },
-      ]
-    })
+    const existing = pantry.shoppingList.find(
+      (i) => i.name.toLowerCase() === product.name.toLowerCase()
+    )
+    if (existing) {
+      const newQty = String(
+        (parseFloat(existing.quantity) || 0) + (parseFloat(product.quantity) || 1)
+      )
+      pantry.updateShoppingItem.mutate({ id: existing.id, data: { quantity: newQty } })
+    } else {
+      pantry.createShoppingItem.mutate({
+        name: product.name,
+        quantity: product.quantity,
+        brand: product.brand,
+        details: '',
+        purchaseDate: '',
+        expiryDate: '',
+        location: '',
+        purchased: false,
+      })
+    }
     setSnackbar({ open: true, message: t('shopping.addedToCart') })
   }
 
   const handleTogglePurchased = (id: number): void => {
-    setShoppingList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, purchased: !item.purchased } : item))
-    )
+    const item = pantry.shoppingList.find((i) => i.id === id)
+    if (!item) return
+    pantry.updateShoppingItem.mutate({ id, data: { purchased: !item.purchased } }, { onError: showError })
   }
 
   const handleDeleteShoppingItem = (id: number): void => {
-    setShoppingList((prev) => prev.filter((item) => item.id !== id))
+    pantry.deleteShoppingItem.mutate(id, { onError: showError })
   }
 
   const handleClearPurchased = (): void => {
-    setShoppingList((prev) => prev.filter((item) => !item.purchased))
+    pantry.clearPurchasedItems.mutate(undefined, { onError: showError })
   }
 
   const handleShoppingQuantityChange = (id: number, delta: number): void => {
-    setShoppingList((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        const next = Math.max(0, (parseFloat(item.quantity) || 0) + delta)
-        return { ...item, quantity: String(next) }
-      })
-    )
+    const item = pantry.shoppingList.find((i) => i.id === id)
+    if (!item) return
+    const next = Math.max(0, (parseFloat(item.quantity) || 0) + delta)
+    pantry.updateShoppingItem.mutate({ id, data: { quantity: String(next) } })
   }
 
   const handleQuantityChange = (id: number, delta: number): void => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p
-        const next = Math.max(0, (parseFloat(p.quantity) || 0) + delta)
-        return { ...p, quantity: String(next) }
-      })
-    )
+    const product = pantry.products.find((p) => p.id === id)
+    if (!product) return
+    const next = Math.max(0, (parseFloat(product.quantity) || 0) + delta)
+    pantry.updateProduct.mutate({ id, data: { quantity: String(next) } })
   }
 
   const handleViewChange = (view: AppView): void => {
@@ -189,7 +187,7 @@ export function useAppState() {
     setAddModal({ open: true, context: currentView === 'shopping' ? 'shopping' : 'pantry' })
   }
 
-  const filteredProducts = products.filter((p) => {
+  const filteredProducts = pantry.products.filter((p) => {
     const q = searchQuery.toLowerCase()
     return (
       (p.name ?? '').toLowerCase().includes(q) ||
@@ -204,7 +202,7 @@ export function useAppState() {
   return {
     // state
     products: displayedProducts,
-    shoppingList,
+    shoppingList: pantry.shoppingList,
     searchQuery,
     setSearchQuery,
     sortConfig,

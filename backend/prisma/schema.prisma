@@ -14,8 +14,43 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
 
-  linksAsUser    UserLink[] @relation("UserLinks")
-  linksAsPartner UserLink[] @relation("PartnerLinks")
+  linksAsUser    UserLink[]    @relation("UserLinks")
+  linksAsPartner UserLink[]    @relation("PartnerLinks")
+  products       Product[]
+  shoppingItems  ShoppingItem[]
+}
+
+model Product {
+  id           Int      @id @default(autoincrement())
+  name         String
+  quantity     String   @default("")
+  brand        String   @default("")
+  purchaseDate String   @default("")
+  expiryDate   String   @default("")
+  location     String   @default("")
+  details      String   @default("")
+  ownerId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model ShoppingItem {
+  id           Int      @id @default(autoincrement())
+  name         String
+  quantity     String   @default("")
+  brand        String   @default("")
+  purchaseDate String   @default("")
+  expiryDate   String   @default("")
+  location     String   @default("")
+  details      String   @default("")
+  purchased    Boolean  @default(false)
+  ownerId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 model UserLink {

@@ -3,6 +3,7 @@ import helmet from 'helmet'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import authRoutes from './routes/auth'
+import pantryRoutes from './routes/pantry'
 
 const app = express()
 
@@ -12,7 +13,7 @@ app.use(
     origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
     credentials: true,
     allowedHeaders: ['Authorization', 'Content-Type'],
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   })
 )
 app.options('*', cors())
@@ -27,6 +28,7 @@ const limiter = rateLimit({
 })
 
 app.use('/api/auth', limiter, authRoutes)
+app.use('/api/pantry', pantryRoutes)
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 
