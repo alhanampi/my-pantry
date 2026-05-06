@@ -26,14 +26,15 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 ## Features
 
 ### Pantry
-- Add products with name, quantity, category, expiration date, and store.
+- Add products with name, quantity, brand, expiration date, purchase date, location, and notes.
 - Table view on desktop, expandable cards on mobile.
 - Sort by any column.
 - Real-time search.
-- Delete products with confirmation dialog.
+- Edit and delete products with confirmation.
 
 ### Shopping List
 - Move products from the pantry directly to the shopping list.
+- Add items manually.
 - Mark items as purchased with a checkbox.
 - Clear all purchased items in one click.
 
@@ -43,6 +44,11 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Distance calculated with the Haversine formula.
 - 5-minute cache with React Query.
 
+### Shared Pantry
+- Link two accounts (partner, family member) from the profile menu.
+- Both users see and edit the same pantry and shopping list.
+- All data is stored in PostgreSQL and scoped to the linked pair.
+
 ### Internationalization
 - Full Spanish and English support.
 - Language persists across sessions via `localStorage`.
@@ -51,12 +57,29 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 ### Authentication
 - Sign-up and login managed by **Clerk** (email + password + username).
 - Clerk handles email verification, password security, and session management.
-- Account linking between users (to share the pantry with a partner or family member).
 - Backend verifies Clerk JWTs on every protected request; user data for sync is fetched directly from Clerk's API (never trusted from the client).
 
 ### Customization
 - Color theme picker.
 - Mobile-first design with bottom navigation on mobile and tabs on desktop.
+- On mobile, a hamburger drawer groups all header actions clearly.
+
+---
+
+## Architecture
+
+```
+Browser → Vercel CDN (React SPA)
+              ↓ /api/*
+         Vercel Functions (Express app, api/index.ts)
+              ↓
+         Neon PostgreSQL (serverless Postgres)
+         Clerk API (JWT verification + user data)
+```
+
+In production, the React frontend and the Express backend are deployed together on Vercel. The frontend is a static build served from the CDN; the backend runs as a single Vercel Function (`api/index.ts`) that handles all `/api/*` routes via a `vercel.json` rewrite.
+
+For local development, the frontend and backend run as separate processes.
 
 ---
 
@@ -69,7 +92,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 | Vite 5 | Bundler and dev server |
 | MUI v5 | UI components |
 | styled-components v6 | Layout and container styles |
-| TanStack React Query v5 | Fetching, caching, and server state |
+| TanStack React Query v5 | Server state: fetching, caching, mutations |
 | Clerk (`@clerk/clerk-react`) | Authentication UI and session management |
 | i18next + react-i18next | Internationalization (ES / EN) |
 | react-map-gl + MapLibre GL | Nearby supermarkets map |
@@ -78,12 +101,25 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 ### Backend
 | Technology | Purpose |
 |---|---|
-| Express 4 | HTTP server |
+| Express 4 | HTTP framework, exported as a Vercel Function |
 | TypeScript | Type safety |
 | Prisma 5 | ORM |
-| SQLite | Database |
+| Neon PostgreSQL | Serverless Postgres database |
 | Clerk (`@clerk/backend`) | JWT verification + user data fetch |
 | helmet + cors + express-rate-limit | Security headers, CORS, rate limiting |
+
+---
+
+## Data Model
+
+```
+User (Clerk ID)
+ ├── UserLink          — links two users to share a pantry
+ ├── Product[]         — pantry items owned by this user
+ └── ShoppingItem[]    — shopping list items owned by this user
+```
+
+When two users are linked, all pantry and shopping list reads include items from both users. Writes always set the current user as owner.
 
 ---
 
@@ -91,58 +127,60 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 
 ```
 mi-despensa-app/
-├── backend/                  # REST API
+├── api/
+│   └── index.ts              # Vercel Function entry point (re-exports Express app)
+├── vercel.json               # Rewrites /api/* → api/index
+│
+├── backend/                  # Backend source
 │   ├── prisma/
-│   │   ├── schema.prisma     # Models: User (Clerk ID), UserLink
-│   │   └── migrations/
-│   ├── src/
-│   │   ├── index.ts          # Express server entry point
-│   │   ├── db/               # Prisma Client instance
-│   │   ├── middleware/
-│   │   │   └── auth.ts       # Clerk JWT verification
-│   │   └── routes/
-│   │       └── auth.ts       # /sync, /me, /link
-│   └── data/                 # SQLite file (git-ignored)
+│   │   └── schema.prisma     # Models: User, UserLink, Product, ShoppingItem
+│   └── src/
+│       ├── app.ts            # Express app (no listen — shared by local and Vercel)
+│       ├── index.ts          # Local dev entry: imports app, calls listen
+│       ├── db/
+│       │   └── index.ts      # Prisma client singleton (serverless-safe)
+│       ├── middleware/
+│       │   └── auth.ts       # Clerk JWT verification
+│       └── routes/
+│           ├── auth.ts       # /sync, /me, /link
+│           └── pantry.ts     # Products and shopping list CRUD
 │
 └── src/                      # Frontend
-    ├── main.tsx              # Entry point: ClerkProvider + QueryClient
-    ├── App.tsx               # Routes and global state
+    ├── main.tsx              # Entry: ClerkProvider + QueryClientProvider
+    ├── App.tsx               # Root layout and global state
     ├── api/
-    │   ├── authApi.ts        # Sync and link backend calls
-    │   ├── overpass.ts       # OpenStreetMap API queries
+    │   ├── authApi.ts        # Sync and link calls
+    │   ├── pantryApi.ts      # Products and shopping list calls
     │   └── productSuggestionsApi.ts
     ├── components/
-    │   ├── Header/           # AppBar with search, language toggle, and tabs
-    │   ├── BottomNav/        # Bottom navigation bar (mobile)
-    │   ├── AddProductModal/  # Add product modal
+    │   ├── Header/           # AppBar with hamburger drawer (mobile) and tabs (desktop)
+    │   ├── BottomNav/
+    │   ├── AddProductModal/
     │   ├── AuthModal/        # Account linking modal
-    │   ├── ConfirmDialog/    # Generic confirmation dialog
-    │   ├── QuantityStepper/  # +/- quantity control
-    │   └── ThemePicker/      # Color theme selector
+    │   ├── ConfirmDialog/
+    │   ├── QuantityStepper/
+    │   └── ThemePicker/
     ├── views/
-    │   ├── PantryView/       # Main pantry view
-    │   ├── ShoppingView/     # Shopping list view
-    │   └── AboutView/        # App info screen
+    │   ├── PantryView/
+    │   ├── ShoppingView/
+    │   └── AboutView/
     ├── context/
     │   └── AuthContext.tsx   # Partner state and link modal
     ├── contexts/
-    │   └── ThemeContext.tsx  # Active color theme
+    │   └── ThemeContext.tsx
     ├── hooks/
-    │   ├── useAppState.ts    # Central pantry and list state
-    │   ├── useLocalStorage.ts # localStorage persistence
-    │   ├── useNearbyStores.ts # React Query → Geoapify API
+    │   ├── useAppState.ts    # Central state: wires pantry hooks to UI handlers
+    │   ├── usePantry.ts      # React Query hooks for products and shopping list
+    │   ├── useNearbyStores.ts
     │   ├── useProductSuggestions.ts
     │   └── useDebounce.ts
     ├── i18n/
-    │   ├── index.js          # i18next configuration
     │   └── locales/
     │       ├── es.json
     │       └── en.json
-    ├── data/
-    │   ├── products.json     # ~130 suggestions in Spanish
-    │   └── products.en.json  # ~130 suggestions in English
-    └── styles/
-        └── theme.js          # Base MUI theme (green #2e7d32)
+    └── data/
+        ├── products.json
+        └── products.en.json
 ```
 
 ---
@@ -151,41 +189,59 @@ mi-despensa-app/
 
 ### Prerequisites
 
-- A [Clerk](https://clerk.com) account with an application configured:
-  - Enable **Email + Password** authentication
-  - Enable **Username** as a required sign-up field
-  - Copy the **Publishable Key** and **Secret Key** from the Clerk dashboard
+- Node.js 18+
+- A [Clerk](https://clerk.com) application:
+  - Enable **Email + Password** and **Username** as required fields
+  - Copy the **Publishable Key** and **Secret Key**
+- A [Neon](https://neon.tech) PostgreSQL database:
+  - Copy the **pooled connection string** (`DATABASE_URL`) and **direct connection string** (`DATABASE_URL_UNPOOLED`)
+- A [Geoapify](https://www.geoapify.com) API key (for the nearby stores feature)
 
-### Frontend
+### 1. Install dependencies
 
 ```bash
-npm install
-npm run dev
+npm install          # frontend
+cd backend && npm install
 ```
 
-Frontend environment variables (`.env`):
+### 2. Configure environment variables
+
+**Frontend** (`.env`):
 ```
 VITE_API_URL=http://localhost:3001
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-VITE_GEOAPIFY_KEY=your_geoapify_key
+VITE_GEOAPIFY_KEY=...
 ```
 
-### Backend
-
-```bash
-cd backend
-npm install
-npx prisma db push
-npm run dev
-```
-
-Backend environment variables (`backend/.env`):
+**Backend** (`backend/.env`):
 ```
 PORT=3001
 CLERK_SECRET_KEY=sk_test_...
 FRONTEND_ORIGIN=http://localhost:5173
-DATABASE_URL="file:./data/app.db"
+DATABASE_URL=postgresql://...?sslmode=require          # pooled (pgbouncer)
+DATABASE_URL_UNPOOLED=postgresql://...?sslmode=require  # direct
 ```
+
+### 3. Push the schema
+
+```bash
+cd backend
+npx prisma db push
+```
+
+### 4. Run locally
+
+```bash
+# Terminal 1 — frontend
+npm run dev
+
+# Terminal 2 — backend
+cd backend && npm run dev
+```
+
+### Deploying to Vercel
+
+Set all environment variables in the Vercel project settings (both frontend `VITE_*` and backend variables). The build command (`npm run build`) runs `prisma generate` and `vite build`. No separate backend deployment is needed — the Express app is served as a Vercel Function automatically.
 
 ---
 
@@ -195,15 +251,15 @@ Authentication is fully delegated to Clerk:
 
 | Concern | Handled by |
 |---|---|
-| Password hashing | Clerk (bcrypt-equivalent, managed) |
+| Password hashing | Clerk (managed, bcrypt-equivalent) |
 | Email verification | Clerk (configurable, on by default) |
 | Brute-force protection | Clerk (automatic lockout) |
 | Session rotation | Clerk (short-lived JWTs, auto-refresh) |
 | JWT verification | `@clerk/backend` on every protected request |
-| User data integrity | Backend fetches user info from Clerk's API directly — never trusts client-provided values |
+| User data integrity | Backend fetches user info from Clerk's API — never trusts client-provided values |
 | HTTP security headers | `helmet` |
 | CORS | Restricted to `FRONTEND_ORIGIN` |
-| Rate limiting | `express-rate-limit` (60 req / 15 min) |
+| Rate limiting | `express-rate-limit` (60 req / 15 min on auth routes) |
 
 ---
 
@@ -217,15 +273,13 @@ Authentication is fully delegated to Clerk:
 - [x] Responsive views: table on desktop / cards on mobile
 - [x] Product suggestions while typing
 
-### v1.1 — Auth & Sync 🚧
-- [x] Express + Prisma + SQLite backend
+### v1.1 — Auth & Sync ✅
+- [x] Express + Prisma backend deployed as a Vercel Function
+- [x] Neon PostgreSQL (serverless, free tier)
 - [x] Authentication via Clerk (email + password + username)
 - [x] Account linking model (partner / family)
-- [ ] Persist pantry data in the database (currently localStorage)
-- [ ] Real-time sync between linked accounts
-- [ ] Multiple shopping lists, to decide where to buy what
-- [ ] Send from shopping list to pantry automatically
-- [ ] Auto expiry date for some products
+- [x] Pantry and shopping list persisted in the database
+- [x] Shared pantry between linked accounts (both users see and edit the same data)
 
 ### v1.2 — Maps & Location
 - [x] Nearby supermarkets via Geoapify Places API
@@ -236,12 +290,15 @@ Authentication is fully delegated to Clerk:
 - [ ] Push notifications for products expiring soon
 - [ ] Weekly expiration dashboard
 - [ ] Deleted products history
-- [ ] Customizable calendar tab, to see what's about to expire and when the discounts are
+- [ ] Customizable calendar tab to see what's about to expire
 
 ### v1.4 — Sharing & Export
+- [ ] Real-time sync between linked accounts (WebSockets or polling)
+- [ ] Multiple shopping lists, to decide where to buy what
+- [ ] Send items from shopping list to pantry automatically
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
-- [ ] Recipe suggestions tag based on available ingredients using spoonacular
+- [ ] Recipe suggestions based on available ingredients
 
 ---
 
