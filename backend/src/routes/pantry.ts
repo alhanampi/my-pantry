@@ -16,6 +16,22 @@ async function accessibleUserIds(userId: string): Promise<string[]> {
   return [userId, partnerId]
 }
 
+// Serialize a Prisma Product (expiryDate: Date | null) to the wire format the
+// frontend expects (expiryDate: string — ISO date "YYYY-MM-DD" or "").
+function serializeProduct(product: { expiryDate: Date | null; [key: string]: unknown }) {
+  return {
+    ...product,
+    expiryDate: product.expiryDate ? product.expiryDate.toISOString().slice(0, 10) : '',
+  }
+}
+
+// Parse an incoming expiryDate string to Date | null for Prisma writes.
+function parseExpiryDate(value: string | undefined): Date | null {
+  if (!value) return null
+  const d = new Date(value)
+  return isNaN(d.getTime()) ? null : d
+}
+
 // ── Products ──────────────────────────────────────────────────────────────────
 
 router.get('/products', requireAuth, async (req, res): Promise<void> => {
@@ -26,7 +42,7 @@ router.get('/products', requireAuth, async (req, res): Promise<void> => {
       where: { ownerId: { in: ids } },
       orderBy: { createdAt: 'asc' },
     })
-    res.json({ products })
+    res.json({ products: products.map(serializeProduct) })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }
@@ -37,7 +53,7 @@ const productFields = [
   body('quantity').optional().isString(),
   body('brand').optional().isString(),
   body('purchaseDate').optional().isString(),
-  body('expiryDate').optional().isString(),
+  body('expiryDate').optional({ nullable: true }).isISO8601().withMessage('Invalid date format'),
   body('location').optional().isString(),
   body('details').optional().isString(),
 ]
@@ -50,11 +66,11 @@ router.post('/products', requireAuth, productFields, async (req: Request, res: R
   }
   try {
     const userId = req.clerkUserId!
-    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate = '', location = '', details = '' } = req.body as Record<string, string>
+    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate, location = '', details = '' } = req.body as Record<string, string>
     const product = await prisma.product.create({
-      data: { name, quantity, brand, purchaseDate, expiryDate, location, details, ownerId: userId },
+      data: { name, quantity, brand, purchaseDate, expiryDate: parseExpiryDate(expiryDate), location, details, ownerId: userId },
     })
-    res.status(201).json({ product })
+    res.status(201).json({ product: serializeProduct(product) })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }
@@ -72,12 +88,12 @@ router.put('/products/:id', requireAuth, productFields, async (req: Request, res
     const ids = await accessibleUserIds(userId)
     const existing = await prisma.product.findFirst({ where: { id: productId, ownerId: { in: ids } } })
     if (!existing) { res.status(404).json({ error: 'Product not found' }); return }
-    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate = '', location = '', details = '' } = req.body as Record<string, string>
+    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate, location = '', details = '' } = req.body as Record<string, string>
     const product = await prisma.product.update({
       where: { id: productId },
-      data: { name, quantity, brand, purchaseDate, expiryDate, location, details },
+      data: { name, quantity, brand, purchaseDate, expiryDate: parseExpiryDate(expiryDate), location, details },
     })
-    res.json({ product })
+    res.json({ product: serializeProduct(product) })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }

@@ -1,5 +1,10 @@
 {
   "appName": "My Pantry",
+  "notifications": {
+    "enable": "Enable expiry notifications",
+    "disable": "Disable notifications",
+    "permissionDenied": "Notifications blocked — enable them in browser settings"
+  },
   "nav": {
     "pantry": "My Pantry",
     "shopping": "Shopping List",

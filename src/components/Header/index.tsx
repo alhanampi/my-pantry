@@ -49,6 +49,7 @@ import {
   UserGreeting,
 } from './Header.styles'
 import ThemePicker from '../ThemePicker'
+import NotificationBell from '../NotificationBell'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useAuth } from '../../context/AuthContext'
 import type { HeaderProps } from '../../utils/types'
@@ -216,6 +217,13 @@ export default function Header({
           <ThemePicker />
         </ListItem>
 
+        {isSignedIn && (
+          <ListItem sx={{ py: 0.5 }}>
+            <ListItemIcon sx={{ minWidth: 36 }} />
+            <NotificationBell />
+          </ListItem>
+        )}
+
         <ListItemButton
           onClick={() => {
             onAboutClick()
@@ -318,6 +326,8 @@ export default function Header({
                 </Tooltip>
               </>
             )}
+
+            <NotificationBell />
 
             <ThemePicker />
 
