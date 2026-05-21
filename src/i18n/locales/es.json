@@ -1,5 +1,10 @@
 {
   "appName": "Mi Despensa",
+  "notifications": {
+    "enable": "Activar notificaciones de vencimiento",
+    "disable": "Desactivar notificaciones",
+    "permissionDenied": "Notificaciones bloqueadas — habilitarlas en la configuración del navegador"
+  },
   "nav": {
     "pantry": "Mi Despensa",
     "shopping": "Mi Lista de Súper",

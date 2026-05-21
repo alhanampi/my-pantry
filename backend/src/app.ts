@@ -4,6 +4,7 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import authRoutes from './routes/auth'
 import pantryRoutes from './routes/pantry'
+import notificationsRoutes from './routes/notifications'
 
 const app = express()
 
@@ -29,6 +30,7 @@ const limiter = rateLimit({
 
 app.use('/api/auth', limiter, authRoutes)
 app.use('/api/pantry', pantryRoutes)
+app.use('/api/notifications', notificationsRoutes)
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 

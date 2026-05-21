@@ -246,7 +246,8 @@ cd backend && npm install
 VITE_API_URL=http://localhost:3001
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 VITE_GEOAPIFY_KEY=...
-VITE_SPOONACULAR_KEY=...   # optional — only needed for recipe suggestions
+VITE_VAPID_PUBLIC_KEY=...          # from step 3 below
+VITE_SPOONACULAR_KEY=...           # optional — only needed for recipe suggestions
 ```
 
 **Backend** (`backend/.env`):
@@ -257,16 +258,35 @@ CLERK_SECRET_KEY=sk_test_...
 FRONTEND_ORIGIN=http://localhost:5173
 DATABASE_URL=postgresql://...?sslmode=require          # pooled (pgbouncer)
 DATABASE_URL_UNPOOLED=postgresql://...?sslmode=require  # direct
+VAPID_PUBLIC_KEY=...               # from step 3 below
+VAPID_PRIVATE_KEY=...              # from step 3 below
+VAPID_SUBJECT=mailto:you@email.com
+CRON_SECRET=...                    # any random secret string
 ```
 
-### 3. Push the schema
+### 3. Generate VAPID keys (one-time)
 
 ```bash
+cd backend
+npx web-push generate-vapid-keys
+```
+
+Copy the output into both `.env` files as shown above. The same public key goes in both the frontend and backend envs.
+
+### 4. Push the schema
+
+If you are setting up for the first time, or after the push notification migration:
+
+```bash
+# Run the pre-migration SQL once in the Neon SQL editor (or via psql):
+#   UPDATE "Product" SET "expiryDate" = NULL WHERE "expiryDate" = '';
+# (see backend/prisma/pre-push.sql)
+
 cd backend
 npx prisma db push
 ```
 
-### 4. Run locally
+### 5. Run locally
 
 ```bash
 # Terminal 1 — frontend

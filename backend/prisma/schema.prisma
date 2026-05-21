@@ -14,26 +14,29 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
 
-  linksAsUser    UserLink[]    @relation("UserLinks")
-  linksAsPartner UserLink[]    @relation("PartnerLinks")
-  products       Product[]
-  shoppingItems  ShoppingItem[]
+  linksAsUser       UserLink[]         @relation("UserLinks")
+  linksAsPartner    UserLink[]         @relation("PartnerLinks")
+  products          Product[]
+  shoppingItems     ShoppingItem[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Product {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   name         String
-  quantity     String   @default("")
-  brand        String   @default("")
-  purchaseDate String   @default("")
-  expiryDate   String   @default("")
-  location     String   @default("")
-  details      String   @default("")
+  quantity     String    @default("")
+  brand        String    @default("")
+  purchaseDate String    @default("")
+  expiryDate   DateTime?
+  location     String    @default("")
+  details      String    @default("")
   ownerId      String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, expiryDate])
 }
 
 model ShoppingItem {
@@ -51,6 +54,17 @@ model ShoppingItem {
   updatedAt    DateTime @updatedAt
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserLink {
