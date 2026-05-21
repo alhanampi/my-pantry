@@ -342,7 +342,7 @@ Authentication is fully delegated to Clerk:
 - [ ] Send items from shopping list to pantry automatically
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
-- [ ] Recipe suggestions based on available ingredients
+- [ ] Recipe suggestions based on available ingredients (Spoonacular API client scaffolded)
 
 ---
 
