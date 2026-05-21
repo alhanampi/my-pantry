@@ -59,6 +59,18 @@
     "stay": "Stay",
     "exitConfirm": "Yes, leave"
   },
+  "zeroShoppingQty": {
+    "title": "{{name}} — quantity 0",
+    "body": "Do you want to remove this item from the list?",
+    "confirm": "Yes, remove",
+    "cancel": "No, keep at 1"
+  },
+  "zeroQty": {
+    "title": "{{name}} is out of stock",
+    "body": "We removed it from your pantry. Add it to your shopping list?",
+    "addToCart": "Add to list",
+    "cancel": "No, thanks"
+  },
   "confirm": {
     "successTitle": "Product added!",
     "successBody": "{{name}} was added successfully.",

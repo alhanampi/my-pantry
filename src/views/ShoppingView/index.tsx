@@ -65,7 +65,7 @@ export default function ShoppingView({
       <ItemsPaper elevation={0}>
         {items.length === 0 ? (
           <EmptyState>
-            <MdShoppingCart size={52} color="#c8e6c9" />
+            <MdShoppingCart size={52} color="var(--scheme-accent-medium)" />
             <Typography variant="body1" sx={{ fontWeight: 500 }}>
               {t('shopping.emptyTitle')}
             </Typography>

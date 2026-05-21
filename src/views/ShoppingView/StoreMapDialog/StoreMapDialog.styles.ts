@@ -42,8 +42,8 @@ export const StoreMarker = styled.div`
   height: 18px;
   border-radius: 50%;
   background: var(--scheme-primary);
-  border: 3px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 3px solid var(--scheme-surface);
+  box-shadow: 0 2px 8px var(--scheme-shadow-md);
   cursor: pointer;
 `
 
@@ -52,6 +52,6 @@ export const UserMarker = styled.div`
   height: 14px;
   border-radius: 50%;
   background: var(--scheme-info-dark);
-  border: 3px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 3px solid var(--scheme-surface);
+  box-shadow: 0 2px 8px var(--scheme-shadow-md);
 `

@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography'
 export const TableWrapper = styled.div`
   background: var(--scheme-surface);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px var(--scheme-shadow-xs);
   overflow: hidden;
 `
 
@@ -53,7 +53,7 @@ export const MobileActionBar = styled.div`
   padding: 4px 8px 4px 16px;
   background: var(--scheme-surface);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px var(--scheme-shadow-xs);
   margin-bottom: 8px;
   min-height: 44px;
 `

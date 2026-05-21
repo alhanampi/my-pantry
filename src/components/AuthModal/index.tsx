@@ -52,7 +52,11 @@ export default function LinkModal({ open, partner, onClose, onLink }: LinkModalP
       setLinkSuccess(t('auth.linkSuccess', { username: linkUsername.trim() }))
       setLinkUsername('')
     } catch (err) {
-      setError(err instanceof Error ? t(err.message, { defaultValue: err.message }) : t('auth.errorGeneric'))
+      setError(
+        err instanceof Error
+          ? t(err.message, { defaultValue: err.message })
+          : t('auth.errorGeneric')
+      )
     } finally {
       setLoading(false)
     }

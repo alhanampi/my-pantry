@@ -19,7 +19,7 @@ export const SwatchButton = styled.button`
   border-radius: 8px;
   transition: background 0.15s;
   &:hover {
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--scheme-hover-overlay);
   }
 `
 
@@ -28,8 +28,8 @@ export const SwatchCircle = styled.span<{ $color: string; $active: boolean }>`
   height: 30px;
   border-radius: 50%;
   background: ${({ $color }) => $color};
-  border: 3px solid ${({ $active }) => ($active ? 'rgba(0,0,0,0.45)' : 'transparent')};
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  border: 3px solid ${({ $active }) => ($active ? 'var(--scheme-swatch-active-border)' : 'transparent')};
+  box-shadow: 0 1px 4px var(--scheme-shadow-sm);
   transition:
     transform 0.15s,
     border-color 0.15s;
@@ -38,7 +38,7 @@ export const SwatchCircle = styled.span<{ $color: string; $active: boolean }>`
 
 export const SwatchLabel = styled.span<{ $active: boolean }>`
   font-size: 0.68rem;
-  color: var(--scheme-text-secondary, #616161);
+  color: var(--scheme-text-secondary);
   font-weight: ${({ $active }) => ($active ? 700 : 400)};
   white-space: nowrap;
 `

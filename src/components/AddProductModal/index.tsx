@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DialogContentText from '@mui/material/DialogContentText'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
@@ -6,7 +6,9 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Grid from '@mui/material/Grid'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
-import { MdClose, MdAddShoppingCart, MdStorefront } from 'react-icons/md'
+import InputAdornment from '@mui/material/InputAdornment'
+import CircularProgress from '@mui/material/CircularProgress'
+import { MdClose, MdAddShoppingCart, MdStorefront, MdAdd, MdRemove } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { getProductSuggestions } from '../../data/productSuggestions'
 import {
@@ -30,10 +32,23 @@ const emptyForm: ProductFormData = {
   details: '',
 }
 
+function today(): string {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function addDefaults(): ProductFormData {
+  return { ...emptyForm, quantity: '1', purchaseDate: today() }
+}
+
 export default function AddProductModal({
   open,
   context = 'pantry',
   initialData,
+  loading = false,
   onAccept,
   onCancel,
 }: AddProductModalProps) {
@@ -46,13 +61,17 @@ export default function AddProductModal({
 
   const suggestions = getProductSuggestions(i18n.language)
 
+  useLayoutEffect(() => {
+    if (!open) return
+    setForm(initialData ?? addDefaults())
+    setErrors({})
+  }, [open, initialData])
+
   useEffect(() => {
     if (!open) return
-    setForm(initialData ?? emptyForm)
-    setErrors({})
     const timer = setTimeout(() => nameInputRef.current?.focus(), 100)
     return () => clearTimeout(timer)
-  }, [open, initialData])
+  }, [open])
 
   const handleChange = (field: keyof ProductFormData, value: string): void => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -75,8 +94,6 @@ export default function AddProductModal({
       return
     }
     onAccept({ ...form, name: form.name.trim() })
-    setForm(emptyForm)
-    setErrors({})
   }
 
   const handleCancelClick = (): void => {
@@ -164,7 +181,47 @@ export default function AddProductModal({
               <TextField
                 label={t('modal.quantityPlaceholder')}
                 type="number"
-                inputProps={{ min: 0, step: 'any' }}
+                inputProps={{
+                  min: 1,
+                  step: 'any',
+                  style: { textAlign: 'center', MozAppearance: 'textfield' },
+                }}
+                sx={{
+                  '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
+                    WebkitAppearance: 'none',
+                    margin: 0,
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconButton
+                        size="small"
+                        tabIndex={-1}
+                        onClick={() => {
+                          const n = parseFloat(form.quantity) || 1
+                          handleChange('quantity', String(Math.max(1, n - 1)))
+                        }}
+                      >
+                        <MdRemove size={16} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        tabIndex={-1}
+                        onClick={() => {
+                          const n = parseFloat(form.quantity) || 0
+                          handleChange('quantity', String(n + 1))
+                        }}
+                      >
+                        <MdAdd size={16} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
                 value={form.quantity}
                 onChange={(e) => handleChange('quantity', e.target.value)}
                 error={!!errors.quantity}
@@ -193,26 +250,29 @@ export default function AddProductModal({
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={context === 'shopping' ? 12 : 6}>
               <TextField
                 label={t('modal.purchaseDate')}
                 type="date"
                 InputLabelProps={{ shrink: true }}
+                inputProps={context === 'shopping' ? { min: today() } : undefined}
                 value={form.purchaseDate}
                 onChange={(e) => handleChange('purchaseDate', e.target.value)}
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label={t('modal.expiryDate')}
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={form.expiryDate}
-                onChange={(e) => handleChange('expiryDate', e.target.value)}
-                fullWidth
-              />
-            </Grid>
+            {context !== 'shopping' && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label={t('modal.expiryDate')}
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  value={form.expiryDate}
+                  onChange={(e) => handleChange('expiryDate', e.target.value)}
+                  fullWidth
+                />
+              </Grid>
+            )}
             <Grid item xs={12}>
               <TextField
                 label={t('modal.details')}
@@ -228,10 +288,16 @@ export default function AddProductModal({
         </StyledDialogContent>
 
         <StyledDialogActions>
-          <Button onClick={handleCancelClick} variant="outlined" color="inherit">
+          <Button onClick={handleCancelClick} variant="outlined" color="inherit" disabled={loading}>
             {t('modal.cancel')}
           </Button>
-          <Button onClick={handleAccept} variant="contained" disableElevation>
+          <Button
+            onClick={handleAccept}
+            variant="contained"
+            disableElevation
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
             {t('modal.save')}
           </Button>
         </StyledDialogActions>

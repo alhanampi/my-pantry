@@ -11,7 +11,11 @@ import type {
   EditModalState,
   ConfirmDialogState,
   SnackbarState,
+  ZeroQuantityDialogState,
+  ZeroShoppingDialogState,
 } from '../utils/types'
+import type { ZeroQuantityAction } from '../components/ZeroQuantityDialog'
+import type { ZeroShoppingAction } from '../components/ZeroShoppingQtyDialog'
 
 function sortProducts(products: Product[], sortConfig: SortConfig): Product[] {
   const { key, direction } = sortConfig
@@ -45,8 +49,17 @@ export function useAppState() {
     data: null,
   })
   const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '' })
+  const [zeroQtyDialog, setZeroQtyDialog] = useState<ZeroQuantityDialogState>({
+    open: false,
+    product: null,
+  })
+  const [zeroShoppingDialog, setZeroShoppingDialog] = useState<ZeroShoppingDialogState>({
+    open: false,
+    item: null,
+  })
 
-  const showError = () => setSnackbar({ open: true, message: t('errors.saveFailed', 'Error saving. Try again.') })
+  const showError = () =>
+    setSnackbar({ open: true, message: t('errors.saveFailed', 'Error saving. Try again.') })
 
   const handleSort = (key: keyof Product): void => {
     setSortConfig((prev) => ({
@@ -82,7 +95,8 @@ export function useAppState() {
   }
 
   const openEditModal = (id: number): void => {
-    const product = pantry.products.find((p) => p.id === id) ?? pantry.shoppingList.find((i) => i.id === id)
+    const product =
+      pantry.products.find((p) => p.id === id) ?? pantry.shoppingList.find((i) => i.id === id)
     if (!product) return
     const context = pantry.shoppingList.some((i) => i.id === id) ? 'shopping' : 'pantry'
     const { name, quantity, brand, purchaseDate, expiryDate, location, details } = product
@@ -96,22 +110,28 @@ export function useAppState() {
 
   const handleEditProduct = (data: ProductFormData): void => {
     if (editModal.id === null) return
-    pantry.updateProduct.mutate({ id: editModal.id, data }, {
-      onSuccess: () => {
-        setEditModal({ open: false, context: 'pantry', id: null, initialData: null })
-      },
-      onError: showError,
-    })
+    pantry.updateProduct.mutate(
+      { id: editModal.id, data },
+      {
+        onSuccess: () => {
+          setEditModal({ open: false, context: 'pantry', id: null, initialData: null })
+        },
+        onError: showError,
+      }
+    )
   }
 
   const handleEditShoppingItem = (data: ProductFormData): void => {
     if (editModal.id === null) return
-    pantry.updateShoppingItem.mutate({ id: editModal.id, data }, {
-      onSuccess: () => {
-        setEditModal({ open: false, context: 'shopping', id: null, initialData: null })
-      },
-      onError: showError,
-    })
+    pantry.updateShoppingItem.mutate(
+      { id: editModal.id, data },
+      {
+        onSuccess: () => {
+          setEditModal({ open: false, context: 'shopping', id: null, initialData: null })
+        },
+        onError: showError,
+      }
+    )
   }
 
   const handleCancelEdit = (): void => {
@@ -149,7 +169,10 @@ export function useAppState() {
   const handleTogglePurchased = (id: number): void => {
     const item = pantry.shoppingList.find((i) => i.id === id)
     if (!item) return
-    pantry.updateShoppingItem.mutate({ id, data: { purchased: !item.purchased } }, { onError: showError })
+    pantry.updateShoppingItem.mutate(
+      { id, data: { purchased: !item.purchased } },
+      { onError: showError }
+    )
   }
 
   const handleDeleteShoppingItem = (id: number): void => {
@@ -164,14 +187,41 @@ export function useAppState() {
     const item = pantry.shoppingList.find((i) => i.id === id)
     if (!item) return
     const next = Math.max(0, (parseFloat(item.quantity) || 0) + delta)
+    if (next === 0) {
+      setZeroShoppingDialog({ open: true, item })
+      return
+    }
     pantry.updateShoppingItem.mutate({ id, data: { quantity: String(next) } })
+  }
+
+  const handleZeroShoppingAction = (action: ZeroShoppingAction): void => {
+    const { item } = zeroShoppingDialog
+    setZeroShoppingDialog({ open: false, item: null })
+    if (!item) return
+    if (action === 'delete') {
+      pantry.deleteShoppingItem.mutate(item.id, { onError: showError })
+    } else {
+      pantry.updateShoppingItem.mutate({ id: item.id, data: { quantity: '1' } }, { onError: showError })
+    }
   }
 
   const handleQuantityChange = (id: number, delta: number): void => {
     const product = pantry.products.find((p) => p.id === id)
     if (!product) return
     const next = Math.max(0, (parseFloat(product.quantity) || 0) + delta)
+    if (next === 0) {
+      handleDeleteProduct(product.id)
+      setZeroQtyDialog({ open: true, product })
+      return
+    }
     pantry.updateProduct.mutate({ id, data: { quantity: String(next) } })
+  }
+
+  const handleZeroQtyAction = (action: ZeroQuantityAction): void => {
+    const { product } = zeroQtyDialog
+    setZeroQtyDialog({ open: false, product: null })
+    if (!product || action === 'cancel') return
+    if (action === 'cart') handleAddToCart(product)
   }
 
   const handleViewChange = (view: AppView): void => {
@@ -201,6 +251,12 @@ export function useAppState() {
 
   return {
     // state
+    isLoading: pantry.isLoading,
+    isSaving:
+      pantry.createProduct.isPending ||
+      pantry.createShoppingItem.isPending ||
+      pantry.updateProduct.isPending ||
+      pantry.updateShoppingItem.isPending,
     products: displayedProducts,
     shoppingList: pantry.shoppingList,
     searchQuery,
@@ -232,6 +288,10 @@ export function useAppState() {
     handleCancelEdit,
     closeSnackbar,
     closeConfirmDialog,
+    zeroQtyDialog,
+    handleZeroQtyAction,
+    zeroShoppingDialog,
+    handleZeroShoppingAction,
     // derived
     bottomNavValue,
   }

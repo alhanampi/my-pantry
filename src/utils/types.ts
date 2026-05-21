@@ -59,6 +59,16 @@ export interface SnackbarState {
   message: string
 }
 
+export interface ZeroQuantityDialogState {
+  open: boolean
+  product: Product | null
+}
+
+export interface ZeroShoppingDialogState {
+  open: boolean
+  item: ShoppingListItem | null
+}
+
 // ─── Product suggestions (Autocomplete) ──────────────────────────────────────
 
 export interface ProductSuggestion {
@@ -98,6 +108,28 @@ export interface RawNearbyStore {
 
 export interface NearbyStore extends RawNearbyStore {
   distance: number
+}
+
+// ─── Recipes (Spoonacular) ────────────────────────────────────────────────────
+
+export interface RecipeIngredient {
+  id: number
+  name: string
+  amount: number
+  unit: string
+  original: string
+  image: string
+}
+
+export interface Recipe {
+  id: number
+  title: string
+  image: string
+  usedIngredientCount: number
+  missedIngredientCount: number
+  usedIngredients: RecipeIngredient[]
+  missedIngredients: RecipeIngredient[]
+  likes: number
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -199,6 +231,7 @@ export interface AddProductModalProps {
   open: boolean
   context?: ModalContext
   initialData?: ProductFormData
+  loading?: boolean
   onAccept: (product: ProductFormData) => void
   onCancel: () => void
 }

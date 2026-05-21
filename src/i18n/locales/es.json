@@ -59,6 +59,18 @@
     "stay": "Quedarme",
     "exitConfirm": "Sí, salir"
   },
+  "zeroShoppingQty": {
+    "title": "{{name}} — cantidad 0",
+    "body": "¿Querés quitar este ítem de la lista?",
+    "confirm": "Sí, quitar",
+    "cancel": "No, volver a 1"
+  },
+  "zeroQty": {
+    "title": "{{name}} agotado",
+    "body": "Lo eliminamos de tu despensa. ¿Lo agregamos a la lista de súper?",
+    "addToCart": "Agregar a la lista",
+    "cancel": "No, gracias"
+  },
   "confirm": {
     "successTitle": "¡Producto agregado!",
     "successBody": "{{name}} fue agregado correctamente.",
