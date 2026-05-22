@@ -1,4 +1,4 @@
-import { ThemeProvider } from '@mui/material/styles'
+import { ThemeProvider, StyledEngineProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -22,121 +22,123 @@ export default function App() {
   const app = useAppState()
 
   return (
-    <ThemeProvider theme={muiTheme}>
-      <CssBaseline />
-      <AuthProvider>
-        <AppWrapper>
-          <Header
-            onAddClick={app.openAddModal}
-            searchQuery={app.searchQuery}
-            onSearchChange={app.setSearchQuery}
-            onAboutClick={() =>
-              app.handleViewChange(app.currentView === 'about' ? 'pantry' : 'about')
-            }
-            currentView={app.currentView}
-            onViewChange={app.handleViewChange}
-          />
+    <StyledEngineProvider injectFirst>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <AuthProvider>
+          <AppWrapper>
+            <Header
+              onAddClick={app.openAddModal}
+              searchQuery={app.searchQuery}
+              onSearchChange={app.setSearchQuery}
+              onAboutClick={() =>
+                app.handleViewChange(app.currentView === 'about' ? 'pantry' : 'about')
+              }
+              currentView={app.currentView}
+              onViewChange={app.handleViewChange}
+            />
 
-          <MainContent>
-            {app.isLoading && app.currentView !== 'about' && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '40vh',
-                }}
-              >
-                <CircularProgress />
-              </Box>
-            )}
-            {!app.isLoading && app.currentView === 'pantry' && (
-              <PantryView
-                products={app.products}
-                sortConfig={app.sortConfig}
-                onSort={app.handleSort}
-                onDelete={app.handleDeleteProduct}
-                onEdit={app.openEditModal}
-                onAddToCart={app.handleAddToCart}
-                onAddClick={app.openAddModal}
-                onQuantityChange={app.handleQuantityChange}
-              />
-            )}
-            {!app.isLoading && app.currentView === 'shopping' && (
-              <ShoppingView
-                items={app.shoppingList}
-                onAddClick={() => app.setAddModal({ open: true, context: 'shopping' })}
-                onToggle={app.handleTogglePurchased}
-                onDelete={app.handleDeleteShoppingItem}
-                onEdit={app.openEditModal}
-                onClearPurchased={app.handleClearPurchased}
-                onQuantityChange={app.handleShoppingQuantityChange}
-              />
-            )}
-            {app.currentView === 'about' && <AboutView />}
-          </MainContent>
+            <MainContent>
+              {app.isLoading && app.currentView !== 'about' && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '40vh',
+                  }}
+                >
+                  <CircularProgress />
+                </Box>
+              )}
+              {!app.isLoading && app.currentView === 'pantry' && (
+                <PantryView
+                  products={app.products}
+                  sortConfig={app.sortConfig}
+                  onSort={app.handleSort}
+                  onDelete={app.handleDeleteProduct}
+                  onEdit={app.openEditModal}
+                  onAddToCart={app.handleAddToCart}
+                  onAddClick={app.openAddModal}
+                  onQuantityChange={app.handleQuantityChange}
+                />
+              )}
+              {!app.isLoading && app.currentView === 'shopping' && (
+                <ShoppingView
+                  items={app.shoppingList}
+                  onAddClick={() => app.setAddModal({ open: true, context: 'shopping' })}
+                  onToggle={app.handleTogglePurchased}
+                  onDelete={app.handleDeleteShoppingItem}
+                  onEdit={app.openEditModal}
+                  onClearPurchased={app.handleClearPurchased}
+                  onQuantityChange={app.handleShoppingQuantityChange}
+                />
+              )}
+              {app.currentView === 'about' && <AboutView />}
+            </MainContent>
 
-          <BottomNav
-            value={app.bottomNavValue}
-            onChange={(v) => app.handleViewChange(v === 1 ? 'shopping' : 'pantry')}
-          />
+            <BottomNav
+              value={app.bottomNavValue}
+              onChange={(v) => app.handleViewChange(v === 1 ? 'shopping' : 'pantry')}
+            />
 
-          <AddProductModal
-            open={app.addModal.open}
-            context={app.addModal.context}
-            loading={app.isSaving}
-            onAccept={
-              app.addModal.context === 'shopping'
-                ? app.handleAddShoppingItem
-                : app.handleAddPantryProduct
-            }
-            onCancel={app.handleCancelAdd}
-          />
+            <AddProductModal
+              open={app.addModal.open}
+              context={app.addModal.context}
+              loading={app.isSaving}
+              onAccept={
+                app.addModal.context === 'shopping'
+                  ? app.handleAddShoppingItem
+                  : app.handleAddPantryProduct
+              }
+              onCancel={app.handleCancelAdd}
+            />
 
-          <AddProductModal
-            open={app.editModal.open}
-            context={app.editModal.context}
-            initialData={app.editModal.initialData ?? undefined}
-            loading={app.isSaving}
-            onAccept={
-              app.editModal.context === 'shopping'
-                ? app.handleEditShoppingItem
-                : app.handleEditProduct
-            }
-            onCancel={app.handleCancelEdit}
-          />
+            <AddProductModal
+              open={app.editModal.open}
+              context={app.editModal.context}
+              initialData={app.editModal.initialData ?? undefined}
+              loading={app.isSaving}
+              onAccept={
+                app.editModal.context === 'shopping'
+                  ? app.handleEditShoppingItem
+                  : app.handleEditProduct
+              }
+              onCancel={app.handleCancelEdit}
+            />
 
-          <ConfirmDialog
-            open={app.confirmDialog.open}
-            type={app.confirmDialog.type}
-            data={app.confirmDialog.data}
-            onClose={app.closeConfirmDialog}
-          />
+            <ConfirmDialog
+              open={app.confirmDialog.open}
+              type={app.confirmDialog.type}
+              data={app.confirmDialog.data}
+              onClose={app.closeConfirmDialog}
+            />
 
-          <ZeroQuantityDialog
-            open={app.zeroQtyDialog.open}
-            product={app.zeroQtyDialog.product}
-            onAction={app.handleZeroQtyAction}
-          />
+            <ZeroQuantityDialog
+              open={app.zeroQtyDialog.open}
+              product={app.zeroQtyDialog.product}
+              onAction={app.handleZeroQtyAction}
+            />
 
-          <ZeroShoppingQtyDialog
-            open={app.zeroShoppingDialog.open}
-            item={app.zeroShoppingDialog.item}
-            onAction={app.handleZeroShoppingAction}
-          />
+            <ZeroShoppingQtyDialog
+              open={app.zeroShoppingDialog.open}
+              item={app.zeroShoppingDialog.item}
+              onAction={app.handleZeroShoppingAction}
+            />
 
-          <AppSnackbar
-            open={app.snackbar.open}
-            autoHideDuration={2500}
-            onClose={app.closeSnackbar}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <AppAlert severity="success" variant="filled" onClose={app.closeSnackbar}>
-              {app.snackbar.message}
-            </AppAlert>
-          </AppSnackbar>
-        </AppWrapper>
-      </AuthProvider>
-    </ThemeProvider>
+            <AppSnackbar
+              open={app.snackbar.open}
+              autoHideDuration={2500}
+              onClose={app.closeSnackbar}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <AppAlert severity="success" variant="filled" onClose={app.closeSnackbar}>
+                {app.snackbar.message}
+              </AppAlert>
+            </AppSnackbar>
+          </AppWrapper>
+        </AuthProvider>
+      </ThemeProvider>
+    </StyledEngineProvider>
   )
 }

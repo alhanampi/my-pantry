@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Read $ARGUMENTS to get tool_input.file_path. If the path starts with 'src/' or 'backend/', act as the docs-compliance agent: (1) read every file in docs/ — ui.md, auth.md, data-fetching.md, data-mutations.md, routing.md, server-components.md — and internalize every rule; (2) scan the edited file for violations; (3) fix every violation in place. Report FIXED <file>:<line> — <description> for each fix, or PASS if the file is clean. If the file is not under src/ or backend/, output nothing and stop.",
+            "statusMessage": "Checking docs compliance...",
+            "timeout": 180
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude -p \"Act as the readme-updater agent: read README.md and the codebase, identify gaps (missing features, outdated entries, incomplete sections), update README.md to close them, and report each change as ADDED/UPDATED/FIXED.\"",
+            "shell": "powershell",
+            "statusMessage": "Updating README.md...",
+            "timeout": 300,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
