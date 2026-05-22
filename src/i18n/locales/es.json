@@ -166,6 +166,17 @@
     "noPartnerYet": "Sin cuenta vinculada",
     "manageLinkTab": "Gestionar vínculo"
   },
+  "invite": {
+    "sendButton": "Enviar invitación",
+    "sent": "Invitación enviada a @{{username}}",
+    "sentBody": "Recibirá un email para confirmar. El enlace vence en 48 horas.",
+    "pendingTitle": "Invitaciones pendientes",
+    "pendingFrom": "@{{username}} quiere compartir su despensa con vos",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "confirmTitle": "¿Aceptar invitación?",
+    "confirmBody": "@{{username}} quiere compartir su despensa con vos. Ambos verán y editarán la misma despensa y lista de súper."
+  },
   "about": {
     "subtitle": "Tu gestión de despensa personal. Llevá el control de todo lo que tenés en casa.",
     "version": "Versión {{version}}",
