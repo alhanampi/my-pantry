@@ -2,18 +2,15 @@ import { useState, useEffect } from 'react'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogContentText from '@mui/material/DialogContentText'
-import DialogActions from '@mui/material/DialogActions'
-import { MdClose, MdInfoOutline, MdPeopleOutline, MdCheckCircleOutline } from 'react-icons/md'
+import Divider from '@mui/material/Divider'
+import Box from '@mui/material/Box'
+import { MdClose, MdInfoOutline, MdPeopleOutline, MdCheckCircleOutline, MdMailOutline } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { StyledAuthDialog, AuthHeader, AuthBody, ErrorBanner } from './AuthModal.styles'
+import type { PendingInvite } from '../../api/authApi'
 
 interface Partner {
   id: string
@@ -23,47 +20,73 @@ interface Partner {
 interface LinkModalProps {
   open: boolean
   partner: Partner | null
+  pendingInviteSent: { recipientUsername: string } | null
+  pendingInvitesReceived: PendingInvite[]
+  loadingInvites: boolean
   onClose: () => void
-  onLink: (username: string) => Promise<void>
+  onSendInvite: (username: string) => Promise<void>
+  onConfirmInvite: (token: string) => Promise<void>
+  onDeclineInvite: (token: string) => Promise<void>
 }
 
-export default function LinkModal({ open, partner, onClose, onLink }: LinkModalProps) {
+export default function LinkModal({
+  open,
+  partner,
+  pendingInviteSent,
+  pendingInvitesReceived,
+  loadingInvites,
+  onClose,
+  onSendInvite,
+  onConfirmInvite,
+  onDeclineInvite,
+}: LinkModalProps) {
   const { t } = useTranslation()
-  const [linkUsername, setLinkUsername] = useState('')
+  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
+  const [actionToken, setActionToken] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const [linkSuccess, setLinkSuccess] = useState('')
-  const [linkConfirm, setLinkConfirm] = useState(false)
 
   useEffect(() => {
     if (open) {
-      setLinkUsername('')
+      setUsername('')
       setError('')
-      setLinkSuccess('')
     }
   }, [open])
 
-  const handleLink = async () => {
+  const handleSend = async () => {
     setLoading(true)
     setError('')
-    setLinkSuccess('')
     try {
-      await onLink(linkUsername.trim())
-      setLinkSuccess(t('auth.linkSuccess', { username: linkUsername.trim() }))
-      setLinkUsername('')
+      await onSendInvite(username.trim())
+      setUsername('')
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? t(err.message, { defaultValue: err.message })
-          : t('auth.errorGeneric')
-      )
+      setError(err instanceof Error ? err.message : t('auth.errorGeneric'))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !loading && linkUsername.trim()) void handleLink()
+  const handleConfirm = async (token: string) => {
+    setActionToken(token)
+    setError('')
+    try {
+      await onConfirmInvite(token)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('auth.errorGeneric'))
+    } finally {
+      setActionToken(null)
+    }
+  }
+
+  const handleDecline = async (token: string) => {
+    setActionToken(token)
+    try {
+      await onDeclineInvite(token)
+    } catch {
+      // non-fatal
+    } finally {
+      setActionToken(null)
+    }
   }
 
   return (
@@ -85,9 +108,10 @@ export default function LinkModal({ open, partner, onClose, onLink }: LinkModalP
         </Typography>
       </AuthHeader>
 
-      <AuthBody onKeyDown={handleKeyDown}>
+      <AuthBody>
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
+        {/* Already linked */}
         {partner ? (
           <>
             <Typography variant="body2" color="text.secondary">
@@ -103,67 +127,114 @@ export default function LinkModal({ open, partner, onClose, onLink }: LinkModalP
           </>
         ) : (
           <>
-            {linkSuccess && (
-              <Typography
-                variant="body2"
-                color="success.main"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-              >
-                <MdCheckCircleOutline size={18} />
-                {linkSuccess}
-              </Typography>
+            {/* Pending received invitations */}
+            {loadingInvites && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                <CircularProgress size={20} />
+              </Box>
             )}
-            <Typography variant="body2" color="text.secondary">
-              <MdInfoOutline size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-              {t('auth.linkTabInfo')}
-            </Typography>
-            <TextField
-              label={t('auth.linkUsernameLabel')}
-              value={linkUsername}
-              onChange={(e) => setLinkUsername(e.target.value)}
-              fullWidth
-              autoFocus
-              disabled={loading}
-              inputProps={{ maxLength: 30 }}
-            />
-            <Button
-              variant="contained"
-              onClick={() => setLinkConfirm(true)}
-              disabled={loading || !linkUsername.trim()}
-              disableElevation
-              fullWidth
-              sx={{ py: 1.2 }}
-            >
-              {t('auth.linkButton')}
-            </Button>
+            {pendingInvitesReceived.length > 0 && (
+              <>
+                <Typography variant="body2" fontWeight={600}>
+                  {t('invite.pendingTitle')}
+                </Typography>
+                {pendingInvitesReceived.map((invite) => (
+                  <Box
+                    key={invite.token}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      p: 1.5,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1,
+                    }}
+                  >
+                    <Typography variant="body2">
+                      {t('invite.pendingFrom', { username: invite.senderUsername })}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        disabled={actionToken === invite.token}
+                        onClick={() => void handleDecline(invite.token)}
+                      >
+                        {t('invite.decline')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disableElevation
+                        disabled={actionToken === invite.token}
+                        startIcon={
+                          actionToken === invite.token ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : undefined
+                        }
+                        onClick={() => void handleConfirm(invite.token)}
+                      >
+                        {t('invite.accept')}
+                      </Button>
+                    </Box>
+                  </Box>
+                ))}
+                <Divider />
+              </>
+            )}
+
+            {/* Send invitation — or show sent confirmation */}
+            {pendingInviteSent ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="success.main"
+                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                >
+                  <MdCheckCircleOutline size={18} />
+                  {t('invite.sent', { username: pendingInviteSent.recipientUsername })}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                  <MdMailOutline size={16} style={{ marginTop: 2, flexShrink: 0 }} />
+                  {t('invite.sentBody')}
+                </Typography>
+              </Box>
+            ) : (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  <MdInfoOutline size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  {t('auth.linkTabInfo')}
+                </Typography>
+                <TextField
+                  label={t('auth.linkUsernameLabel')}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !loading && username.trim()) void handleSend()
+                  }}
+                  fullWidth
+                  autoFocus
+                  disabled={loading}
+                  inputProps={{ maxLength: 30 }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={() => void handleSend()}
+                  disabled={loading || !username.trim()}
+                  disableElevation
+                  fullWidth
+                  sx={{ py: 1.2 }}
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                >
+                  {t('invite.sendButton')}
+                </Button>
+              </>
+            )}
           </>
         )}
       </AuthBody>
-
-      <Dialog open={linkConfirm} onClose={() => setLinkConfirm(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          {t('auth.linkConfirmTitle', { username: linkUsername })}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>{t('auth.linkConfirmBody')}</DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setLinkConfirm(false)} variant="outlined" color="inherit">
-            {t('modal.cancel')}
-          </Button>
-          <Button
-            onClick={() => {
-              setLinkConfirm(false)
-              void handleLink()
-            }}
-            variant="contained"
-            disableElevation
-            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
-          >
-            {t('auth.confirmAction')}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </StyledAuthDialog>
   )
 }

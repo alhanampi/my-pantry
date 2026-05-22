@@ -166,6 +166,17 @@
     "noPartnerYet": "No linked account",
     "manageLinkTab": "Manage link"
   },
+  "invite": {
+    "sendButton": "Send invitation",
+    "sent": "Invitation sent to @{{username}}",
+    "sentBody": "They'll receive an email to confirm. The link expires in 48 hours.",
+    "pendingTitle": "Pending invitations",
+    "pendingFrom": "@{{username}} wants to share their pantry with you",
+    "accept": "Accept",
+    "decline": "Decline",
+    "confirmTitle": "Accept invitation?",
+    "confirmBody": "@{{username}} wants to share their pantry with you. You'll both see and edit the same pantry and shopping list."
+  },
   "about": {
     "subtitle": "Your personal pantry manager. Keep track of everything you have at home.",
     "version": "Version {{version}}",
