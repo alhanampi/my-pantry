@@ -33,7 +33,7 @@ interface Partner {
 
 interface AuthContextValue {
   partner: Partner | null
-  pendingInviteSent: { recipientUsername: string } | null
+  pendingInviteSent: { recipientUsername: string; confirmUrl: string } | null
   pendingInvitesReceived: PendingInvite[]
   loadingInvites: boolean
   sendInvite: (username: string) => Promise<void>
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [partner, setPartner] = useState<Partner | null>(null)
   const [linkModalOpen, setLinkModalOpen] = useState(false)
-  const [pendingInviteSent, setPendingInviteSent] = useState<{ recipientUsername: string } | null>(null)
+  const [pendingInviteSent, setPendingInviteSent] = useState<{ recipientUsername: string; confirmUrl: string } | null>(null)
   const [pendingInvitesReceived, setPendingInvitesReceived] = useState<PendingInvite[]>([])
   const [loadingInvites, setLoadingInvites] = useState(false)
 
@@ -136,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendInvite = async (username: string) => {
     const token = await getToken()
     if (!token) throw new Error('Not authenticated')
-    const { recipientUsername } = await apiSendInvite(token, username)
-    setPendingInviteSent({ recipientUsername })
+    const { recipientUsername, confirmUrl } = await apiSendInvite(token, username)
+    setPendingInviteSent({ recipientUsername, confirmUrl })
   }
 
   const confirmInvite = async (inviteToken: string) => {

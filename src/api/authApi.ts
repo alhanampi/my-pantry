@@ -36,7 +36,7 @@ export async function apiSyncUser(token: string): Promise<{ partner: Partner | n
 export async function apiSendInvite(
   token: string,
   username: string,
-): Promise<{ recipientUsername: string }> {
+): Promise<{ recipientUsername: string; confirmUrl: string }> {
   try {
     const res = await fetch(`${API_URL}/api/auth/link`, {
       method: 'POST',
@@ -47,8 +47,8 @@ export async function apiSendInvite(
       const json = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(json.error ?? 'auth.errorGeneric')
     }
-    const json = (await res.json()) as { recipientUsername: string }
-    return { recipientUsername: json.recipientUsername }
+    const json = (await res.json()) as { recipientUsername: string; confirmUrl: string }
+    return { recipientUsername: json.recipientUsername, confirmUrl: json.confirmUrl }
   } catch (err) {
     throw new Error(extractMessage(err))
   }

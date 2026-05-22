@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Box from '@mui/material/Box'
-import { MdClose, MdInfoOutline, MdPeopleOutline, MdCheckCircleOutline, MdMailOutline } from 'react-icons/md'
+import { MdClose, MdInfoOutline, MdPeopleOutline, MdCheckCircleOutline, MdContentCopy } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { StyledAuthDialog, AuthHeader, AuthBody, ErrorBanner } from './AuthModal.styles'
 import type { PendingInvite } from '../../api/authApi'
@@ -20,7 +20,7 @@ interface Partner {
 interface LinkModalProps {
   open: boolean
   partner: Partner | null
-  pendingInviteSent: { recipientUsername: string } | null
+  pendingInviteSent: { recipientUsername: string; confirmUrl: string } | null
   pendingInvitesReceived: PendingInvite[]
   loadingInvites: boolean
   onClose: () => void
@@ -45,6 +45,7 @@ export default function LinkModal({
   const [loading, setLoading] = useState(false)
   const [actionToken, setActionToken] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -187,7 +188,7 @@ export default function LinkModal({
 
             {/* Send invitation — or show sent confirmation */}
             {pendingInviteSent ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 <Typography
                   variant="body2"
                   color="success.main"
@@ -196,10 +197,45 @@ export default function LinkModal({
                   <MdCheckCircleOutline size={18} />
                   {t('invite.sent', { username: pendingInviteSent.recipientUsername })}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
-                  <MdMailOutline size={16} style={{ marginTop: 2, flexShrink: 0 }} />
+                <Typography variant="body2" color="text.secondary">
                   {t('invite.sentBody')}
                 </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'action.hover',
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {pendingInviteSent.confirmUrl}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(pendingInviteSent.confirmUrl)
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    }}
+                    aria-label={t('invite.copyLink')}
+                  >
+                    {copied ? <MdCheckCircleOutline size={16} color="green" /> : <MdContentCopy size={16} />}
+                  </IconButton>
+                </Box>
               </Box>
             ) : (
               <>

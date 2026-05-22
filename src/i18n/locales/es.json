@@ -169,7 +169,8 @@
   "invite": {
     "sendButton": "Enviar invitación",
     "sent": "Invitación enviada a @{{username}}",
-    "sentBody": "Recibirá un email para confirmar. El enlace vence en 48 horas.",
+    "sentBody": "Compartí este enlace con esa persona (WhatsApp, iMessage, etc.). Vence en 48 horas.",
+    "copyLink": "Copiar enlace",
     "pendingTitle": "Invitaciones pendientes",
     "pendingFrom": "@{{username}} quiere compartir su despensa con vos",
     "accept": "Aceptar",

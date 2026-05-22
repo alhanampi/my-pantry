@@ -95,7 +95,9 @@ router.post(
         data: { senderId: userId, recipientId: recipient.id, expiresAt },
       })
 
-      // Fire-and-forget — don't fail the request if email delivery fails
+      const confirmUrl = `${APP_URL}/?invite=${invite.id}`
+
+      // Fire-and-forget email (optional — requires RESEND_API_KEY)
       sendLinkInvitation({
         to: recipient.email,
         senderUsername: me.username,
@@ -103,7 +105,7 @@ router.post(
         appUrl: APP_URL,
       }).catch((err: unknown) => console.error('[email] send failed:', err))
 
-      res.json({ sent: true, recipientUsername: recipient.username })
+      res.json({ sent: true, recipientUsername: recipient.username, confirmUrl })
     } catch {
       res.status(500).json({ error: 'Server error' })
     }

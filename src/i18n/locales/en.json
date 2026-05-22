@@ -169,7 +169,8 @@
   "invite": {
     "sendButton": "Send invitation",
     "sent": "Invitation sent to @{{username}}",
-    "sentBody": "They'll receive an email to confirm. The link expires in 48 hours.",
+    "sentBody": "Share this link with them (WhatsApp, iMessage, etc.). It expires in 48 hours.",
+    "copyLink": "Copy link",
     "pendingTitle": "Pending invitations",
     "pendingFrom": "@{{username}} wants to share their pantry with you",
     "accept": "Accept",
