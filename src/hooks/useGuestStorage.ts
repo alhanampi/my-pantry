@@ -67,6 +67,13 @@ export const guestStorage = {
     writeShopping(readShopping().filter((i) => !i.purchased))
   },
 
+  removeMigratedItems(productIds: number[], shoppingIds: number[]): void {
+    const pIds = new Set(productIds)
+    const sIds = new Set(shoppingIds)
+    if (pIds.size > 0) writeProducts(readProducts().filter((p) => !pIds.has(p.id)))
+    if (sIds.size > 0) writeShopping(readShopping().filter((i) => !sIds.has(i.id)))
+  },
+
   clearAll(): void {
     localStorage.removeItem(PRODUCTS_KEY)
     localStorage.removeItem(SHOPPING_KEY)
