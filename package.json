@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n frontend,backend -c cyan,yellow \"vite\" \"npm run dev --prefix backend\"",
     "build": "prisma generate --schema=backend/prisma/schema.prisma && vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
@@ -41,6 +41,7 @@
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^10.0.3",
     "prettier": "^3.3.0",
     "prisma": "^5.22.0",
     "typescript": "^5.5.0",
