@@ -57,9 +57,23 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 
 ### Shared Pantry
 
-- Link two accounts (partner, family member) from the profile menu.
-- Both users see and edit the same pantry and shopping list.
+- Send a link invitation by username from the profile menu; an optional email is sent via Resend if configured.
+- Invitations include a shareable `?invite=<token>` URL (48-hour expiry) the recipient can open to accept.
+- Pending invitations are shown in an inbox inside the profile menu.
+- Once accepted, both users see and edit the same pantry and shopping list.
 - All data is stored in PostgreSQL and scoped to the linked pair.
+
+### Push Notifications
+
+- Bell icon in the header to subscribe / unsubscribe from browser push notifications.
+- A daily Vercel Cron job (09:00 UTC) finds products expiring within 3 days and pushes a notification to all subscribed users.
+- Notifications are delivered via VAPID/Web Push; stale subscriptions are cleaned up automatically on send failure.
+
+### Guest Mode
+
+- Unauthenticated users can add, edit, and delete pantry products and shopping list items without signing in.
+- Data is stored in `localStorage` under the `guest_products` and `guest_shopping` keys.
+- On sign-in, guest data is automatically migrated to the server via `useGuestMigration` and the local keys are cleared.
 
 ### Internationalization
 
@@ -94,7 +108,7 @@ Browser → Vercel CDN (React SPA)
 
 In production, the React frontend and the Express backend are deployed together on Vercel. The frontend is a static build served from the CDN; the backend runs as a single Vercel Function (`api/index.ts`) that handles all `/api/*` routes via a `vercel.json` rewrite.
 
-For local development, the frontend and backend run as separate processes.
+For local development, both frontend and backend start together with a single `npm run dev` command (uses `concurrently`).
 
 ---
 
@@ -115,6 +129,7 @@ For local development, the frontend and backend run as separate processes.
 | react-icons v5               | Icon set (Material Design, `react-icons/md`) |
 | axios                        | HTTP client for API calls                  |
 | vite-plugin-pwa              | Service worker and PWA manifest            |
+| concurrently                 | Runs frontend and backend in one terminal  |
 
 ### Backend
 
@@ -127,6 +142,8 @@ For local development, the frontend and backend run as separate processes.
 | Clerk (`@clerk/backend`)           | JWT verification + user data fetch            |
 | express-validator                  | Request body validation                       |
 | helmet + cors + express-rate-limit | Security headers, CORS, rate limiting         |
+| web-push                           | VAPID push notification delivery              |
+| Resend                             | Transactional email for link invitations      |
 
 ---
 
@@ -134,9 +151,11 @@ For local development, the frontend and backend run as separate processes.
 
 ```
 User (Clerk ID)
- ├── UserLink          — links two users to share a pantry
- ├── Product[]         — pantry items owned by this user
- └── ShoppingItem[]    — shopping list items owned by this user
+ ├── UserLink[]           — links two users to share a pantry
+ ├── LinkInvitation[]     — pending/accepted/declined invitations (48-hour expiry)
+ ├── PushSubscription[]   — Web Push endpoints for this user
+ ├── Product[]            — pantry items owned by this user
+ └── ShoppingItem[]       — shopping list items owned by this user
 ```
 
 When two users are linked, all pantry and shopping list reads include items from both users. Writes always set the current user as owner.
@@ -149,21 +168,25 @@ When two users are linked, all pantry and shopping list reads include items from
 mi-despensa-app/
 ├── api/
 │   └── index.ts              # Vercel Function entry point (re-exports Express app)
-├── vercel.json               # Rewrites /api/* → api/index
+├── vercel.json               # Rewrites /api/* → api/index; defines daily cron at 09:00 UTC
 │
 ├── backend/                  # Backend source
 │   ├── prisma/
-│   │   └── schema.prisma     # Models: User, UserLink, Product, ShoppingItem
+│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem
 │   └── src/
 │       ├── app.ts            # Express app (no listen — shared by local and Vercel)
 │       ├── index.ts          # Local dev entry: imports app, calls listen
 │       ├── db/
 │       │   └── index.ts      # Prisma client singleton (serverless-safe)
+│       ├── services/
+│       │   ├── webpush.ts    # VAPID push delivery and stale-subscription cleanup
+│       │   └── email.ts      # Resend transactional email (optional)
 │       ├── middleware/
 │       │   └── auth.ts       # Clerk JWT verification
 │       └── routes/
-│           ├── auth.ts       # /sync, /me, /link
-│           └── pantry.ts     # Products and shopping list CRUD
+│           ├── auth.ts       # /sync, /me, /link, /invite
+│           ├── pantry.ts     # Products and shopping list CRUD
+│           └── notifications.ts # Push subscription CRUD + cron handler
 │
 └── src/                      # Frontend
     ├── main.tsx              # Entry: ClerkProvider + QueryClientProvider
@@ -172,6 +195,8 @@ mi-despensa-app/
     │   ├── authApi.ts           # Sync and link calls
     │   ├── pantryApi.ts         # Products and shopping list calls
     │   ├── overpass.ts          # Geoapify Places API wrapper and shop-type map
+    │   ├── productSuggestionsApi.ts # Open Food Facts live suggestions
+    │   ├── notificationsApi.ts  # Push subscription register/unregister calls
     │   └── spoonacularApi.ts    # Spoonacular recipe-by-ingredients API client
     ├── components/
     │   ├── Header/              # AppBar with hamburger drawer (mobile) and tabs (desktop)
@@ -182,6 +207,7 @@ mi-despensa-app/
     │   ├── QuantityStepper/
     │   ├── ZeroQuantityDialog/  # Prompt when a pantry item hits 0 (offer to add to cart)
     │   ├── ZeroShoppingQtyDialog/ # Prompt when a shopping item hits 0 (offer to delete)
+    │   ├── NotificationBell/    # Bell icon with subscribe/unsubscribe toggle
     │   └── ThemePicker/
     ├── views/
     │   ├── PantryView/
@@ -190,7 +216,7 @@ mi-despensa-app/
     │   │   └── StoreMapDialog/  # MapLibre GL dialog opened per store
     │   └── AboutView/
     ├── context/
-    │   └── AuthContext.tsx      # Partner state and link modal
+    │   └── AuthContext.tsx      # Partner state, link/invite flow, and guest migration trigger
     ├── contexts/
     │   └── ThemeContext.tsx
     ├── hooks/
@@ -199,6 +225,9 @@ mi-despensa-app/
     │   ├── useNearbyStores.ts
     │   ├── useLocalStorage.ts
     │   ├── useProductSuggestions.ts
+    │   ├── usePushNotifications.ts  # Web Push subscription management
+    │   ├── useGuestStorage.ts       # localStorage CRUD for unauthenticated sessions
+    │   ├── useGuestMigration.ts     # Migrates guest data to server on sign-in
     │   └── useDebounce.ts
     ├── styles/
     │   ├── colorSchemes.ts      # 6 selectable color schemes + CSS variable injection
@@ -262,6 +291,8 @@ VAPID_PUBLIC_KEY=...               # from step 3 below
 VAPID_PRIVATE_KEY=...              # from step 3 below
 VAPID_SUBJECT=mailto:you@email.com
 CRON_SECRET=...                    # any random secret string
+RESEND_API_KEY=...                 # optional — only needed to send invitation emails
+EMAIL_FROM=My Pantry <noreply@mypantry.app>  # optional — sender address for invitation emails
 ```
 
 ### 3. Generate VAPID keys (one-time)
@@ -289,11 +320,7 @@ npx prisma db push
 ### 5. Run locally
 
 ```bash
-# Terminal 1 — frontend
-npm run dev
-
-# Terminal 2 — backend
-cd backend && npm run dev
+npm run dev   # starts frontend (Vite) and backend (Express) together via concurrently
 ```
 
 ### Deploying to Vercel
@@ -317,6 +344,7 @@ Authentication is fully delegated to Clerk:
 | HTTP security headers  | `helmet`                                                                         |
 | CORS                   | Restricted to `FRONTEND_ORIGIN`                                                  |
 | Rate limiting          | `express-rate-limit` (60 req / 15 min on auth routes)                            |
+| Cron endpoint          | `CRON_SECRET` header required; unauthorized calls return 401                   |
 
 ---
 
@@ -339,6 +367,8 @@ Authentication is fully delegated to Clerk:
 - [x] Account linking model (partner / family)
 - [x] Pantry and shopping list persisted in the database
 - [x] Shared pantry between linked accounts (both users see and edit the same data)
+- [x] Link invitation system (shareable URL, 48-hour expiry, optional email via Resend)
+- [x] Guest mode: unauthenticated users can add products stored in localStorage, migrated to the server on sign-in
 
 ### v1.2 — Maps & Location
 
@@ -350,7 +380,7 @@ Authentication is fully delegated to Clerk:
 
 ### v1.3 — Expiration Alerts
 
-- [ ] Push notifications for products expiring soon
+- [x] Push notifications for products expiring soon (VAPID/Web Push, daily Vercel Cron)
 - [ ] Weekly expiration dashboard
 - [ ] Deleted products history
 - [ ] Customizable calendar tab to see what's about to expire
