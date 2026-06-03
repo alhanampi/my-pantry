@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import type { Product, ShoppingListItem, ProductFormData } from '../utils/types'
+import { guestStorage } from './useGuestStorage'
 import {
   apiGetProducts,
   apiCreateProduct,
@@ -20,25 +21,26 @@ export function usePantry() {
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products'],
     queryFn: async (): Promise<Product[]> => {
+      if (!isSignedIn) return guestStorage.getProducts()
       const token = await getToken()
       if (!token) return []
       return apiGetProducts(token)
     },
-    enabled: !!isSignedIn,
   })
 
   const { data: shoppingList = [], isLoading: loadingShoppingList } = useQuery({
     queryKey: ['shoppingList'],
     queryFn: async (): Promise<ShoppingListItem[]> => {
+      if (!isSignedIn) return guestStorage.getShopping()
       const token = await getToken()
       if (!token) return []
       return apiGetShoppingItems(token)
     },
-    enabled: !!isSignedIn,
   })
 
   const createProduct = useMutation({
     mutationFn: async (data: ProductFormData): Promise<Product> => {
+      if (!isSignedIn) return guestStorage.createProduct(data)
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       return apiCreateProduct(token, data)
@@ -48,6 +50,7 @@ export function usePantry() {
 
   const updateProduct = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<ProductFormData> }): Promise<Product> => {
+      if (!isSignedIn) return guestStorage.updateProduct(id, data)
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       const current = products.find((p) => p.id === id)
@@ -59,6 +62,7 @@ export function usePantry() {
 
   const deleteProduct = useMutation({
     mutationFn: async (id: number): Promise<void> => {
+      if (!isSignedIn) return guestStorage.deleteProduct(id)
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       return apiDeleteProduct(token, id)
@@ -68,6 +72,7 @@ export function usePantry() {
 
   const createShoppingItem = useMutation({
     mutationFn: async (data: Omit<ShoppingListItem, 'id'>): Promise<ShoppingListItem> => {
+      if (!isSignedIn) return guestStorage.createShoppingItem(data)
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       return apiCreateShoppingItem(token, data)
@@ -83,6 +88,7 @@ export function usePantry() {
       id: number
       data: Partial<Omit<ShoppingListItem, 'id'>>
     }): Promise<ShoppingListItem> => {
+      if (!isSignedIn) return guestStorage.updateShoppingItem(id, data)
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       return apiUpdateShoppingItem(token, id, data)
@@ -92,6 +98,7 @@ export function usePantry() {
 
   const deleteShoppingItem = useMutation({
     mutationFn: async (id: number): Promise<void> => {
+      if (!isSignedIn) return guestStorage.deleteShoppingItem(id)
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       return apiDeleteShoppingItem(token, id)
@@ -101,6 +108,7 @@ export function usePantry() {
 
   const clearPurchasedItems = useMutation({
     mutationFn: async (): Promise<void> => {
+      if (!isSignedIn) return guestStorage.clearPurchased()
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
       return apiClearPurchasedItems(token)
