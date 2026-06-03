@@ -13,6 +13,8 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
 import CircularProgress from '@mui/material/CircularProgress'
+import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -24,6 +26,7 @@ import {
   apiGetPendingInvites,
   type PendingInvite,
 } from '../api/authApi'
+import { useGuestMigration } from '../hooks/useGuestMigration'
 import LinkModal from '../components/AuthModal'
 
 interface Partner {
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isSignedIn, isLoaded } = useUser()
   const { getToken } = useClerkAuth()
   const { t } = useTranslation()
+  const migration = useGuestMigration()
 
   const [partner, setPartner] = useState<Partner | null>(null)
   const [linkModalOpen, setLinkModalOpen] = useState(false)
@@ -73,6 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.history.replaceState({}, '', clean.toString())
     }
   }, [])
+
+  // Migrate guest localStorage data to the server on sign-in
+  useEffect(() => {
+    if (isLoaded && isSignedIn) migration.mutate()
+  }, [isLoaded, isSignedIn, user?.id])
 
   // Sync user on sign-in and load pending invites
   useEffect(() => {

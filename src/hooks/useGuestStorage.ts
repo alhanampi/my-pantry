@@ -66,4 +66,9 @@ export const guestStorage = {
   clearPurchased(): void {
     writeShopping(readShopping().filter((i) => !i.purchased))
   },
+
+  clearAll(): void {
+    localStorage.removeItem(PRODUCTS_KEY)
+    localStorage.removeItem(SHOPPING_KEY)
+  },
 }
