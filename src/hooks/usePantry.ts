@@ -21,22 +21,35 @@ export function usePantry() {
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products'],
     queryFn: async (): Promise<Product[]> => {
-      if (!isSignedIn) return guestStorage.getProducts()
       const token = await getToken()
       if (!token) return []
       return apiGetProducts(token)
     },
+    enabled: !!isSignedIn,
+    // Seed the cache with localStorage data for guest sessions so the list
+    // is visible immediately without an API call. initialDataUpdatedAt:0
+    // marks it stale so it refetches as soon as the query becomes enabled.
+    initialData: (): Product[] => guestStorage.getProducts(),
+    initialDataUpdatedAt: 0,
   })
 
   const { data: shoppingList = [], isLoading: loadingShoppingList } = useQuery({
     queryKey: ['shoppingList'],
     queryFn: async (): Promise<ShoppingListItem[]> => {
-      if (!isSignedIn) return guestStorage.getShopping()
       const token = await getToken()
       if (!token) return []
       return apiGetShoppingItems(token)
     },
+    enabled: !!isSignedIn,
+    initialData: (): ShoppingListItem[] => guestStorage.getShopping(),
+    initialDataUpdatedAt: 0,
   })
+
+  // Sync the React Query cache from localStorage after each guest mutation
+  function syncGuest() {
+    qc.setQueryData<Product[]>(['products'], guestStorage.getProducts())
+    qc.setQueryData<ShoppingListItem[]>(['shoppingList'], guestStorage.getShopping())
+  }
 
   const createProduct = useMutation({
     mutationFn: async (data: ProductFormData): Promise<Product> => {
@@ -45,7 +58,10 @@ export function usePantry() {
       if (!token) throw new Error('Not authenticated')
       return apiCreateProduct(token, data)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['products'] })
+    },
   })
 
   const updateProduct = useMutation({
@@ -57,7 +73,10 @@ export function usePantry() {
       if (!current) throw new Error('Product not found')
       return apiUpdateProduct(token, id, { ...current, ...data })
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['products'] })
+    },
   })
 
   const deleteProduct = useMutation({
@@ -67,7 +86,10 @@ export function usePantry() {
       if (!token) throw new Error('Not authenticated')
       return apiDeleteProduct(token, id)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['products'] })
+    },
   })
 
   const createShoppingItem = useMutation({
@@ -77,7 +99,10 @@ export function usePantry() {
       if (!token) throw new Error('Not authenticated')
       return apiCreateShoppingItem(token, data)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['shoppingList'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+    },
   })
 
   const updateShoppingItem = useMutation({
@@ -93,7 +118,10 @@ export function usePantry() {
       if (!token) throw new Error('Not authenticated')
       return apiUpdateShoppingItem(token, id, data)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['shoppingList'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+    },
   })
 
   const deleteShoppingItem = useMutation({
@@ -103,7 +131,10 @@ export function usePantry() {
       if (!token) throw new Error('Not authenticated')
       return apiDeleteShoppingItem(token, id)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['shoppingList'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+    },
   })
 
   const clearPurchasedItems = useMutation({
@@ -113,7 +144,10 @@ export function usePantry() {
       if (!token) throw new Error('Not authenticated')
       return apiClearPurchasedItems(token)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['shoppingList'] }),
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+    },
   })
 
   return {

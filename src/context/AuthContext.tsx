@@ -225,6 +225,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         onDeclineInvite={declineInvite}
       />
 
+      {/* Migration error — shown if guest data could not be fully uploaded on sign-in */}
+      <Snackbar
+        open={migration.isError}
+        onClose={() => migration.reset()}
+        autoHideDuration={6000}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" onClose={() => migration.reset()}>
+          {t('auth.errorGeneric')}
+        </Alert>
+      </Snackbar>
+
       {/* Invite confirmation dialog — triggered by ?invite=<token> in the URL */}
       <Dialog open={inviteConfirmOpen} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
