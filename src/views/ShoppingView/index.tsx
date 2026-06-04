@@ -6,6 +6,7 @@ import { MdShoppingCart, MdAdd, MdDeleteSweep } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ShoppingItem from './ShoppingItem'
 import NearbyStores from './NearbyStores'
+import ShoppingSkeleton from './ShoppingSkeleton'
 import {
   Wrapper,
   EmptyState,
@@ -25,8 +26,12 @@ export default function ShoppingView({
   onEdit,
   onClearPurchased,
   onQuantityChange,
+  isLoading = false,
 }: ShoppingListProps) {
   const { t } = useTranslation()
+
+  if (isLoading) return <ShoppingSkeleton />
+
   const pendingItems = items.filter((i) => !i.purchased)
   const purchasedItems = items.filter((i) => i.purchased)
 

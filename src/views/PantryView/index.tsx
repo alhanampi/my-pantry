@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import SortableHeader from './SortableHeader'
 import ProductRow from './ProductRow'
 import ProductCard from './ProductCard'
+import { SkeletonRow, SkeletonCard } from './PantrySkeleton'
 import {
   TableWrapper,
   ScrollContainer,
@@ -21,6 +22,8 @@ import {
 } from './PantryView.styles'
 import type { Product, ProductTableProps } from '../../utils/types'
 
+const SKELETON_COUNT = 5
+
 export default function PantryView({
   products,
   sortConfig,
@@ -30,6 +33,7 @@ export default function PantryView({
   onAddToCart,
   onAddClick,
   onQuantityChange,
+  isLoading = false,
 }: ProductTableProps) {
   const { t } = useTranslation()
   const theme = useTheme()
@@ -64,11 +68,13 @@ export default function PantryView({
       <div>
         <MobileActionBar>
           <CountText>
-            {products.length > 0 ? t('table.count', { count: products.length }) : t('table.emptyTitle')}
+            {!isLoading && (products.length > 0 ? t('table.count', { count: products.length }) : t('table.emptyTitle'))}
           </CountText>
           {addButton}
         </MobileActionBar>
-        {products.length === 0 ? (
+        {isLoading ? (
+          Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)
+        ) : products.length === 0 ? (
           <TableWrapper>{empty}</TableWrapper>
         ) : (
           products.map((product) => (
@@ -90,7 +96,7 @@ export default function PantryView({
     <TableWrapper>
       <ActionBar>
         <CountText>
-          {products.length > 0 ? t('table.count', { count: products.length }) : ''}
+          {!isLoading && products.length > 0 ? t('table.count', { count: products.length }) : ''}
         </CountText>
         {addButton}
       </ActionBar>
@@ -109,7 +115,11 @@ export default function PantryView({
           ))}
           <ActionsHeaderCell />
         </HeaderRow>
-        {products.length === 0 ? (
+        {isLoading ? (
+          <div role="list">
+            {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonRow key={i} />)}
+          </div>
+        ) : products.length === 0 ? (
           empty
         ) : (
           <div role="list">
