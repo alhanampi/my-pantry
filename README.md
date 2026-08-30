@@ -49,6 +49,10 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - 5-minute cache with React Query.
 - Clicking a store opens an interactive map dialog (MapLibre GL + OpenFreeMap tiles) with a "Open in Google Maps" directions link.
 
+### Loading States
+
+- Pantry and shopping list views render a skeleton UI (`PantrySkeleton`, `ShoppingSkeleton`) that mirrors the real layout while data loads, instead of a global spinner — the app shell (header, bottom nav) stays visible throughout.
+
 ### Quantity Management
 
 - Inline quantity stepper (+ / −) on every pantry card/row and every shopping list item.
@@ -66,7 +70,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 ### Push Notifications
 
 - Bell icon in the header to subscribe / unsubscribe from browser push notifications.
-- A daily Vercel Cron job (09:00 UTC) finds products expiring within 3 days and pushes a notification to all subscribed users.
+- A daily Vercel Cron job (09:00 UTC) finds products expiring within 7 days and pushes a notification to all subscribed users.
 - Notifications are delivered via VAPID/Web Push; stale subscriptions are cleaned up automatically on send failure.
 
 ### Guest Mode
@@ -191,6 +195,8 @@ mi-despensa-app/
 └── src/                      # Frontend
     ├── main.tsx              # Entry: ClerkProvider + QueryClientProvider
     ├── App.tsx               # Root layout and global state
+    ├── App.styles.ts         # Root layout styled-components
+    ├── sw.ts                 # Service worker source (injectManifest, handles push + notificationclick)
     ├── api/
     │   ├── authApi.ts           # Sync and link calls
     │   ├── pantryApi.ts         # Products and shopping list calls
@@ -211,9 +217,11 @@ mi-despensa-app/
     │   └── ThemePicker/
     ├── views/
     │   ├── PantryView/
+    │   │   └── PantrySkeleton.tsx   # Skeleton UI shown while pantry data loads
     │   ├── ShoppingView/
     │   │   ├── NearbyStores/    # Store list with type filter
-    │   │   └── StoreMapDialog/  # MapLibre GL dialog opened per store
+    │   │   ├── StoreMapDialog/  # MapLibre GL dialog opened per store
+    │   │   └── ShoppingSkeleton.tsx # Skeleton UI shown while shopping list loads
     │   └── AboutView/
     ├── context/
     │   └── AuthContext.tsx      # Partner state, link/invite flow, and guest migration trigger
@@ -237,6 +245,7 @@ mi-despensa-app/
     │   ├── helpers.ts           # Date formatting and other shared utilities
     │   └── migrations.ts        # One-time localStorage key migration (ES → EN field names)
     ├── i18n/
+    │   ├── index.ts          # i18next init and language detection
     │   └── locales/
     │       ├── es.json
     │       └── en.json
@@ -323,6 +332,28 @@ npx prisma db push
 npm run dev   # starts frontend (Vite) and backend (Express) together via concurrently
 ```
 
+### Available scripts
+
+**Root** (`package.json`):
+
+| Script                | What it does                                                        |
+| ---------------------- | -------------------------------------------------------------------- |
+| `npm run dev`           | Runs Vite dev server and the backend together via `concurrently`     |
+| `npm run build`         | Runs `prisma generate` then `vite build` (used by the Vercel build)  |
+| `npm run preview`       | Serves the production frontend build locally                        |
+| `npm run type-check`    | Runs `tsc --noEmit` on the frontend                                  |
+| `npm run format`        | Formats `src/**/*.{ts,tsx,json}` with Prettier                       |
+
+**Backend** (`backend/package.json`):
+
+| Script              | What it does                              |
+| -------------------- | ------------------------------------------ |
+| `npm run dev`         | Runs the Express server with `tsx watch`   |
+| `npm run build`       | Compiles TypeScript with `tsc`             |
+| `npm start`           | Runs the compiled server (`dist/index.js`) |
+| `npm run db:migrate`  | Runs `prisma migrate dev`                  |
+| `npm run db:generate` | Runs `prisma generate`                     |
+
 ### Deploying to Vercel
 
 Set all environment variables in the Vercel project settings (both frontend `VITE_*` and backend variables). The build command (`npm run build`) runs `prisma generate` and `vite build`. No separate backend deployment is needed — the Express app is served as a Vercel Function automatically.
@@ -358,6 +389,7 @@ Authentication is fully delegated to Clerk:
 - [x] Installable PWA (service worker + manifest)
 - [x] Responsive views: table on desktop / cards on mobile
 - [x] Product suggestions while typing
+- [x] Skeleton loading states for pantry and shopping views
 
 ### v1.1 — Auth & Sync ✅
 
@@ -394,6 +426,61 @@ Authentication is fully delegated to Clerk:
 - [ ] Export pantry to CSV
 - [ ] Recipe suggestions based on available ingredients (Spoonacular API client scaffolded)
 
+### v1.5 — Recipe Chat & Multiple Lists
+
+Related to the pending Spoonacular/multiple-lists items in v1.4 above, but approached as a chat-driven flow instead of a static suggestions list — see `ROADMAP.md` for the technical design.
+
+- [ ] Free AI chat (Groq) to think through a recipe from what you have or want to cook
+- [ ] Automatic extraction of missing ingredients from the recipe into the shopping list
+- [ ] Multiple named shopping lists (e.g. "Supermarket", "Farmers market", "Party")
+
+### v1.6 — Testing & Environments
+
+See `ROADMAP.md` for the technical design.
+
+- [ ] Unit tests for frontend hooks and business logic (Vitest + React Testing Library)
+- [ ] Integration tests for backend routes (Vitest + supertest)
+- [ ] Development environment separated from production (DB, Clerk, env vars)
+- [ ] CI on GitHub Actions: type-check + tests on every PR
+
+### v1.7 — Quality of Life & Reliability
+
+See `ROADMAP.md` for the technical design.
+
+- [ ] Undo on delete (toast with "Undo" instead of a hard confirm) in pantry and shopping list
+- [ ] Invite a partner via QR code, as an alternative to the shareable link
+- [ ] Production error monitoring (Sentry free tier)
+- [ ] More languages beyond ES/EN
+- [ ] Conflict resolution for edits made on two devices while one was offline
+- [ ] Lightweight, privacy-friendly usage analytics
+
+### v1.8 — Smart Planning
+
+See `ROADMAP.md` for the technical design.
+
+- [ ] Weekly meal plan (via the AI chat) that generates a full shopping list, not just one recipe at a time
+- [ ] Recurring items — mark a product as "repeats every N days/weeks" and get suggested to re-add it when due
+- [ ] Dietary tags (vegan, gluten-free, etc.) on products, respected by the recipe chat's suggestions
+
+### v1.9 — Reach & Control
+
+See `ROADMAP.md` for the technical design.
+
+- [ ] Package as a native app (Capacitor) for the Play Store / App Store, reusing the existing React codebase
+- [ ] Full backup/restore — export everything (pantry, lists, history) to JSON and import it back
+- [ ] Roles within a shared household (admin vs. member), once real households (backlog) exist
+- [ ] Finer-grained notification preferences (choose which push categories to receive)
+- [ ] Full-text search and combined filters in the pantry (location + near expiry + brand)
+
+### v1.10 — Spending & Analytics
+
+See `ROADMAP.md` for the technical design.
+
+- [ ] Track price per purchase
+- [ ] Monthly spending summary by category, with charts
+- [ ] Spending trends over time and most-bought items
+- [ ] Waste tracking: expired-unused vs. consumed, visualized
+
 ---
 
 ## Claude Code Tooling
@@ -402,17 +489,17 @@ The `.claude/` directory contains agents and slash commands that Claude Code use
 
 ### Agents (`.claude/agents/`)
 
-| Agent             | Command            | What it does                                                                                                                                                             |
-| ----------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `docs-compliance` | `/docs-compliance` | Reads every doc in `docs/`, audits all source files against the rules, and fixes every violation in place. Run after any non-trivial change to `src/` or `backend/`.     |
-| `readme-updater`  | `/readme-updater`  | Reads the codebase and patches `README.md` with missing features, stack entries, project structure changes, and completed roadmap items. Never removes accurate content. |
+| Agent             | Invoked by       | What it does                                                                                                                                                             |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `readme-updater`  | `/update-readme` | Reads the codebase and patches `README.md` with missing features, stack entries, project structure changes, and completed roadmap items. Never removes accurate content. |
 
-### Docs (`.claude/commands/`)
+### Commands (`.claude/commands/`)
 
 | Command                    | What it does                                                               |
 | -------------------------- | -------------------------------------------------------------------------- |
+| `/update-readme`           | Runs the `readme-updater` agent to sync `README.md` with the codebase.     |
 | `/create-docs`             | Scaffolds a new standards doc in `docs/` for a given layer of the app.     |
-| `/merge-and-create-branch` | Commits current changes, merges to main, pushes, and creates a new branch. |
+| `/merge-and-create-branch` | Commits current changes, merges to main, and creates a new branch locally (no push — done explicitly). |
 
 ### Coding standards (`docs/`)
 
