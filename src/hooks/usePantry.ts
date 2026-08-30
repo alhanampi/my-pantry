@@ -15,8 +15,19 @@ import {
 } from '../api/pantryApi'
 
 export function usePantry() {
-  const { getToken, isSignedIn } = useAuth()
+  const { getToken, isSignedIn, isLoaded } = useAuth()
   const qc = useQueryClient()
+
+  // Only a *confirmed* guest (Clerk finished loading and there's no session)
+  // gets the localStorage seed as initialData — that's their real, only data
+  // source, so the query can report success instantly with no fetch. For a
+  // confirmed signed-in user, guestStorage is almost always empty/irrelevant;
+  // seeding it as initialData would make React Query report the query as
+  // already "successful" before the real fetch runs, so isLoading would be
+  // false and the UI would flash an empty list instead of the skeleton while
+  // the real data is still in flight. Leaving initialData undefined for that
+  // case keeps isLoading true until the first real fetch resolves.
+  const isConfirmedGuest = isLoaded && !isSignedIn
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['products'],
@@ -26,11 +37,10 @@ export function usePantry() {
       return apiGetProducts(token)
     },
     enabled: !!isSignedIn,
-    // Seed the cache with localStorage data for guest sessions so the list
-    // is visible immediately without an API call. initialDataUpdatedAt:0
-    // marks it stale so it refetches as soon as the query becomes enabled.
-    initialData: (): Product[] => guestStorage.getProducts(),
-    initialDataUpdatedAt: 0,
+    // initialDataUpdatedAt:0 marks the seed as stale so it refetches as soon
+    // as the query becomes enabled (guest → signed-in transition).
+    initialData: isConfirmedGuest ? (): Product[] => guestStorage.getProducts() : undefined,
+    initialDataUpdatedAt: isConfirmedGuest ? 0 : undefined,
   })
 
   const { data: shoppingList = [], isLoading: loadingShoppingList } = useQuery({
@@ -41,8 +51,8 @@ export function usePantry() {
       return apiGetShoppingItems(token)
     },
     enabled: !!isSignedIn,
-    initialData: (): ShoppingListItem[] => guestStorage.getShopping(),
-    initialDataUpdatedAt: 0,
+    initialData: isConfirmedGuest ? (): ShoppingListItem[] => guestStorage.getShopping() : undefined,
+    initialDataUpdatedAt: isConfirmedGuest ? 0 : undefined,
   })
 
   // Sync the React Query cache from localStorage after each guest mutation
