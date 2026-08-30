@@ -84,27 +84,16 @@ This file tracks the technical design of **pending** work only — data model ch
 
 ---
 
-## v1.6 — Testing & Environments
+## v1.6 remaining — Environments
 
-**Goal**: be able to touch code with confidence (tests + CI) and stop developing directly against the production database/auth instance.
+**Shipped**: Vitest on both frontend (`vitest.config.ts` via `vite.config.ts`'s `test` block, React Testing Library, example tests for `usePantry`/`pantryApi`) and backend (`backend/vitest.config.mts`, supertest against `backend/src/app.ts`, example tests for `middleware/auth.ts`/`routes/pantry.ts`, Prisma and Clerk mocked per the open decision below); `.github/workflows/ci.yml` running type-check + tests on every PR against `main`; `.env.example` (root) and `backend/.env.example` documenting every env var; `docs/environments.md` runbook.
 
-**Testing**:
-- Add **Vitest** as a shared devDependency — it's the natural fit since the frontend already runs on Vite (same config/transform pipeline, no extra setup), and it works fine for a plain Express/TS backend too, so there's no need for a second runner like Jest.
-- Frontend: `vitest.config.ts` + React Testing Library + `@testing-library/jest-dom`. Start with `src/hooks/usePantry.ts` (mock `pantryApi`) and the `src/api/*` functions (mock `fetch`) — highest-value, lowest-effort coverage given how much logic already funnels through hooks per `docs/data-fetching.md`.
-- Backend: `vitest` + `supertest` against the exported `app` in `backend/src/app.ts`. Mock Prisma (`@prisma/client`) for pure unit tests of route logic; for a slice of true integration tests, point at the dev Neon branch (see below) rather than production.
-- New script `npm run test` at the root and in `backend/package.json`.
+**Still open** — the actual environment separation, which needs dashboard access this repo doesn't have:
+- **Database**: create a Neon `dev` branch, put its `DATABASE_URL`/`DATABASE_URL_UNPOOLED` in `backend/.env` (see `docs/environments.md`).
+- **Auth**: create a Clerk development instance, put its keys in `.env`/`backend/.env`.
+- **Vercel**: split the project's env vars into distinct Preview and Production values in the dashboard, so PR previews hit the dev DB/Clerk instance, not production.
 
-**Separate dev/prod environments** — today there's exactly one of everything (`.env` / `backend/.env`, one Neon DB, one Clerk instance, one Vercel project config in `vercel.json`):
-- **Database**: Neon supports database branching — create a `dev` branch with its own `DATABASE_URL` / `DATABASE_URL_UNPOOLED`, so local development and tests never touch production data.
-- **Auth**: Clerk supports multiple instances — create a development instance with its own publishable/secret keys, so dev/test sign-ins are isolated from real users.
-- **Env files**: add a `.env.example` (frontend) and `backend/.env.example` (no real secrets) documenting every variable currently in `.env`/`backend/.env`, labeled dev vs. prod where relevant — makes onboarding and this exact kind of audit easier going forward.
-- **Vercel**: move from a single implicit env var set to distinct Preview and Production environment variables in the Vercel project settings, so preview deployments (e.g. PR previews) point at the dev DB/Clerk instance, not production.
-
-**CI**:
-- `.github/workflows/ci.yml` running `npm run type-check` and `npm run test` on every PR against `main`. Keep it minimal at first — no deploy step, just the same checks already run locally (and previously via the `Stop` hook, now manual) enforced before merge.
-
-**Open decisions**:
-- Whether backend integration tests hit the real (dev-branch) Neon DB or stay fully mocked — real DB tests are more valuable but slower and need seed/teardown; could start mocked and add a handful of DB-backed tests later.
+**Resolved**: backend tests stay fully mocked (Prisma + Clerk) rather than hitting a real DB — keeps CI decoupled from whether the dev Neon branch above exists yet. Revisit adding a handful of real DB-backed tests once the branch is set up.
 
 ---
 

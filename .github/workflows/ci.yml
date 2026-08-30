@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=backend/prisma/schema.prisma
+
+      - name: Type-check (frontend)
+        run: npm run type-check
+
+      - name: Type-check (backend)
+        run: npm run type-check --prefix backend
+
+      - name: Test (frontend)
+        run: npm test
+
+      - name: Test (backend)
+        run: npm test --prefix backend
