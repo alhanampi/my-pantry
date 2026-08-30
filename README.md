@@ -438,10 +438,10 @@ Related to the pending Spoonacular/multiple-lists items in v1.4 above, but appro
 
 See `ROADMAP.md` for the technical design.
 
-- [ ] Unit tests for frontend hooks and business logic (Vitest + React Testing Library)
-- [ ] Integration tests for backend routes (Vitest + supertest)
-- [ ] Development environment separated from production (DB, Clerk, env vars)
-- [ ] CI on GitHub Actions: type-check + tests on every PR
+- [x] Unit tests for frontend hooks and business logic (Vitest + React Testing Library)
+- [x] Integration tests for backend routes (Vitest + supertest)
+- [x] CI on GitHub Actions: type-check + tests on every PR
+- [ ] Development environment separated from production (DB, Clerk, env vars) — `.env.example` files and the runbook are ready (`docs/environments.md`); creating the actual Neon dev branch / Clerk dev instance / Vercel Preview env vars is a manual step
 
 ### v1.7 — Quality of Life & Reliability
 
