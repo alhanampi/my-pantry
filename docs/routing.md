@@ -20,10 +20,12 @@ Switching views calls `handleViewChange(view: View)` from `useAppState`. The rel
 
 ```tsx
 // src/App.tsx
-{!app.isLoading && app.currentView === 'pantry' && <PantryView ... />}
-{!app.isLoading && app.currentView === 'shopping' && <ShoppingView ... />}
+{app.currentView === 'pantry' && <PantryView ... isLoading={app.isLoading} />}
+{app.currentView === 'shopping' && <ShoppingView ... isLoading={app.isLoading} />}
 {app.currentView === 'about' && <AboutView />}
 ```
+
+Views receive `isLoading` as a prop and render their own skeleton UI while data loads, instead of a global spinner. This keeps the app shell (header, bottom nav) visible during loading.
 
 ---
 

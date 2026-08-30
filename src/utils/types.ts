@@ -198,6 +198,7 @@ export interface ProductTableProps {
   onAddToCart: (product: Product) => void
   onAddClick: () => void
   onQuantityChange: (id: number, delta: number) => void
+  isLoading?: boolean
 }
 
 export interface ShoppingItemProps {
@@ -216,6 +217,7 @@ export interface ShoppingListProps {
   onEdit: (id: number) => void
   onClearPurchased: () => void
   onQuantityChange: (id: number, delta: number) => void
+  isLoading?: boolean
 }
 
 export interface SortableHeaderProps {

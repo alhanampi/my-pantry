@@ -1,7 +1,5 @@
 import { ThemeProvider, StyledEngineProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import { useColorScheme } from './contexts/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { useAppState } from './hooks/useAppState'
@@ -39,19 +37,7 @@ export default function App() {
             />
 
             <MainContent>
-              {app.isLoading && app.currentView !== 'about' && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '40vh',
-                  }}
-                >
-                  <CircularProgress />
-                </Box>
-              )}
-              {!app.isLoading && app.currentView === 'pantry' && (
+              {app.currentView === 'pantry' && (
                 <PantryView
                   products={app.products}
                   sortConfig={app.sortConfig}
@@ -61,9 +47,10 @@ export default function App() {
                   onAddToCart={app.handleAddToCart}
                   onAddClick={app.openAddModal}
                   onQuantityChange={app.handleQuantityChange}
+                  isLoading={app.isLoading}
                 />
               )}
-              {!app.isLoading && app.currentView === 'shopping' && (
+              {app.currentView === 'shopping' && (
                 <ShoppingView
                   items={app.shoppingList}
                   onAddClick={() => app.setAddModal({ open: true, context: 'shopping' })}
@@ -72,6 +59,7 @@ export default function App() {
                   onEdit={app.openEditModal}
                   onClearPurchased={app.handleClearPurchased}
                   onQuantityChange={app.handleShoppingQuantityChange}
+                  isLoading={app.isLoading}
                 />
               )}
               {app.currentView === 'about' && <AboutView />}
