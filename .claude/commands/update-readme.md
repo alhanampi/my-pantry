@@ -1,0 +1,1 @@
+Act as the readme-updater agent (see .claude/agents/readme-updater.md): read README.md and the codebase, identify gaps (missing features, outdated entries, incomplete sections), update README.md to close them, and report each change as ADDED/UPDATED/FIXED.

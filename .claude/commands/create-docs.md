@@ -1,1 +1,1 @@
-create a new documentatio file at docs/$1.md to highlight the coding standards for this layer of the app, specifically the coding standards needed to highlight: $2
+create a new documentation file at docs/$1.md to highlight the coding standards for this layer of the app, specifically the coding standards needed to highlight: $2

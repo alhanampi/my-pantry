@@ -1,1 +1,3 @@
-commit any changes in the current branch and provide a suitable commit message based on the code changes. then merge the current branch into the main branch and resolve any issues off the back of that merge. then push main to the remote. then create a new branch called $ARGUMENTS and push it to the remote. if it's already in the main branch, just push main and create a new branch called $ARGUMENTS and push it to the remote.
+commit any changes in the current branch and provide a suitable commit message based on the code changes. then merge the current branch into the main branch and resolve any issues off the back of that merge. then create a new branch called $ARGUMENTS locally. if it's already in the main branch, just create a new branch called $ARGUMENTS locally.
+
+Do not push anything to the remote (not main, not the new branch) — the user pushes explicitly when they want to.
