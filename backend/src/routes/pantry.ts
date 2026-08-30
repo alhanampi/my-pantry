@@ -53,7 +53,12 @@ const productFields = [
   body('quantity').optional().isString(),
   body('brand').optional().isString(),
   body('purchaseDate').optional().isString(),
-  body('expiryDate').optional({ nullable: true }).isISO8601().withMessage('Invalid date format'),
+  // checkFalsy so an empty string (the client's "no date" value, sent on every
+  // shopping-item create since that form hides the expiry field, and on any
+  // pantry create/update where it's left blank) skips validation instead of
+  // being rejected as an invalid ISO date — matches parseExpiryDate's `!value`
+  // treatment of "no date provided" below.
+  body('expiryDate').optional({ checkFalsy: true }).isISO8601().withMessage('Invalid date format'),
   body('location').optional().isString(),
   body('details').optional().isString(),
 ]
