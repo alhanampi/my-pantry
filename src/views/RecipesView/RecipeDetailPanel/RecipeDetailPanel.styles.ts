@@ -33,7 +33,9 @@ export const HeroFavoriteButton = styled.button<{ $active: boolean }>`
   background: var(--scheme-surface);
   box-shadow: 0 1px 6px var(--scheme-shadow-sm);
   cursor: pointer;
-  color: ${(p) => (p.$active ? 'var(--scheme-accent-medium)' : 'var(--scheme-text-muted)')};
+  // Deliberate exception to "no hardcoded colors" — same fixed red as
+  // RecipeCard's favorite button, regardless of the active color scheme.
+  color: ${(p) => (p.$active ? '#e53935' : 'var(--scheme-text-muted)')};
 
   &:hover {
     background: var(--scheme-surface-alt);

@@ -41,7 +41,11 @@ export const FavoriteButton = styled.button<{ $active: boolean }>`
   background: var(--scheme-surface);
   box-shadow: 0 1px 4px var(--scheme-shadow-xs);
   cursor: pointer;
-  color: ${(p) => (p.$active ? 'var(--scheme-accent-medium)' : 'var(--scheme-text-muted)')};
+  // Deliberate exception to "no hardcoded colors" — the favorite heart is
+  // meant to read as red regardless of the active color scheme (unlike
+  // --scheme-accent-medium, which is too light/washed-out on some schemes),
+  // same fixed value as RecipeDetailPanel's hero favorite button.
+  color: ${(p) => (p.$active ? '#e53935' : 'var(--scheme-text-muted)')};
 
   &:hover {
     background: var(--scheme-surface-alt);
