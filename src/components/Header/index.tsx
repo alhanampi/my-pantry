@@ -73,7 +73,7 @@ export default function Header({
     void i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
   }
 
-  const tabOrder = ['pantry', 'shopping', 'recipes'] as const
+  const tabOrder = ['pantry', 'recipes', 'shopping'] as const
   const tabValue = tabOrder.includes(currentView as (typeof tabOrder)[number])
     ? tabOrder.indexOf(currentView as (typeof tabOrder)[number])
     : false
@@ -408,8 +408,8 @@ export default function Header({
             }}
           />
           <Tab
-            label={t('nav.shopping')}
-            icon={<MdShoppingCart size={18} />}
+            label={t('nav.recipes')}
+            icon={<MdRestaurantMenu size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
@@ -420,8 +420,8 @@ export default function Header({
             }}
           />
           <Tab
-            label={t('nav.recipes')}
-            icon={<MdRestaurantMenu size={18} />}
+            label={t('nav.shopping')}
+            icon={<MdShoppingCart size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
