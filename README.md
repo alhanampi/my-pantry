@@ -52,14 +52,17 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 
 ### Favorite Recipes
 
-- A heart icon in the top-right corner of a recipe's photo — on the search grid cards and on the detail view — saves/unsaves it as a favorite; filled when saved.
+- A heart icon in the top-right corner of a recipe's photo — on the search grid cards and on the detail view — saves/unsaves it as a favorite; filled red when saved, regardless of color scheme.
 - A separate **Favorites** tab (between Recipes and Shopping) lists saved recipes as the same card grid, no search bar or pagination (personal list, not expected to be huge).
 - Signed-in: favorites are a per-user DB table storing just the Spoonacular recipe id (`FavoriteRecipe`, capped at 100/user) — Spoonacular stays the single source of truth for content, so the list is re-hydrated (and re-translated, if needed) via the same recipe-detail lookup each time it's opened. Personal, not shared with a linked partner. Guests: same idea, ids only, in `localStorage`.
+- Saving a recipe is immediate; removing one asks for confirmation first ("Remove from favorites?") via a reusable `ConfirmActionDialog`.
 
 ### Multiple Shopping Lists
 
 - Every account has a non-deletable "General" shopping list, created automatically on first use.
 - Additional named lists can be created (e.g. one per recipe sent from the Recipes tab), up to 20 per user.
+- Any non-General list can be deleted (button next to "Add product", shown only when that list is selected) — asks for confirmation first, since it permanently deletes the list and everything in it.
+- Planned for later: archiving a list instead of deleting it, so it can be reused without cluttering the list dropdown — see `ROADMAP.md`.
 - A list selector appears above the shopping list items whenever there is more than one list.
 
 ### Nearby Supermarkets
@@ -243,7 +246,8 @@ mi-despensa-app/
     │   ├── BottomNav/
     │   ├── AddProductModal/
     │   ├── AuthModal/           # Account linking modal
-    │   ├── ConfirmDialog/
+    │   ├── ConfirmDialog/       # Actually a post-action success/cancel notice, despite the name
+    │   ├── ConfirmActionDialog/ # Generic pre-action "are you sure?" — delete list, remove favorite
     │   ├── QuantityStepper/
     │   ├── ZeroQuantityDialog/  # Prompt when a pantry item hits 0 (offer to add to cart)
     │   ├── ZeroShoppingQtyDialog/ # Prompt when a shopping item hits 0 (offer to delete)
@@ -272,9 +276,9 @@ mi-despensa-app/
     │   └── ThemeContext.tsx
     ├── hooks/
     │   ├── useAppState.ts       # Central state: wires pantry hooks to UI handlers
-    │   ├── usePantry.ts         # React Query hooks for products, shopping lists, and shopping list items
+    │   ├── usePantry.ts         # React Query hooks for products, shopping lists (incl. delete), and shopping list items
     │   ├── useRecipes.ts        # React Query hooks for recipe search (infinite) and detail — public, no isSignedIn gate
-    │   ├── useFavorites.ts      # Favorite recipe ids/cards + toggle mutation — signed-in (DB) or guest (localStorage)
+    │   ├── useFavorites.ts      # Favorite recipe ids/cards + toggle — signed-in (DB) or guest (localStorage); useFavoriteToggle wraps the mutation with a confirm-before-remove step
     │   ├── useNearbyStores.ts
     │   ├── useLocalStorage.ts
     │   ├── useProductSuggestions.ts
@@ -470,12 +474,12 @@ Authentication is fully delegated to Clerk:
 ### v1.4 — Sharing & Export
 
 - [ ] Real-time sync between linked accounts (WebSockets or polling)
-- [x] Multiple shopping lists, to decide where to buy what
+- [x] Multiple shopping lists, to decide where to buy what — create, switch, and delete (with confirmation); archiving instead of deleting is planned for later, see `ROADMAP.md`
 - [ ] Send items from shopping list to pantry automatically
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
 - [x] Recipes tab — search/filter, always-random results, infinite scroll, detail with servings + nutrition scaling, "send to a new shopping list" (Spoonacular, server-side key)
-- [x] Favorite recipes — heart icon on the recipe photo (search cards and detail view) saves/unsaves it; separate Favorites tab lists them
+- [x] Favorite recipes — heart icon on the recipe photo (search cards and detail view) saves/unsaves it (removing asks for confirmation); separate Favorites tab lists them
 
 ### v1.5 — Recipe Chat & Multiple Lists
 
@@ -485,6 +489,7 @@ Related to the v1.4 items above. Multiple shopping lists and the Recipes tab shi
 - [ ] Automatic extraction of missing ingredients from the recipe into the shopping list
 - [x] Multiple named shopping lists — a "General" list per user plus any created manually or from a recipe; no rename/delete UI yet (endpoints exist)
 - [x] Groq wired up — currently used to translate recipe content (title/ingredients/instructions) to Spanish, not yet for the free-form chat above
+- [ ] Metric or imperial system settings.
 
 ### v1.6 — Testing & Environments
 
