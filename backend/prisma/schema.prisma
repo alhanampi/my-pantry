@@ -22,6 +22,27 @@ model User {
   sentInvitations     LinkInvitation[]   @relation("SentInvitations")
   receivedInvitations LinkInvitation[]   @relation("ReceivedInvitations")
   shoppingLists       ShoppingList[]
+  favoriteRecipes     FavoriteRecipe[]
+}
+
+// A bookmark onto a Spoonacular recipe id — deliberately not a cached
+// snapshot of the recipe's content (title/image/etc.). Spoonacular stays the
+// single source of truth; the favorites list is re-hydrated via
+// getRecipeInformation (same as the detail endpoint) each time it's read, so
+// translations/edits on Spoonacular's side are always reflected. Personal
+// per-user (not shared with a linked partner via accessibleUserIds), unlike
+// pantry/shopping — favoriting a recipe is closer to a personal bookmark
+// than shared household data.
+model FavoriteRecipe {
+  id        String   @id @default(cuid())
+  ownerId   String
+  recipeId  Int
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, recipeId])
+  @@index([ownerId])
 }
 
 model ShoppingList {
