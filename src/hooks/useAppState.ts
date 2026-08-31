@@ -272,6 +272,7 @@ export function useAppState() {
 
   const displayedProducts = sortProducts(filteredProducts, sortConfig)
   const bottomNavValue = viewOrder.includes(currentView) ? viewOrder.indexOf(currentView) : 0
+  const handleBottomNavChange = (index: number): void => handleViewChange(viewOrder[index] ?? 'pantry')
 
   return {
     // state
@@ -325,5 +326,6 @@ export function useAppState() {
     handleZeroShoppingAction,
     // derived
     bottomNavValue,
+    handleBottomNavChange,
   }
 }

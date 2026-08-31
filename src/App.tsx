@@ -76,10 +76,7 @@ export default function App() {
               {app.currentView === 'about' && <AboutView />}
             </MainContent>
 
-            <BottomNav
-              value={app.bottomNavValue}
-              onChange={(v) => app.handleViewChange((['pantry', 'shopping', 'recipes'] as const)[v] ?? 'pantry')}
-            />
+            <BottomNav value={app.bottomNavValue} onChange={app.handleBottomNavChange} />
 
             <AddProductModal
               open={app.addModal.open}
