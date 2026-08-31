@@ -71,6 +71,11 @@ export interface ZeroShoppingDialogState {
   item: ShoppingListItem | null
 }
 
+export interface DeleteListDialogState {
+  open: boolean
+  list: ShoppingList | null
+}
+
 // ─── Product suggestions (Autocomplete) ──────────────────────────────────────
 
 export interface ProductSuggestion {
@@ -262,6 +267,7 @@ export interface ShoppingListProps {
   selectedListId?: string
   onSelectList?: (listId: string) => void
   onAddClick: () => void
+  onDeleteListClick?: () => void
   onToggle: (id: number) => void
   onDelete: (id: number) => void
   onEdit: (id: number) => void

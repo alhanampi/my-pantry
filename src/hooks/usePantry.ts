@@ -14,6 +14,7 @@ import {
   apiClearPurchasedItems,
   apiGetShoppingLists,
   apiCreateShoppingList,
+  apiDeleteShoppingList,
 } from '../api/pantryApi'
 
 export function usePantry(selectedListId?: string) {
@@ -200,6 +201,20 @@ export function usePantry(selectedListId?: string) {
     },
   })
 
+  const deleteShoppingList = useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      if (!isSignedIn) return guestStorage.deleteShoppingList(id)
+      const token = await getToken()
+      if (!token) throw new Error('Not authenticated')
+      return apiDeleteShoppingList(token, id)
+    },
+    onSuccess: () => {
+      if (!isSignedIn) { syncGuest(); return }
+      void qc.invalidateQueries({ queryKey: ['shoppingLists'] })
+      void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+    },
+  })
+
   // Creates a new shopping list titled with the recipe name, then creates one
   // item per ingredient in it (already scaled by the caller). Returns the new
   // list's id so the UI can offer "view list" (switch to Shopping tab with it
@@ -265,6 +280,7 @@ export function usePantry(selectedListId?: string) {
     deleteShoppingItem,
     clearPurchasedItems,
     createShoppingList,
+    deleteShoppingList,
     sendRecipeToShoppingList,
   }
 }

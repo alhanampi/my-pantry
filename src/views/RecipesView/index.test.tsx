@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RecipesView from './index'
 import { useRecipeSearch, useRecipeDetail } from '../../hooks/useRecipes'
-import { useFavoriteIds, useToggleFavorite } from '../../hooks/useFavorites'
+import { useFavoriteIds, useFavoriteToggle } from '../../hooks/useFavorites'
 import '../../i18n'
 import type { RecipeCard, RecipeDetail } from '../../utils/types'
 
@@ -52,7 +52,13 @@ function mutationSpy() {
 describe('RecipesView', () => {
   beforeEach(() => {
     vi.mocked(useFavoriteIds).mockReturnValue({ data: [] } as never)
-    vi.mocked(useToggleFavorite).mockReturnValue(mutationSpy())
+    vi.mocked(useFavoriteToggle).mockReturnValue({
+      requestToggle: vi.fn(),
+      confirmRemove: vi.fn(),
+      cancelRemove: vi.fn(),
+      pendingRemoveId: null,
+      isPending: false,
+    })
   })
 
   it('shows the grid, then switches to the detail panel when a recipe is selected', async () => {
@@ -91,5 +97,29 @@ describe('RecipesView', () => {
     render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
 
     expect(screen.getByText(/no recipes found/i)).toBeInTheDocument()
+  })
+
+  it('shows the remove-favorite confirm dialog when useFavoriteToggle reports a pending removal', () => {
+    vi.mocked(useRecipeSearch).mockReturnValue({
+      data: { pages: [{ results: [recipe], totalResults: 1, offset: 0, number: 4 }], pageParams: [0] },
+      isLoading: false,
+      isError: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      refetch: vi.fn(),
+    } as never)
+    vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
+    vi.mocked(useFavoriteToggle).mockReturnValue({
+      requestToggle: vi.fn(),
+      confirmRemove: vi.fn(),
+      cancelRemove: vi.fn(),
+      pendingRemoveId: 1,
+      isPending: false,
+    })
+
+    render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+
+    expect(screen.getByText(/remove from favorites\?/i)).toBeInTheDocument()
   })
 })

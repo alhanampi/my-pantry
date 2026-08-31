@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import { useTranslation } from 'react-i18next'
@@ -93,4 +94,32 @@ export function useToggleFavorite() {
       void qc.invalidateQueries({ queryKey: ['recipes', 'favorites'] })
     },
   })
+}
+
+// Wraps useToggleFavorite with a confirm-before-remove step: saving a recipe
+// happens immediately (low-stakes, reversible with one tap), but unsaving one
+// asks for confirmation first — same "are you sure" pattern as deleting a
+// shopping list. RecipesView and FavoriteRecipesView both use this instead of
+// useToggleFavorite directly, and each renders its own ConfirmActionDialog
+// driven by `pendingRemoveId`.
+export function useFavoriteToggle() {
+  const toggle = useToggleFavorite()
+  const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null)
+
+  const requestToggle = (recipeId: number, isFavorite: boolean): void => {
+    if (isFavorite) {
+      setPendingRemoveId(recipeId)
+    } else {
+      toggle.mutate({ recipeId, isFavorite: false })
+    }
+  }
+
+  const confirmRemove = (): void => {
+    if (pendingRemoveId !== null) toggle.mutate({ recipeId: pendingRemoveId, isFavorite: true })
+    setPendingRemoveId(null)
+  }
+
+  const cancelRemove = (): void => setPendingRemoveId(null)
+
+  return { requestToggle, confirmRemove, cancelRemove, pendingRemoveId, isPending: toggle.isPending }
 }

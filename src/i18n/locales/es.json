@@ -98,9 +98,15 @@
     "purchased": "Comprados",
     "addProduct": "Agregar producto",
     "selectList": "Lista de compras",
+    "deleteList": "Borrar lista",
+    "deleteListConfirmTitle": "¿Borrar esta lista?",
+    "deleteListConfirmBody": "\"{{name}}\" y todos sus productos se van a borrar de forma permanente. Esta acción no se puede deshacer.",
     "lists": {
       "general": "General"
     }
+  },
+  "confirmAction": {
+    "cancel": "Cancelar"
   },
   "recipes": {
     "searchPlaceholder": "Buscar recetas...",
@@ -125,6 +131,8 @@
     "viewList": "Ver lista",
     "addFavorite": "Guardar receta",
     "removeFavorite": "Quitar de favoritas",
+    "removeFavoriteConfirmTitle": "¿Quitar de favoritas?",
+    "removeFavoriteConfirmBody": "Siempre podés volver a guardar esta receta más adelante.",
     "favoritesEmptyTitle": "Todavía no guardaste recetas favoritas. Tocá el corazón en una receta para guardarla acá.",
     "errors": {
       "quotaExceeded": "La búsqueda de recetas no está disponible por el momento. Probá de nuevo más tarde.",

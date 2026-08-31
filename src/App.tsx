@@ -1,5 +1,6 @@
 import { ThemeProvider, StyledEngineProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
+import { useTranslation } from 'react-i18next'
 import { useColorScheme } from './contexts/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { useAppState } from './hooks/useAppState'
@@ -11,6 +12,7 @@ import AddProductModal from './components/AddProductModal'
 import ConfirmDialog from './components/ConfirmDialog'
 import ZeroQuantityDialog from './components/ZeroQuantityDialog'
 import ZeroShoppingQtyDialog from './components/ZeroShoppingQtyDialog'
+import ConfirmActionDialog from './components/ConfirmActionDialog'
 import BottomNav from './components/BottomNav'
 import PantryView from './views/PantryView'
 import ShoppingView from './views/ShoppingView'
@@ -21,6 +23,7 @@ import AboutView from './views/AboutView'
 export default function App() {
   const { muiTheme } = useColorScheme()
   const app = useAppState()
+  const { t } = useTranslation()
 
   return (
     <StyledEngineProvider injectFirst>
@@ -60,6 +63,7 @@ export default function App() {
                   selectedListId={app.selectedShoppingListId}
                   onSelectList={app.setSelectedShoppingListId}
                   onAddClick={() => app.setAddModal({ open: true, context: 'shopping' })}
+                  onDeleteListClick={app.handleDeleteListClick}
                   onToggle={app.handleTogglePurchased}
                   onDelete={app.handleDeleteShoppingItem}
                   onEdit={app.openEditModal}
@@ -127,6 +131,15 @@ export default function App() {
               open={app.zeroShoppingDialog.open}
               item={app.zeroShoppingDialog.item}
               onAction={app.handleZeroShoppingAction}
+            />
+
+            <ConfirmActionDialog
+              open={app.deleteListDialog.open}
+              title={t('shopping.deleteListConfirmTitle')}
+              body={t('shopping.deleteListConfirmBody', { name: app.deleteListDialog.list?.name ?? '' })}
+              confirmLabel={t('shopping.deleteList')}
+              onConfirm={app.handleConfirmDeleteList}
+              onCancel={app.handleCancelDeleteList}
             />
 
             <AppSnackbar

@@ -13,6 +13,7 @@ import type {
   SnackbarState,
   ZeroQuantityDialogState,
   ZeroShoppingDialogState,
+  DeleteListDialogState,
 } from '../utils/types'
 import type { ZeroQuantityAction } from '../components/ZeroQuantityDialog'
 import type { ZeroShoppingAction } from '../components/ZeroShoppingQtyDialog'
@@ -59,6 +60,10 @@ export function useAppState() {
   const [zeroShoppingDialog, setZeroShoppingDialog] = useState<ZeroShoppingDialogState>({
     open: false,
     item: null,
+  })
+  const [deleteListDialog, setDeleteListDialog] = useState<DeleteListDialogState>({
+    open: false,
+    list: null,
   })
 
   const showError = () =>
@@ -230,6 +235,29 @@ export function useAppState() {
     if (action === 'cart') handleAddToCart(product)
   }
 
+  const handleDeleteListClick = (): void => {
+    const list = pantry.shoppingLists.find((l) => l.id === pantry.activeListId)
+    if (!list || list.isGeneral) return // General is never deletable; button is hidden for it anyway
+    setDeleteListDialog({ open: true, list })
+  }
+
+  const handleConfirmDeleteList = (): void => {
+    const { list } = deleteListDialog
+    setDeleteListDialog({ open: false, list: null })
+    if (!list) return
+    pantry.deleteShoppingList.mutate(list.id, {
+      onSuccess: () => {
+        // Deleted the list currently being viewed — fall back to General
+        // (activeListId derives it automatically once selectedShoppingListId
+        // is cleared).
+        if (selectedShoppingListId === list.id) setSelectedShoppingListId(undefined)
+      },
+      onError: showError,
+    })
+  }
+
+  const handleCancelDeleteList = (): void => setDeleteListDialog({ open: false, list: null })
+
   const handleViewChange = (view: AppView): void => {
     setCurrentView(view)
     setSearchQuery('')
@@ -324,6 +352,10 @@ export function useAppState() {
     handleZeroQtyAction,
     zeroShoppingDialog,
     handleZeroShoppingAction,
+    deleteListDialog,
+    handleDeleteListClick,
+    handleConfirmDeleteList,
+    handleCancelDeleteList,
     // derived
     bottomNavValue,
     handleBottomNavChange,

@@ -98,9 +98,15 @@
     "purchased": "Purchased",
     "addProduct": "Add product",
     "selectList": "Shopping list",
+    "deleteList": "Delete list",
+    "deleteListConfirmTitle": "Delete this list?",
+    "deleteListConfirmBody": "\"{{name}}\" and all its items will be permanently deleted. This can't be undone.",
     "lists": {
       "general": "General"
     }
+  },
+  "confirmAction": {
+    "cancel": "Cancel"
   },
   "recipes": {
     "searchPlaceholder": "Search recipes...",
@@ -125,6 +131,8 @@
     "viewList": "View list",
     "addFavorite": "Save recipe",
     "removeFavorite": "Remove from favorites",
+    "removeFavoriteConfirmTitle": "Remove from favorites?",
+    "removeFavoriteConfirmBody": "You can always save this recipe again later.",
     "favoritesEmptyTitle": "No favorite recipes yet. Tap the heart on a recipe to save it here.",
     "errors": {
       "quotaExceeded": "Recipe search is temporarily unavailable. Try again later.",

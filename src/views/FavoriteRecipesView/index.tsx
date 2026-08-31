@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next'
 import RecipeCardGrid from '../RecipesView/RecipeCardGrid'
 import RecipeDetailPanel from '../RecipesView/RecipeDetailPanel'
 import RecipesSkeleton from '../RecipesView/RecipesSkeleton'
+import ConfirmActionDialog from '../../components/ConfirmActionDialog'
 import { Wrapper, EmptyState, ErrorState, BackRow, BackButton } from '../RecipesView/RecipesView.styles'
 import { useRecipeDetail } from '../../hooks/useRecipes'
-import { useFavoriteIds, useFavoriteRecipes, useToggleFavorite } from '../../hooks/useFavorites'
+import { useFavoriteIds, useFavoriteRecipes, useFavoriteToggle } from '../../hooks/useFavorites'
 import type { RecipeIngredient } from '../../utils/types'
 
 export interface FavoriteRecipesViewProps {
@@ -32,7 +33,7 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
   const favorites = useFavoriteRecipes()
   const detail = useRecipeDetail(selectedRecipeId)
   const favoriteIds = useFavoriteIds()
-  const toggleFavorite = useToggleFavorite()
+  const favoriteToggle = useFavoriteToggle()
 
   const favoriteIdSet = useMemo(() => new Set(favoriteIds.data ?? []), [favoriteIds.data])
 
@@ -43,7 +44,7 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
   }
 
   const handleToggleFavorite = (id: number): void => {
-    toggleFavorite.mutate({ recipeId: id, isFavorite: favoriteIdSet.has(id) })
+    favoriteToggle.requestToggle(id, favoriteIdSet.has(id))
   }
 
   if (selectedRecipeId !== null) {
@@ -73,6 +74,15 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
             onToggleFavorite={handleToggleFavorite}
           />
         )}
+
+        <ConfirmActionDialog
+          open={favoriteToggle.pendingRemoveId !== null}
+          title={t('recipes.removeFavoriteConfirmTitle')}
+          body={t('recipes.removeFavoriteConfirmBody')}
+          confirmLabel={t('recipes.removeFavorite')}
+          onConfirm={favoriteToggle.confirmRemove}
+          onCancel={favoriteToggle.cancelRemove}
+        />
       </Wrapper>
     )
   }
@@ -104,6 +114,15 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
           onToggleFavorite={handleToggleFavorite}
         />
       )}
+
+      <ConfirmActionDialog
+        open={favoriteToggle.pendingRemoveId !== null}
+        title={t('recipes.removeFavoriteConfirmTitle')}
+        body={t('recipes.removeFavoriteConfirmBody')}
+        confirmLabel={t('recipes.removeFavorite')}
+        onConfirm={favoriteToggle.confirmRemove}
+        onCancel={favoriteToggle.cancelRemove}
+      />
     </Wrapper>
   )
 }

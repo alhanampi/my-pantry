@@ -59,4 +59,33 @@ describe('ShoppingView', () => {
     await userEvent.click(screen.getByText(i18n.t('shopping.addProduct')))
     expect(onAddClick).toHaveBeenCalledOnce()
   })
+
+  it('hides the delete-list button for the General list', () => {
+    renderWithProviders(
+      <ShoppingView
+        {...baseProps}
+        lists={[{ id: 'l1', name: 'General', ownerId: 'u1', isGeneral: true, createdAt: '' }]}
+        selectedListId="l1"
+        onDeleteListClick={vi.fn()}
+      />,
+    )
+    expect(screen.queryByText(i18n.t('shopping.deleteList'))).not.toBeInTheDocument()
+  })
+
+  it('shows the delete-list button for a non-General list and calls the handler', async () => {
+    const onDeleteListClick = vi.fn()
+    renderWithProviders(
+      <ShoppingView
+        {...baseProps}
+        lists={[
+          { id: 'l1', name: 'General', ownerId: 'u1', isGeneral: true, createdAt: '' },
+          { id: 'l2', name: 'Party', ownerId: 'u1', isGeneral: false, createdAt: '' },
+        ]}
+        selectedListId="l2"
+        onDeleteListClick={onDeleteListClick}
+      />,
+    )
+    await userEvent.click(screen.getByText(i18n.t('shopping.deleteList')))
+    expect(onDeleteListClick).toHaveBeenCalledOnce()
+  })
 })

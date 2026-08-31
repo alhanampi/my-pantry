@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FavoriteRecipesView from './index'
 import { useRecipeDetail } from '../../hooks/useRecipes'
-import { useFavoriteIds, useFavoriteRecipes, useToggleFavorite } from '../../hooks/useFavorites'
+import { useFavoriteIds, useFavoriteRecipes, useFavoriteToggle } from '../../hooks/useFavorites'
 import '../../i18n'
 import type { RecipeCard, RecipeDetail } from '../../utils/types'
 
@@ -38,7 +38,13 @@ function mutationSpy() {
 describe('FavoriteRecipesView', () => {
   beforeEach(() => {
     vi.mocked(useFavoriteIds).mockReturnValue({ data: [1] } as never)
-    vi.mocked(useToggleFavorite).mockReturnValue(mutationSpy())
+    vi.mocked(useFavoriteToggle).mockReturnValue({
+      requestToggle: vi.fn(),
+      confirmRemove: vi.fn(),
+      cancelRemove: vi.fn(),
+      pendingRemoveId: null,
+      isPending: false,
+    })
     vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
   })
 
