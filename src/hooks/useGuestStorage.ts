@@ -1,7 +1,10 @@
-import type { Product, ShoppingListItem, ProductFormData } from '../utils/types'
+import type { Product, ShoppingListItem, ProductFormData, ShoppingList } from '../utils/types'
 
 const PRODUCTS_KEY = 'guest_products'
 const SHOPPING_KEY = 'guest_shopping'
+const SHOPPING_LISTS_KEY = 'guest_shopping_lists'
+
+const GENERAL_LIST_ID = 'guest-general'
 
 function readProducts(): Product[] {
   try {
@@ -27,9 +30,71 @@ function writeShopping(items: ShoppingListItem[]): void {
   localStorage.setItem(SHOPPING_KEY, JSON.stringify(items))
 }
 
+function readShoppingLists(): ShoppingList[] {
+  try {
+    const raw = localStorage.getItem(SHOPPING_LISTS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function writeShoppingLists(lists: ShoppingList[]): void {
+  localStorage.setItem(SHOPPING_LISTS_KEY, JSON.stringify(lists))
+}
+
+// Lazily seeds the guest "General" list on first access — mirrors the
+// backend's ensureGeneralList so both storages behave the same way.
+function ensureGeneralList(): ShoppingList[] {
+  const lists = readShoppingLists()
+  if (lists.some((l) => l.isGeneral)) return lists
+  const general: ShoppingList = {
+    id: GENERAL_LIST_ID,
+    name: 'General',
+    ownerId: 'guest',
+    isGeneral: true,
+    createdAt: new Date().toISOString(),
+  }
+  const next = [general, ...lists]
+  writeShoppingLists(next)
+  return next
+}
+
 export const guestStorage = {
   getProducts: readProducts,
   getShopping: readShopping,
+
+  getShoppingLists(): ShoppingList[] {
+    return ensureGeneralList()
+  },
+
+  createShoppingList(name: string): ShoppingList {
+    const lists = ensureGeneralList()
+    const list: ShoppingList = {
+      id: `guest-list-${Date.now()}`,
+      name,
+      ownerId: 'guest',
+      isGeneral: false,
+      createdAt: new Date().toISOString(),
+    }
+    writeShoppingLists([...lists, list])
+    return list
+  },
+
+  updateShoppingList(id: string, name: string): ShoppingList {
+    const lists = ensureGeneralList().map((l) => (l.id === id ? { ...l, name } : l))
+    writeShoppingLists(lists)
+    return lists.find((l) => l.id === id)!
+  },
+
+  deleteShoppingList(id: string): void {
+    const lists = ensureGeneralList()
+    const target = lists.find((l) => l.id === id)
+    if (!target || target.isGeneral) return
+    writeShoppingLists(lists.filter((l) => l.id !== id))
+    writeShopping(readShopping().filter((i) => i.listId !== id))
+  },
 
   createProduct(data: ProductFormData): Product {
     const product: Product = { ...data, id: Date.now() }
@@ -48,7 +113,8 @@ export const guestStorage = {
   },
 
   createShoppingItem(data: Omit<ShoppingListItem, 'id'>): ShoppingListItem {
-    const item: ShoppingListItem = { ...data, id: Date.now() }
+    ensureGeneralList()
+    const item: ShoppingListItem = { ...data, id: Date.now(), listId: data.listId || GENERAL_LIST_ID }
     writeShopping([...readShopping(), item])
     return item
   },
@@ -63,8 +129,8 @@ export const guestStorage = {
     writeShopping(readShopping().filter((i) => i.id !== id))
   },
 
-  clearPurchased(): void {
-    writeShopping(readShopping().filter((i) => !i.purchased))
+  clearPurchased(listId?: string): void {
+    writeShopping(readShopping().filter((i) => !i.purchased || (listId ? i.listId !== listId : false)))
   },
 
   removeMigratedItems(productIds: number[], shoppingIds: number[]): void {
@@ -77,5 +143,6 @@ export const guestStorage = {
   clearAll(): void {
     localStorage.removeItem(PRODUCTS_KEY)
     localStorage.removeItem(SHOPPING_KEY)
+    localStorage.removeItem(SHOPPING_LISTS_KEY)
   },
 }

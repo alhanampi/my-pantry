@@ -16,6 +16,7 @@ const item: ShoppingListItem = {
   location: '',
   details: '',
   purchased: false,
+  listId: 'list_1',
 }
 
 describe('ShoppingItem', () => {

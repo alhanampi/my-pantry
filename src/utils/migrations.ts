@@ -27,4 +27,30 @@ export function runMigrations(): void {
       // datos corruptos, se ignoran
     }
   }
+
+  migrateGuestShoppingListIds()
+}
+
+// Independent pass (unrelated to the ES→EN rename above): guest shopping
+// items created before multiple shopping lists existed have no `listId`.
+// Assign them to the guest General list so they still show up once the
+// selector is in place.
+function migrateGuestShoppingListIds(): void {
+  const SHOPPING_KEY = 'guest_shopping'
+  const GENERAL_LIST_ID = 'guest-general'
+  try {
+    const raw = localStorage.getItem(SHOPPING_KEY)
+    if (!raw) return
+    const items = JSON.parse(raw) as LegacyItem[]
+    if (!Array.isArray(items)) return
+    let changed = false
+    const migrated = items.map((item) => {
+      if (item.listId) return item
+      changed = true
+      return { ...item, listId: GENERAL_LIST_ID }
+    })
+    if (changed) localStorage.setItem(SHOPPING_KEY, JSON.stringify(migrated))
+  } catch {
+    // datos corruptos, se ignoran
+  }
 }

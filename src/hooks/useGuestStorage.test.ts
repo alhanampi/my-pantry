@@ -12,7 +12,7 @@ const productData: ProductFormData = {
   details: '',
 }
 
-const shoppingData: Omit<ShoppingListItem, 'id'> = { ...productData, purchased: false }
+const shoppingData: Omit<ShoppingListItem, 'id'> = { ...productData, purchased: false, listId: 'guest-general' }
 
 describe('guestStorage', () => {
   beforeEach(() => {

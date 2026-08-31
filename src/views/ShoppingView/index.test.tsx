@@ -17,6 +17,7 @@ const item = (overrides: Partial<ShoppingListItem> = {}): ShoppingListItem => ({
   location: '',
   details: '',
   purchased: false,
+  listId: 'list_1',
   ...overrides,
 })
 
