@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import { MdShoppingCart, MdAdd, MdDeleteSweep } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ShoppingItem from './ShoppingItem'
+import ShoppingListSelector from './ShoppingListSelector'
 import NearbyStores from './NearbyStores'
 import ShoppingSkeleton from './ShoppingSkeleton'
 import {
@@ -20,6 +21,9 @@ import type { ShoppingListProps } from '../../utils/types'
 
 export default function ShoppingView({
   items,
+  lists = [],
+  selectedListId,
+  onSelectList,
   onAddClick,
   onToggle,
   onDelete,
@@ -37,6 +41,9 @@ export default function ShoppingView({
 
   return (
     <Wrapper>
+      {onSelectList && (
+        <ShoppingListSelector lists={lists} selectedListId={selectedListId} onSelectList={onSelectList} />
+      )}
       <TopBar>
         <Button
           variant="contained"

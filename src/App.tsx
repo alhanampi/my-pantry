@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { useAppState } from './hooks/useAppState'
 import { AppWrapper, MainContent, AppSnackbar, AppAlert } from './App.styles'
 
+import Button from '@mui/material/Button'
 import Header from './components/Header'
 import AddProductModal from './components/AddProductModal'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -13,6 +14,7 @@ import ZeroShoppingQtyDialog from './components/ZeroShoppingQtyDialog'
 import BottomNav from './components/BottomNav'
 import PantryView from './views/PantryView'
 import ShoppingView from './views/ShoppingView'
+import RecipesView from './views/RecipesView'
 import AboutView from './views/AboutView'
 
 export default function App() {
@@ -53,6 +55,9 @@ export default function App() {
               {app.currentView === 'shopping' && (
                 <ShoppingView
                   items={app.shoppingList}
+                  lists={app.shoppingLists}
+                  selectedListId={app.selectedShoppingListId}
+                  onSelectList={app.setSelectedShoppingListId}
                   onAddClick={() => app.setAddModal({ open: true, context: 'shopping' })}
                   onToggle={app.handleTogglePurchased}
                   onDelete={app.handleDeleteShoppingItem}
@@ -62,12 +67,18 @@ export default function App() {
                   isLoading={app.isLoading}
                 />
               )}
+              {app.currentView === 'recipes' && (
+                <RecipesView
+                  sendRecipeToShoppingList={app.sendRecipeToShoppingList}
+                  onSentToList={app.handleRecipeSentToList}
+                />
+              )}
               {app.currentView === 'about' && <AboutView />}
             </MainContent>
 
             <BottomNav
               value={app.bottomNavValue}
-              onChange={(v) => app.handleViewChange(v === 1 ? 'shopping' : 'pantry')}
+              onChange={(v) => app.handleViewChange((['pantry', 'shopping', 'recipes'] as const)[v] ?? 'pantry')}
             />
 
             <AddProductModal
@@ -120,7 +131,25 @@ export default function App() {
               onClose={app.closeSnackbar}
               anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             >
-              <AppAlert severity="success" variant="filled" onClose={app.closeSnackbar}>
+              <AppAlert
+                severity="success"
+                variant="filled"
+                onClose={app.closeSnackbar}
+                action={
+                  app.snackbar.action ? (
+                    <Button
+                      color="inherit"
+                      size="small"
+                      onClick={() => {
+                        app.snackbar.action?.onClick()
+                        app.closeSnackbar()
+                      }}
+                    >
+                      {app.snackbar.action.label}
+                    </Button>
+                  ) : undefined
+                }
+              >
                 {app.snackbar.message}
               </AppAlert>
             </AppSnackbar>

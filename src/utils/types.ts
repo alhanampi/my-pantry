@@ -58,6 +58,7 @@ export interface ConfirmDialogState {
 export interface SnackbarState {
   open: boolean
   message: string
+  action?: { label: string; onClick: () => void }
 }
 
 export interface ZeroQuantityDialogState {
@@ -253,6 +254,9 @@ export interface ShoppingItemProps {
 
 export interface ShoppingListProps {
   items: ShoppingListItem[]
+  lists?: ShoppingList[]
+  selectedListId?: string
+  onSelectList?: (listId: string) => void
   onAddClick: () => void
   onToggle: (id: number) => void
   onDelete: (id: number) => void

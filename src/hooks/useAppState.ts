@@ -243,6 +243,16 @@ export function useAppState() {
     setSearchQuery('')
   }
 
+  // Success snackbar for "send recipe to new shopping list", with an action
+  // to jump straight to that list on the Shopping tab.
+  const handleRecipeSentToList = (listId: string): void => {
+    setSnackbar({
+      open: true,
+      message: t('recipes.sentToList'),
+      action: { label: t('recipes.viewList'), onClick: () => switchToShoppingList(listId) },
+    })
+  }
+
   const closeSnackbar = (): void => setSnackbar({ open: false, message: '' })
 
   const closeConfirmDialog = (): void => setConfirmDialog({ open: false, type: null, data: null })
@@ -301,6 +311,7 @@ export function useAppState() {
     handleViewChange,
     switchToShoppingList,
     setSelectedShoppingListId,
+    handleRecipeSentToList,
     openAddModal,
     openEditModal,
     handleEditProduct,
