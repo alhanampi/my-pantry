@@ -10,6 +10,7 @@
 // running phase 2.
 //
 // Usage: npm run backfill:shopping-lists (from backend/)
+import 'dotenv/config'
 import prisma from '../src/db/index.js'
 
 async function main(): Promise<void> {

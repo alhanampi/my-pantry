@@ -66,12 +66,12 @@ model ShoppingItem {
   details      String   @default("")
   purchased    Boolean  @default(false)
   ownerId      String
-  listId       String?
+  listId       String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  owner User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  list  ShoppingList? @relation(fields: [listId], references: [id], onDelete: Cascade)
+  owner User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  list  ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
 
   @@index([listId])
 }
