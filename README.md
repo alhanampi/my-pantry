@@ -43,11 +43,18 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 ### Recipes
 
 - Search recipes by keyword, cuisine, diet, included ingredients, and max calories, via a server-side **Spoonacular** proxy (the API key never reaches the client).
+- Results are always random (`sort=random`, even with filters/a search query active) and reshuffle every time the tab is opened or the page reloads — there's no "default browsing order" to get stale.
 - Infinite-scroll results grid, 4 recipes per page (`IntersectionObserver` sentinel).
 - Detail view with an adjustable servings stepper that scales ingredient amounts and nutrition (calories/protein/carbs/fat) live.
 - "Send to a new shopping list" creates a shopping list titled with the recipe name and seeded with the scaled ingredients, then offers to jump straight to it.
 - Recipe titles, ingredient names, and instructions are translated to Spanish via **Groq** when the UI is in Spanish (Spoonacular itself doesn't support Spanish content) — fixed nutrition labels/units stay on the normal i18n system. Falls back to English on any translation error.
 - Works fully for guests too (recipe browsing needs no auth; "send to list" writes to `localStorage` same as the rest of guest mode).
+
+### Favorite Recipes
+
+- A heart icon in the top-right corner of a recipe's photo — on the search grid cards and on the detail view — saves/unsaves it as a favorite; filled when saved.
+- A separate **Favorites** tab (between Recipes and Shopping) lists saved recipes as the same card grid, no search bar or pagination (personal list, not expected to be huge).
+- Signed-in: favorites are a per-user DB table storing just the Spoonacular recipe id (`FavoriteRecipe`, capped at 100/user) — Spoonacular stays the single source of truth for content, so the list is re-hydrated (and re-translated, if needed) via the same recipe-detail lookup each time it's opened. Personal, not shared with a linked partner. Guests: same idea, ids only, in `localStorage`.
 
 ### Multiple Shopping Lists
 
@@ -195,7 +202,7 @@ mi-despensa-app/
 │
 ├── backend/                  # Backend source
 │   ├── prisma/
-│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList
+│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe
 │   ├── scripts/
 │   │   └── backfill-shopping-lists.ts # One-time idempotent backfill: General list per user + listId on old items
 │   └── src/
@@ -206,15 +213,17 @@ mi-despensa-app/
 │       ├── services/
 │       │   ├── webpush.ts    # VAPID push delivery and stale-subscription cleanup
 │       │   ├── email.ts      # Resend transactional email (optional)
-│       │   ├── spoonacular.ts # Server-only Spoonacular client (searchRecipes/getRecipeInformation)
-│       │   └── groq.ts       # translateRecipeContent — recipe content → Spanish, cached, fails soft to English
+│       │   ├── spoonacular.ts # Server-only Spoonacular client (searchRecipes/getRecipeInformation, always sort=random)
+│       │   ├── groq.ts       # translateRecipeContent — recipe content → Spanish, cached, fails soft to English
+│       │   └── recipeSerializers.ts # serializeCard/serializeDetail — shared between recipes.ts and recipeFavorites.ts
 │       ├── middleware/
 │       │   └── auth.ts       # Clerk JWT verification
 │       └── routes/
 │           ├── auth.ts       # /sync, /me, /link, /invite
 │           ├── pantry.ts     # Products and shopping list CRUD (listId-aware)
 │           ├── shoppingLists.ts # Shopping list CRUD (/api/pantry/shopping-lists)
-│           ├── recipes.ts    # Public recipe search/detail proxy (/api/recipes), own rate limiter
+│           ├── recipes.ts    # Public recipe search/detail proxy (/api/recipes), own rate limiter; mounts recipeFavorites.ts
+│           ├── recipeFavorites.ts # Favorites CRUD (/api/recipes/favorites), auth'd, capped at 100/user
 │           └── notifications.ts # Push subscription CRUD + cron handler
 │
 └── src/                      # Frontend
@@ -225,7 +234,7 @@ mi-despensa-app/
     ├── api/
     │   ├── authApi.ts           # Sync and link calls
     │   ├── pantryApi.ts         # Products, shopping list, and shopping list CRUD calls
-    │   ├── recipesApi.ts        # Recipe search/detail calls (public — no token, unlike the rest of src/api/)
+    │   ├── recipesApi.ts        # Recipe search/detail (public, no token) + favorites CRUD (auth'd, token as usual)
     │   ├── overpass.ts          # Geoapify Places API wrapper and shop-type map
     │   ├── productSuggestionsApi.ts # Open Food Facts live suggestions
     │   └── notificationsApi.ts  # Push subscription register/unregister calls
@@ -250,11 +259,12 @@ mi-despensa-app/
     │   │   └── ShoppingSkeleton.tsx # Skeleton UI shown while shopping list loads
     │   ├── RecipesView/
     │   │   ├── RecipesFilterBar/  # Search + cuisine/diet/ingredients/maxCalories filters
-    │   │   ├── RecipeCardGrid/    # Infinite-scroll grid (IntersectionObserver sentinel)
-    │   │   ├── RecipeCard/        # Photo, title, ingredient chips
-    │   │   ├── RecipeDetailPanel/ # Servings scaler, scaled ingredients/nutrition, "send to list"
+    │   │   ├── RecipeCardGrid/    # Grid — infinite scroll when onLoadMore is passed, static otherwise
+    │   │   ├── RecipeCard/        # Photo (+ favorite heart button), title, ingredient chips
+    │   │   ├── RecipeDetailPanel/ # Servings scaler, scaled ingredients/nutrition, favorite heart, "send to list"
     │   │   ├── ServingsStepper/   # Thin wrapper reusing QuantityStepper
     │   │   └── RecipesSkeleton.tsx # Skeleton UI shown while a search/detail loads
+    │   ├── FavoriteRecipesView/  # Bounded grid of saved recipes — reuses RecipeCardGrid/RecipeDetailPanel from RecipesView
     │   └── AboutView/
     ├── context/
     │   └── AuthContext.tsx      # Partner state, link/invite flow, and guest migration trigger
@@ -264,6 +274,7 @@ mi-despensa-app/
     │   ├── useAppState.ts       # Central state: wires pantry hooks to UI handlers
     │   ├── usePantry.ts         # React Query hooks for products, shopping lists, and shopping list items
     │   ├── useRecipes.ts        # React Query hooks for recipe search (infinite) and detail — public, no isSignedIn gate
+    │   ├── useFavorites.ts      # Favorite recipe ids/cards + toggle mutation — signed-in (DB) or guest (localStorage)
     │   ├── useNearbyStores.ts
     │   ├── useLocalStorage.ts
     │   ├── useProductSuggestions.ts
@@ -459,11 +470,12 @@ Authentication is fully delegated to Clerk:
 ### v1.4 — Sharing & Export
 
 - [ ] Real-time sync between linked accounts (WebSockets or polling)
-- [x] Multiple shopping lists, to decide where to buy what — schema/backend/frontend shipped; migration not yet applied to the shared dev DB, see `ROADMAP.md`
+- [x] Multiple shopping lists, to decide where to buy what
 - [ ] Send items from shopping list to pantry automatically
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
-- [x] Recipes tab — search/filter, infinite scroll, detail with servings + nutrition scaling, "send to a new shopping list" (Spoonacular, server-side key)
+- [x] Recipes tab — search/filter, always-random results, infinite scroll, detail with servings + nutrition scaling, "send to a new shopping list" (Spoonacular, server-side key)
+- [x] Favorite recipes — heart icon on the recipe photo (search cards and detail view) saves/unsaves it; separate Favorites tab lists them
 
 ### v1.5 — Recipe Chat & Multiple Lists
 

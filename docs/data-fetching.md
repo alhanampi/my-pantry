@@ -93,12 +93,14 @@ Do not create additional `QueryClient` instances.
 | Shopping list items | `['shoppingList', listId]` |
 | Recipe search | `['recipes', 'search', filters, i18n.language]` |
 | Recipe detail | `['recipes', 'detail', id, i18n.language]` |
+| Favorite recipe ids | `['recipes', 'favorites', 'ids']` |
+| Favorite recipe cards | `['recipes', 'favorites', 'cards', i18n.language]` |
 
 Keep query keys simple and stable. After a mutation, invalidate the relevant key (see data-mutations.md).
 
 ### Exception: recipe queries have no `enabled: !!isSignedIn`
 
-`/api/recipes/*` is a public, unauthenticated endpoint (browsing and viewing recipes works for guests too — sending a recipe's ingredients to a shopping list is the only part that needs a destination, and that works client-side via `guestStorage` same as everything else in guest mode). `useRecipeSearch`/`useRecipeDetail` (`src/hooks/useRecipes.ts`) and `apiSearchRecipes`/`apiGetRecipeDetail` (`src/api/recipesApi.ts`) are the only place in the codebase without `enabled: !!isSignedIn` and without a `token` first parameter — both are deliberate, documented exceptions to the rules above, not an oversight.
+`/api/recipes/*` is a public, unauthenticated endpoint (browsing and viewing recipes works for guests too — sending a recipe's ingredients to a shopping list is the only part that needs a destination, and that works client-side via `guestStorage` same as everything else in guest mode). `useRecipeSearch`/`useRecipeDetail` (`src/hooks/useRecipes.ts`) and `apiSearchRecipes`/`apiGetRecipeDetail` (`src/api/recipesApi.ts`) are the only place in the codebase without `enabled: !!isSignedIn` and without a `token` first parameter — both are deliberate, documented exceptions to the rules above, not an oversight. Favorites are different: `/api/recipes/favorites*` IS `requireAuth`'d (per-user data, unlike search/detail), so `useFavoriteIds`/`useFavoriteRecipes`/`useToggleFavorite` (`src/hooks/useFavorites.ts`) follow the normal `enabled: !!isSignedIn` + guest-storage-fallback pattern from `usePantry.ts`, and `apiGetFavoriteIds`/`apiGetFavoriteRecipes`/`apiAddFavorite`/`apiRemoveFavorite` (`src/api/recipesApi.ts`) do take a token — only the two public calls above are the exception.
 
 ---
 

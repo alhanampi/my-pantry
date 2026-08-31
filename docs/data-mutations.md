@@ -38,8 +38,11 @@ After every successful mutation call `queryClient.invalidateQueries()` with the 
 | Products | `['products']` |
 | Shopping list items | `['shoppingList']` |
 | Shopping lists | `['shoppingLists']` |
+| Favorite recipes | `['recipes', 'favorites']` |
 
 `sendRecipeToShoppingList` (in `usePantry.ts`) creates a new `ShoppingList` titled with the recipe name, then creates one item per (already-scaled) ingredient via `Promise.all`, and invalidates both `['shoppingLists']` and `['shoppingList']` on success.
+
+`useToggleFavorite` (in `useFavorites.ts`) invalidates `queryKey: ['recipes', 'favorites']` — a partial key match, so it catches both the `['recipes','favorites','ids']` and `['recipes','favorites','cards',lang]` queries in one call rather than invalidating each separately.
 
 ### Surface errors to the user
 
