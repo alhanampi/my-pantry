@@ -1,22 +1,49 @@
 import Chip from '@mui/material/Chip'
-import { MdSchedule, MdLocalFireDepartment } from 'react-icons/md'
+import { MdSchedule, MdLocalFireDepartment, MdFavorite, MdFavoriteBorder } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
-import { CardWrapper, CardImage, CardBody, CardTitle, ChipsRow, MetaRow } from './RecipeCard.styles'
+import {
+  CardWrapper,
+  ImageWrapper,
+  CardImage,
+  FavoriteButton,
+  CardBody,
+  CardTitle,
+  ChipsRow,
+  MetaRow,
+} from './RecipeCard.styles'
 import type { RecipeCard as RecipeCardType } from '../../../utils/types'
 
 export interface RecipeCardProps {
   recipe: RecipeCardType
   onClick: (id: number) => void
+  isFavorite?: boolean
+  onToggleFavorite?: (id: number) => void
 }
 
 const MAX_CHIPS = 3
 
-export default function RecipeCard({ recipe, onClick }: RecipeCardProps) {
+export default function RecipeCard({ recipe, onClick, isFavorite = false, onToggleFavorite }: RecipeCardProps) {
   const { t } = useTranslation()
 
   return (
     <CardWrapper onClick={() => onClick(recipe.id)} role="button" tabIndex={0}>
-      <CardImage src={recipe.image} alt={recipe.title} loading="lazy" />
+      <ImageWrapper>
+        <CardImage src={recipe.image} alt={recipe.title} loading="lazy" />
+        {onToggleFavorite && (
+          <FavoriteButton
+            type="button"
+            $active={isFavorite}
+            aria-pressed={isFavorite}
+            aria-label={t(isFavorite ? 'recipes.removeFavorite' : 'recipes.addFavorite')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleFavorite(recipe.id)
+            }}
+          >
+            {isFavorite ? <MdFavorite size={18} /> : <MdFavoriteBorder size={18} />}
+          </FavoriteButton>
+        )}
+      </ImageWrapper>
       <CardBody>
         <CardTitle>{recipe.title}</CardTitle>
         <ChipsRow>

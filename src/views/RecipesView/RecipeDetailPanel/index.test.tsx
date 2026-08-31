@@ -47,4 +47,23 @@ describe('RecipeDetailPanel', () => {
       ingredients: [{ id: 10, name: 'Pasta', amount: 300, unit: 'g', original: '200g pasta' }],
     })
   })
+
+  it('does not render a favorite button when onToggleFavorite is omitted', () => {
+    render(<RecipeDetailPanel recipe={recipe} onSendToShoppingList={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /favorite|favorita/i })).not.toBeInTheDocument()
+  })
+
+  it('calls onToggleFavorite with the recipe id when the heart is clicked', async () => {
+    const onToggleFavorite = vi.fn()
+    render(
+      <RecipeDetailPanel
+        recipe={recipe}
+        onSendToShoppingList={vi.fn()}
+        isFavorite={false}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { pressed: false }))
+    expect(onToggleFavorite).toHaveBeenCalledWith(1)
+  })
 })

@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import Button from '@mui/material/Button'
-import { MdOutlineShoppingCartCheckout } from 'react-icons/md'
+import { MdOutlineShoppingCartCheckout, MdFavorite, MdFavoriteBorder } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ServingsStepper from '../ServingsStepper'
 import {
   DetailWrapper,
+  HeroImageWrapper,
   HeroImage,
+  HeroFavoriteButton,
   Title,
   ServingsRow,
   NutritionGrid,
@@ -22,13 +24,21 @@ export interface RecipeDetailPanelProps {
   recipe: RecipeDetail
   onSendToShoppingList: (payload: { recipeTitle: string; ingredients: RecipeIngredient[] }) => void
   isSending?: boolean
+  isFavorite?: boolean
+  onToggleFavorite?: (id: number) => void
 }
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-export default function RecipeDetailPanel({ recipe, onSendToShoppingList, isSending = false }: RecipeDetailPanelProps) {
+export default function RecipeDetailPanel({
+  recipe,
+  onSendToShoppingList,
+  isSending = false,
+  isFavorite = false,
+  onToggleFavorite,
+}: RecipeDetailPanelProps) {
   const { t } = useTranslation()
   const [servings, setServings] = useState(recipe.servings)
 
@@ -53,7 +63,20 @@ export default function RecipeDetailPanel({ recipe, onSendToShoppingList, isSend
 
   return (
     <DetailWrapper>
-      <HeroImage src={recipe.image} alt={recipe.title} />
+      <HeroImageWrapper>
+        <HeroImage src={recipe.image} alt={recipe.title} />
+        {onToggleFavorite && (
+          <HeroFavoriteButton
+            type="button"
+            $active={isFavorite}
+            aria-pressed={isFavorite}
+            aria-label={t(isFavorite ? 'recipes.removeFavorite' : 'recipes.addFavorite')}
+            onClick={() => onToggleFavorite(recipe.id)}
+          >
+            {isFavorite ? <MdFavorite size={22} /> : <MdFavoriteBorder size={22} />}
+          </HeroFavoriteButton>
+        )}
+      </HeroImageWrapper>
       <Title>{recipe.title}</Title>
 
       <ServingsRow>

@@ -1,12 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RecipesView from './index'
 import { useRecipeSearch, useRecipeDetail } from '../../hooks/useRecipes'
+import { useFavoriteIds, useToggleFavorite } from '../../hooks/useFavorites'
 import '../../i18n'
 import type { RecipeCard, RecipeDetail } from '../../utils/types'
 
 vi.mock('../../hooks/useRecipes')
+vi.mock('../../hooks/useFavorites')
 
 vi.mock('./RecipeCardGrid', () => ({
   // Stubbed out — RecipeCardGrid's own IntersectionObserver behavior is
@@ -48,6 +50,11 @@ function mutationSpy() {
 }
 
 describe('RecipesView', () => {
+  beforeEach(() => {
+    vi.mocked(useFavoriteIds).mockReturnValue({ data: [] } as never)
+    vi.mocked(useToggleFavorite).mockReturnValue(mutationSpy())
+  })
+
   it('shows the grid, then switches to the detail panel when a recipe is selected', async () => {
     vi.mocked(useRecipeSearch).mockReturnValue({
       data: { pages: [{ results: [recipe], totalResults: 1, offset: 0, number: 4 }], pageParams: [0] },

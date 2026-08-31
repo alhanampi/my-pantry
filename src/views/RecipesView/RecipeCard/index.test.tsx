@@ -23,4 +23,25 @@ describe('RecipeCard', () => {
     await userEvent.click(screen.getByText('Pasta al pomodoro'))
     expect(onClick).toHaveBeenCalledWith(1)
   })
+
+  it('does not render a favorite button when onToggleFavorite is omitted', () => {
+    render(<RecipeCard recipe={recipe} onClick={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /favorite|favorita/i })).not.toBeInTheDocument()
+  })
+
+  it('calls onToggleFavorite without triggering onClick when the heart is clicked', async () => {
+    const onClick = vi.fn()
+    const onToggleFavorite = vi.fn()
+    render(<RecipeCard recipe={recipe} onClick={onClick} isFavorite={false} onToggleFavorite={onToggleFavorite} />)
+
+    await userEvent.click(screen.getByRole('button', { pressed: false }))
+
+    expect(onToggleFavorite).toHaveBeenCalledWith(1)
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('shows the filled heart state when isFavorite is true', () => {
+    render(<RecipeCard recipe={recipe} onClick={vi.fn()} isFavorite onToggleFavorite={vi.fn()} />)
+    expect(screen.getByRole('button', { pressed: true })).toBeInTheDocument()
+  })
 })

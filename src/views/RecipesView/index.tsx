@@ -10,6 +10,7 @@ import RecipeDetailPanel from './RecipeDetailPanel'
 import RecipesSkeleton from './RecipesSkeleton'
 import { Wrapper, EmptyState, ErrorState, BackRow, BackButton } from './RecipesView.styles'
 import { useRecipeSearch, useRecipeDetail } from '../../hooks/useRecipes'
+import { useFavoriteIds, useToggleFavorite } from '../../hooks/useFavorites'
 import type { RecipeSearchFilters, RecipeIngredient } from '../../utils/types'
 
 const EMPTY_FILTERS: RecipeSearchFilters = {
@@ -36,13 +37,20 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
 
   const search = useRecipeSearch(filters)
   const detail = useRecipeDetail(selectedRecipeId)
+  const favoriteIds = useFavoriteIds()
+  const toggleFavorite = useToggleFavorite()
 
   const recipes = useMemo(() => search.data?.pages.flatMap((page) => page.results) ?? [], [search.data])
+  const favoriteIdSet = useMemo(() => new Set(favoriteIds.data ?? []), [favoriteIds.data])
 
   const handleSendToShoppingList = (payload: { recipeTitle: string; ingredients: RecipeIngredient[] }): void => {
     sendRecipeToShoppingList.mutate(payload, {
       onSuccess: (listId) => onSentToList(listId),
     })
+  }
+
+  const handleToggleFavorite = (id: number): void => {
+    toggleFavorite.mutate({ recipeId: id, isFavorite: favoriteIdSet.has(id) })
   }
 
   // In-tab sub-state (grid vs. detail) — documented exception to the "flat
@@ -71,6 +79,8 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
             recipe={detail.data}
             onSendToShoppingList={handleSendToShoppingList}
             isSending={sendRecipeToShoppingList.isPending}
+            isFavorite={favoriteIdSet.has(detail.data.id)}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
       </Wrapper>
@@ -108,6 +118,8 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
           hasNextPage={!!search.hasNextPage}
           isFetchingNextPage={search.isFetchingNextPage}
           onLoadMore={() => void search.fetchNextPage()}
+          favoriteIds={favoriteIdSet}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
     </Wrapper>

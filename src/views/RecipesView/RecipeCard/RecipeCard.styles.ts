@@ -15,12 +15,37 @@ export const CardWrapper = styled.div`
   }
 `
 
+export const ImageWrapper = styled.div`
+  position: relative;
+`
+
 export const CardImage = styled.img`
   width: 100%;
   height: 140px;
   object-fit: cover;
   display: block;
   background: var(--scheme-surface-alt);
+`
+
+export const FavoriteButton = styled.button<{ $active: boolean }>`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--scheme-surface);
+  box-shadow: 0 1px 4px var(--scheme-shadow-xs);
+  cursor: pointer;
+  color: ${(p) => (p.$active ? 'var(--scheme-accent-medium)' : 'var(--scheme-text-muted)')};
+
+  &:hover {
+    background: var(--scheme-surface-alt);
+  }
 `
 
 export const CardBody = styled.div`

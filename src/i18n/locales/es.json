@@ -9,6 +9,7 @@
     "pantry": "Mi Despensa",
     "shopping": "Mi Lista de Súper",
     "recipes": "Recetas",
+    "favorites": "Favoritas",
     "about": "Acerca de"
   },
   "header": {
@@ -122,6 +123,9 @@
     "sendToList": "Enviar a una nueva lista de compras",
     "sentToList": "Ingredientes agregados a una nueva lista de compras",
     "viewList": "Ver lista",
+    "addFavorite": "Guardar receta",
+    "removeFavorite": "Quitar de favoritas",
+    "favoritesEmptyTitle": "Todavía no guardaste recetas favoritas. Tocá el corazón en una receta para guardarla acá.",
     "errors": {
       "quotaExceeded": "La búsqueda de recetas no está disponible por el momento. Probá de nuevo más tarde.",
       "configError": "La búsqueda de recetas no está configurada en este servidor.",

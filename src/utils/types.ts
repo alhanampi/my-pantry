@@ -31,7 +31,7 @@ export interface SortConfig {
 
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
-export type AppView = 'pantry' | 'shopping' | 'recipes' | 'about'
+export type AppView = 'pantry' | 'shopping' | 'recipes' | 'favorites' | 'about'
 
 export type ModalContext = 'pantry' | 'shopping'
 
@@ -163,6 +163,10 @@ export interface RecipeSearchResponse {
   totalResults: number
   offset: number
   number: number
+}
+
+export interface FavoriteRecipesResponse {
+  results: RecipeCard[]
 }
 
 // ─── Shopping lists ────────────────────────────────────────────────────────────

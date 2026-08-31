@@ -9,6 +9,7 @@
     "pantry": "My Pantry",
     "shopping": "Shopping List",
     "recipes": "Recipes",
+    "favorites": "Favorites",
     "about": "About"
   },
   "header": {
@@ -122,6 +123,9 @@
     "sendToList": "Send to a new shopping list",
     "sentToList": "Ingredients added to a new shopping list",
     "viewList": "View list",
+    "addFavorite": "Save recipe",
+    "removeFavorite": "Remove from favorites",
+    "favoritesEmptyTitle": "No favorite recipes yet. Tap the heart on a recipe to save it here.",
     "errors": {
       "quotaExceeded": "Recipe search is temporarily unavailable. Try again later.",
       "configError": "Recipe search is not configured on this server.",

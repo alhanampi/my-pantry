@@ -7,12 +7,37 @@ export const DetailWrapper = styled.div`
   gap: 16px;
 `
 
+export const HeroImageWrapper = styled.div`
+  position: relative;
+`
+
 export const HeroImage = styled.img`
   width: 100%;
   max-height: 320px;
   object-fit: cover;
   border-radius: 14px;
   background: var(--scheme-surface-alt);
+`
+
+export const HeroFavoriteButton = styled.button<{ $active: boolean }>`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--scheme-surface);
+  box-shadow: 0 1px 6px var(--scheme-shadow-sm);
+  cursor: pointer;
+  color: ${(p) => (p.$active ? 'var(--scheme-accent-medium)' : 'var(--scheme-text-muted)')};
+
+  &:hover {
+    background: var(--scheme-surface-alt);
+  }
 `
 
 export const Title = styled(Typography).attrs({ variant: 'h6' as const })`

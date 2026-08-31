@@ -72,4 +72,26 @@ describe('RecipeCardGrid', () => {
     )
     expect(observe).not.toHaveBeenCalled()
   })
+
+  it('renders as a bounded static grid when pagination props are omitted (FavoriteRecipesView usage)', () => {
+    render(<RecipeCardGrid recipes={recipes} onSelect={vi.fn()} />)
+    expect(screen.getByText('Pasta')).toBeInTheDocument()
+    expect(observe).not.toHaveBeenCalled()
+  })
+
+  it('marks favorited cards and forwards onToggleFavorite', async () => {
+    const onToggleFavorite = vi.fn()
+    render(
+      <RecipeCardGrid
+        recipes={recipes}
+        onSelect={vi.fn()}
+        favoriteIds={new Set([1])}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    )
+    const buttons = screen.getAllByRole('button', { pressed: false })
+    expect(screen.getByRole('button', { pressed: true })).toBeInTheDocument()
+    await userEvent.click(buttons[0])
+    expect(onToggleFavorite).toHaveBeenCalledWith(2)
+  })
 })

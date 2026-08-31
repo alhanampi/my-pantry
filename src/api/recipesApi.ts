@@ -1,6 +1,10 @@
-import type { RecipeDetail, RecipeSearchFilters, RecipeSearchResponse } from '../utils/types'
+import type { RecipeDetail, RecipeSearchFilters, RecipeSearchResponse, FavoriteRecipesResponse } from '../utils/types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
+
+function headers(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+}
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -35,4 +39,35 @@ export async function apiGetRecipeDetail(id: number, lang: string): Promise<Reci
   const res = await fetch(`${API_URL}/api/recipes/${id}?lang=${lang}`)
   const json = await handleResponse<{ recipe: RecipeDetail }>(res)
   return json.recipe
+}
+
+// ── Favorites — per-user data, so these DO take a token (unlike the two
+// public calls above). ─────────────────────────────────────────────────────
+
+export async function apiGetFavoriteIds(token: string): Promise<number[]> {
+  const res = await fetch(`${API_URL}/api/recipes/favorites/ids`, { headers: headers(token) })
+  const json = await handleResponse<{ ids: number[] }>(res)
+  return json.ids
+}
+
+export async function apiGetFavoriteRecipes(token: string, lang: string): Promise<FavoriteRecipesResponse> {
+  const res = await fetch(`${API_URL}/api/recipes/favorites?lang=${lang}`, { headers: headers(token) })
+  return handleResponse<FavoriteRecipesResponse>(res)
+}
+
+export async function apiAddFavorite(token: string, recipeId: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/recipes/favorites`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify({ recipeId }),
+  })
+  await handleResponse<{ success: boolean }>(res)
+}
+
+export async function apiRemoveFavorite(token: string, recipeId: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/recipes/favorites/${recipeId}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  })
+  await handleResponse<{ success: boolean }>(res)
 }

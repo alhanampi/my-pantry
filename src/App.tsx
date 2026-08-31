@@ -15,6 +15,7 @@ import BottomNav from './components/BottomNav'
 import PantryView from './views/PantryView'
 import ShoppingView from './views/ShoppingView'
 import RecipesView from './views/RecipesView'
+import FavoriteRecipesView from './views/FavoriteRecipesView'
 import AboutView from './views/AboutView'
 
 export default function App() {
@@ -69,6 +70,12 @@ export default function App() {
               )}
               {app.currentView === 'recipes' && (
                 <RecipesView
+                  sendRecipeToShoppingList={app.sendRecipeToShoppingList}
+                  onSentToList={app.handleRecipeSentToList}
+                />
+              )}
+              {app.currentView === 'favorites' && (
+                <FavoriteRecipesView
                   sendRecipeToShoppingList={app.sendRecipeToShoppingList}
                   onSentToList={app.handleRecipeSentToList}
                 />
