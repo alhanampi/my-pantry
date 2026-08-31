@@ -13,17 +13,22 @@ There is no React Router, Next.js router, or any other routing library. Do not a
 The active view is a string union stored in `useAppState`:
 
 ```ts
-type View = 'pantry' | 'shopping' | 'about'
+type View = 'pantry' | 'shopping' | 'recipes' | 'about'
 ```
 
-Switching views calls `handleViewChange(view: View)` from `useAppState`. The relevant state and handler are passed down to `Header` (tab navigation on desktop) and `BottomNav` (icon bar on mobile).
+Switching views calls `handleViewChange(view: View)` from `useAppState`. The relevant state and handler are passed down to `Header` (tab navigation on desktop) and `BottomNav` (icon bar on mobile). `bottomNavValue` is derived from `viewOrder = ['pantry', 'shopping', 'recipes']` (`about` stays outside this index, same as before).
 
 ```tsx
 // src/App.tsx
 {app.currentView === 'pantry' && <PantryView ... isLoading={app.isLoading} />}
 {app.currentView === 'shopping' && <ShoppingView ... isLoading={app.isLoading} />}
+{app.currentView === 'recipes' && <RecipesView ... />}
 {app.currentView === 'about' && <AboutView />}
 ```
+
+### Exception: `RecipesView` owns its own sub-state
+
+`RecipesView` renders either a search grid or a recipe's detail (`selectedRecipeId` state local to the view) — there's no separate `View` union member or route for the detail, since there's no router to push a recipe id onto. This is a documented exception to the "flat views" pattern: every other view in `src/views/` renders one screen for one `AppView` value. If a future view needs the same in-tab drill-down, follow `RecipesView`'s pattern (local `useState` for the sub-screen, back button resets it) rather than adding a new top-level `AppView`.
 
 Views receive `isLoading` as a prop and render their own skeleton UI while data loads, instead of a global spinner. This keeps the app shell (header, bottom nav) visible during loading.
 

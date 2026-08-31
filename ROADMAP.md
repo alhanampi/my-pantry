@@ -21,11 +21,16 @@ This file tracks the technical design of **pending** work only — data model ch
 - **Send items from shopping list to pantry automatically**: when a `ShoppingItem` is marked `purchased`, offer to create a matching `Product`. Needs a mapping decision (which shopping fields map to which product fields — mostly 1:1 already per `src/utils/types.ts`).
 - **Share shopping list (public link or PDF)**: public link needs a new unauthenticated read-only route (careful: must not leak other lists — scope by a random unguessable share token, not by `ownerId`). PDF export is simpler and fully client-side (e.g. render to a printable view, no new backend needed).
 - **Export pantry to CSV**: client-side only — serialize the already-fetched `Product[]` to CSV and trigger a download, no backend change needed.
-- **Recipe suggestions (Spoonacular)**: client exists (`src/api/spoonacularApi.ts`) but is unwired. Superseded in practice by the v1.5 recipe chat below — decide whether to wire it up as a secondary "browse by ingredient" feature or drop it in favor of the chat flow.
 
 ---
 
-## v1.5 — Recipe Chat (Groq)
+## v1.5 — Recipes tab (Spoonacular + Groq translation) — shipped
+
+**Shipped**: a "Recipes" tab (`src/views/RecipesView/`) — search/filters (query, cuisine, diet, includeIngredients, maxCalories), infinite scroll 4-at-a-time, a detail panel with an adjustable-servings scaler for ingredients and nutrition, and "send to a new shopping list" (creates a `ShoppingList` titled with the recipe name, seeded with the scaled ingredients — see "Multiple Shopping Lists" below, which this feature required as a prerequisite and which shipped in the same pass).
+
+Backend: `backend/src/services/spoonacular.ts` (key server-only, proxied through `GET/POST /api/recipes/*`, no `requireAuth` — public browsing incl. guests — own rate limiter) and `backend/src/services/groq.ts` (`translateRecipeContent`, since Spoonacular doesn't support Spanish on `complexSearch`/`recipe information`; module-scoped cache, fails soft to English on any error). `src/api/spoonacularApi.ts` (the old unwired `VITE_SPOONACULAR_KEY` client scaffold) was removed — retired in favor of the server-side proxy.
+
+**Still open / not built**: the general-purpose `POST /api/ai/recipe-chat` endpoint described below (user free-text prompt → AI-proposed recipe) was explicitly kept out of scope for the Recipes tab pass — Groq is wired up but only used for recipe-content translation, not chat. The design below is still accurate for whoever picks it up.
 
 **Goal**: user describes what they want to cook (or what they have), the AI proposes a recipe, and the missing ingredients get extracted into the shopping list.
 
@@ -58,29 +63,11 @@ This file tracks the technical design of **pending** work only — data model ch
 
 ---
 
-## v1.5 — Multiple Shopping Lists
+## v1.5 — Multiple Shopping Lists — shipped (schema/backend), migration pending
 
-**Current state**: `ShoppingItem` has a flat `ownerId`, no list concept. Sharing between partners is via `UserLink` (max 1 partner) + `accessibleUserIds(userId)` helper in `backend/src/routes/pantry.ts`, which every shopping query already filters by.
+**Shipped**: `ShoppingList` model (`id`, `name`, `ownerId`, `isGeneral`, `createdAt`), `ShoppingItem.listId`, `GET/POST/PUT/DELETE /api/pantry/shopping-lists` (`backend/src/routes/shoppingLists.ts`, cap `MAX_LISTS_PER_USER = 20`, `isGeneral` not deletable, lazy-seeds a "General" list on first `GET`), existing `/api/pantry/shopping*` endpoints gained `listId` (GET/DELETE default to the caller's General list when omitted, POST requires it explicitly). Frontend: `usePantry`'s shopping-item query is list-scoped (`['shoppingList', listId]`), `guestStorage` got the same `listId` dimension, and `ShoppingView` has a `ShoppingListSelector` (hidden when the user only has one list — no rename/delete UI yet, endpoints exist for later).
 
-**Schema changes** (`backend/prisma/schema.prisma`):
-- New model `ShoppingList { id, name, ownerId, createdAt }` (owned like `Product`/`ShoppingItem`, visible to the same `accessibleUserIds` set).
-- Add `listId String` (FK to `ShoppingList`) on `ShoppingItem`.
-- **Migration for existing data**: create one `ShoppingList` named "General" per existing `ownerId`/`accessibleUserIds` group, then backfill `listId` on all current `ShoppingItem` rows to point at it. Needs a data migration script alongside the Prisma schema migration (`prisma migrate dev` won't do the backfill on its own).
-
-**Backend** (`backend/src/routes/pantry.ts` or a new `backend/src/routes/shoppingLists.ts`):
-- `GET /api/pantry/shopping-lists` — list the user's lists.
-- `POST /api/pantry/shopping-lists` — create a list.
-- `PUT` / `DELETE /api/pantry/shopping-lists/:id` — rename/delete (with the same ownership `findFirst` check pattern used elsewhere per `docs/data-mutations.md`; deciding what happens to items when a list is deleted — cascade delete vs. reassign to "General" — is an open decision).
-- Existing shopping endpoints (`GET/POST/PUT/DELETE /api/pantry/shopping...`) gain a required `listId` (query param on GET, body field on POST/PUT).
-
-**Frontend**:
-- `src/api/pantryApi.ts` — new functions for the list CRUD endpoints; existing shopping functions gain `listId`.
-- `src/hooks/usePantry.ts` — query key becomes list-scoped (e.g. `['shoppingList', listId]`) instead of the current flat `['shoppingList']`; guest-mode (`guestStorage`) path also needs a `listId` dimension added to its local storage shape.
-- `ShoppingView` — needs a list selector (tabs or a dropdown) above the item list; the "create shopping item" flow needs to know the currently selected list.
-
-**Open decisions**:
-- Cap on number of lists per user/household (avoid unbounded growth)?
-- What happens to items when their list is deleted — block deletion if non-empty, cascade, or move to "General"?
+**Not yet applied to the real dev DB**: `npx prisma migrate dev` currently fails outright (`P3019`) — `prisma/migrations/migration_lock.toml` declares `sqlite` while `schema.prisma`/the live DB are `postgresql` (confirmed via `prisma db pull --print`: the live DB already matches `schema.prisma` exactly, meaning it was provisioned out-of-band at some point, never through the checked-in migration folder — a pre-existing repo issue, not something this feature introduced). Until that migration history is repaired (e.g. `prisma migrate resolve` to baseline it, or reset it — needs a human decision, not something to script around unsupervised), the two-phase migration described below hasn't run: `schema.prisma` currently has `ShoppingItem.listId` as nullable (phase 1 shape only), and `backend/scripts/backfill-shopping-lists.ts` (written, idempotent, `npm run backfill:shopping-lists`) hasn't been run. Once the migration history is fixed: run phase 1 (`prisma migrate dev --name add_shopping_lists`), run the backfill script, verify `SELECT COUNT(*) FROM "ShoppingItem" WHERE "listId" IS NULL` = 0, then run phase 2 (`prisma migrate dev --name shopping_item_list_required` making `listId` `NOT NULL`).
 
 ---
 

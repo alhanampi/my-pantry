@@ -36,7 +36,10 @@ After every successful mutation call `queryClient.invalidateQueries()` with the 
 | Mutation target | Key to invalidate |
 |---|---|
 | Products | `['products']` |
-| Shopping list | `['shoppingList']` |
+| Shopping list items | `['shoppingList']` |
+| Shopping lists | `['shoppingLists']` |
+
+`sendRecipeToShoppingList` (in `usePantry.ts`) creates a new `ShoppingList` titled with the recipe name, then creates one item per (already-scaled) ingredient via `Promise.all`, and invalidates both `['shoppingLists']` and `['shoppingList']` on success.
 
 ### Surface errors to the user
 
