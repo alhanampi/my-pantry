@@ -2,11 +2,14 @@ import Groq from 'groq-sdk'
 
 const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null
 
-// ROADMAP v1.5 suggests "Llama 3.x". `llama-3.3-70b-versatile` is Groq's current
-// production model at the time this was written; if it's deprecated by the time
-// this runs, swap for whichever model is active in the Groq console/docs — the
-// translation prompt below is model-agnostic (plain JSON-mode chat completion).
-const MODEL = 'llama-3.3-70b-versatile'
+// ROADMAP v1.5 suggested "Llama 3.x" (`llama-3.3-70b-versatile`), but Groq has
+// since decommissioned every llama-3.x chat model — confirmed via
+// `groq.models.list()`. `openai/gpt-oss-120b` is the current large general
+// model available on the free tier and produces clean, length-preserving
+// translations. If this is decommissioned too, check `groq.models.list()` /
+// the Groq console for the current equivalent — the prompt below is
+// model-agnostic (plain JSON-mode chat completion).
+const MODEL = 'openai/gpt-oss-120b'
 
 // Module-scoped cache. In a serverless deployment (Vercel) each function
 // instance gets its own memory, so this cache is weak/per-instance — accepted

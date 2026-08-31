@@ -87,6 +87,13 @@ export async function searchRecipes(params: SearchRecipesParams): Promise<Comple
     apiKey: apiKey(),
     addRecipeInformation: 'true',
     addRecipeNutrition: 'true',
+    fillIngredients: 'true',
+    // Always random (even with query/filters active) per product decision —
+    // results reshuffle on every request rather than sorting by relevance.
+    // Trade-off accepted: since Spoonacular re-randomizes per call rather
+    // than taking a stable seed, consecutive offset-paginated pages during
+    // one infinite-scroll session can occasionally repeat or skip a recipe.
+    sort: 'random',
     number: String(params.number),
     offset: String(params.offset),
   })
