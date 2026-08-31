@@ -108,6 +108,31 @@ describe('pantry routes', () => {
     expect(mockPrisma.product.create).not.toHaveBeenCalled()
   })
 
+  it('POST /api/pantry/products accepts an empty-string expiryDate as "no date" (regression)', async () => {
+    // The client always sends expiryDate: '' when the field is left blank —
+    // this must not be rejected as an invalid ISO date.
+    mockPrisma.product.create.mockResolvedValue({
+      id: 1, name: 'Arroz', quantity: '1kg', brand: '', purchaseDate: '', expiryDate: null, location: '', details: '', ownerId: 'user_1',
+    })
+
+    const res = await request(app)
+      .post('/api/pantry/products')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Arroz', quantity: '1kg', expiryDate: '' })
+
+    expect(res.status).toBe(201)
+  })
+
+  it('POST /api/pantry/products returns 400 for a genuinely malformed expiryDate', async () => {
+    const res = await request(app)
+      .post('/api/pantry/products')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Arroz', quantity: '1kg', expiryDate: 'not-a-date' })
+
+    expect(res.status).toBe(400)
+    expect(mockPrisma.product.create).not.toHaveBeenCalled()
+  })
+
   it('PUT /api/pantry/products/:id updates an owned product', async () => {
     mockPrisma.product.findFirst.mockResolvedValue({ id: 1, ownerId: 'user_1' })
     mockPrisma.product.update.mockResolvedValue({
@@ -160,6 +185,22 @@ describe('pantry routes', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.item.name).toBe('Arroz')
+  })
+
+  it('POST /api/pantry/shopping accepts an empty-string expiryDate (regression)', async () => {
+    // AddProductModal hides the expiry field entirely for shopping items, so
+    // every shopping-item create sends expiryDate: '' — this must succeed,
+    // not be rejected as an invalid ISO date (the bug the user hit: this
+    // made every shopping-list addition fail, so the list stayed empty).
+    mockPrisma.shoppingItem.create.mockResolvedValue({ id: 1, name: 'Pasta', ownerId: 'user_1' })
+
+    const res = await request(app)
+      .post('/api/pantry/shopping')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Pasta', quantity: '3', brand: 'Barilla', details: '', purchaseDate: '', expiryDate: '', location: '', purchased: false })
+
+    expect(res.status).toBe(201)
+    expect(mockPrisma.shoppingItem.create).toHaveBeenCalled()
   })
 
   it('PUT /api/pantry/shopping/:id updates only the provided fields, including purchased', async () => {
