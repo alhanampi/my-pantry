@@ -8,6 +8,8 @@
   "nav": {
     "pantry": "Mi Despensa",
     "shopping": "Mi Lista de Súper",
+    "recipes": "Recetas",
+    "favorites": "Favoritas",
     "about": "Acerca de"
   },
   "header": {
@@ -94,7 +96,49 @@
     "markPending": "Marcar como pendiente",
     "deleteItem": "Quitar de la lista",
     "purchased": "Comprados",
-    "addProduct": "Agregar producto"
+    "addProduct": "Agregar producto",
+    "selectList": "Lista de compras",
+    "deleteList": "Borrar lista",
+    "deleteListConfirmTitle": "¿Borrar esta lista?",
+    "deleteListConfirmBody": "\"{{name}}\" y todos sus productos se van a borrar de forma permanente. Esta acción no se puede deshacer.",
+    "lists": {
+      "general": "General"
+    }
+  },
+  "confirmAction": {
+    "cancel": "Cancelar"
+  },
+  "recipes": {
+    "searchPlaceholder": "Buscar recetas...",
+    "cuisine": "Cocina",
+    "diet": "Dieta",
+    "includeIngredients": "Ingredientes",
+    "maxCalories": "Calorías máx.",
+    "emptyTitle": "No se encontraron recetas. Probá con otros filtros.",
+    "back": "Volver a recetas",
+    "retry": "Reintentar",
+    "servings": "Porciones",
+    "calories": "Calorías",
+    "protein": "Proteína",
+    "carbs": "Carbohidratos",
+    "fat": "Grasas",
+    "minutes": "min",
+    "kcal": "kcal",
+    "ingredients": "Ingredientes",
+    "instructions": "Instrucciones",
+    "sendToList": "Enviar a una nueva lista de compras",
+    "sentToList": "Ingredientes agregados a una nueva lista de compras",
+    "viewList": "Ver lista",
+    "addFavorite": "Guardar receta",
+    "removeFavorite": "Quitar de favoritas",
+    "removeFavoriteConfirmTitle": "¿Quitar de favoritas?",
+    "removeFavoriteConfirmBody": "Siempre podés volver a guardar esta receta más adelante.",
+    "favoritesEmptyTitle": "Todavía no guardaste recetas favoritas. Tocá el corazón en una receta para guardarla acá.",
+    "errors": {
+      "quotaExceeded": "La búsqueda de recetas no está disponible por el momento. Probá de nuevo más tarde.",
+      "configError": "La búsqueda de recetas no está configurada en este servidor.",
+      "generic": "Ocurrió un error al cargar las recetas."
+    }
   },
   "stores": {
     "title": "Tiendas cercanas",

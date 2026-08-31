@@ -120,12 +120,24 @@ router.delete('/products/:id', requireAuth, async (req, res): Promise<void> => {
 
 // ── Shopping list ─────────────────────────────────────────────────────────────
 
+// Resolves the listId to scope a /shopping request to: the explicit ?listId
+// query param if given, otherwise the caller's General list (for backward
+// compatibility with clients that don't send one yet). Returns null if
+// neither can be resolved (no listId given and no General list exists yet).
+async function resolveListId(userId: string, requested: string | undefined): Promise<string | null> {
+  if (requested) return requested
+  const general = await prisma.shoppingList.findFirst({ where: { ownerId: userId, isGeneral: true } })
+  return general?.id ?? null
+}
+
 router.get('/shopping', requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.clerkUserId!
     const ids = await accessibleUserIds(userId)
+    const listId = await resolveListId(userId, req.query.listId as string | undefined)
+    if (!listId) { res.json({ items: [] }); return }
     const items = await prisma.shoppingItem.findMany({
-      where: { ownerId: { in: ids } },
+      where: { listId, ownerId: { in: ids } },
       orderBy: { createdAt: 'asc' },
     })
     res.json({ items })
@@ -134,23 +146,32 @@ router.get('/shopping', requireAuth, async (req, res): Promise<void> => {
   }
 })
 
-router.post('/shopping', requireAuth, productFields, async (req: Request, res: Response): Promise<void> => {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    res.status(400).json({ error: errors.array()[0].msg })
-    return
-  }
-  try {
-    const userId = req.clerkUserId!
-    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate = '', location = '', details = '' } = req.body as Record<string, string>
-    const item = await prisma.shoppingItem.create({
-      data: { name, quantity, brand, purchaseDate, expiryDate, location, details, ownerId: userId },
-    })
-    res.status(201).json({ item })
-  } catch {
-    res.status(500).json({ error: 'Server error' })
-  }
-})
+router.post(
+  '/shopping',
+  requireAuth,
+  [...productFields, body('listId').isString().notEmpty().withMessage('listId is required')],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ error: errors.array()[0].msg })
+      return
+    }
+    try {
+      const userId = req.clerkUserId!
+      const { name, quantity = '', brand = '', purchaseDate = '', expiryDate = '', location = '', details = '', listId } =
+        req.body as Record<string, string>
+      const ids = await accessibleUserIds(userId)
+      const list = await prisma.shoppingList.findFirst({ where: { id: listId, ownerId: { in: ids } } })
+      if (!list) { res.status(404).json({ error: 'Shopping list not found' }); return }
+      const item = await prisma.shoppingItem.create({
+        data: { name, quantity, brand, purchaseDate, expiryDate, location, details, ownerId: userId, listId },
+      })
+      res.status(201).json({ item })
+    } catch {
+      res.status(500).json({ error: 'Server error' })
+    }
+  },
+)
 
 router.put('/shopping/:id', requireAuth, async (req, res): Promise<void> => {
   try {
@@ -197,7 +218,9 @@ router.delete('/shopping', requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.clerkUserId!
     const ids = await accessibleUserIds(userId)
-    await prisma.shoppingItem.deleteMany({ where: { ownerId: { in: ids }, purchased: true } })
+    const listId = await resolveListId(userId, req.query.listId as string | undefined)
+    if (!listId) { res.json({ success: true }); return }
+    await prisma.shoppingItem.deleteMany({ where: { listId, ownerId: { in: ids }, purchased: true } })
     res.json({ success: true })
   } catch {
     res.status(500).json({ error: 'Server error' })

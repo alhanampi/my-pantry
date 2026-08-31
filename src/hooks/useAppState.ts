@@ -13,6 +13,7 @@ import type {
   SnackbarState,
   ZeroQuantityDialogState,
   ZeroShoppingDialogState,
+  DeleteListDialogState,
 } from '../utils/types'
 import type { ZeroQuantityAction } from '../components/ZeroQuantityDialog'
 import type { ZeroShoppingAction } from '../components/ZeroShoppingQtyDialog'
@@ -29,9 +30,12 @@ function sortProducts(products: Product[], sortConfig: SortConfig): Product[] {
   })
 }
 
+const viewOrder: AppView[] = ['pantry', 'recipes', 'favorites', 'shopping']
+
 export function useAppState() {
   const { t } = useTranslation()
-  const pantry = usePantry()
+  const [selectedShoppingListId, setSelectedShoppingListId] = useState<string | undefined>(undefined)
+  const pantry = usePantry(selectedShoppingListId)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' })
@@ -57,6 +61,10 @@ export function useAppState() {
     open: false,
     item: null,
   })
+  const [deleteListDialog, setDeleteListDialog] = useState<DeleteListDialogState>({
+    open: false,
+    list: null,
+  })
 
   const showError = () =>
     setSnackbar({ open: true, message: t('errors.saveFailed', 'Error saving. Try again.') })
@@ -79,7 +87,8 @@ export function useAppState() {
   }
 
   const handleAddShoppingItem = (item: ProductFormData): void => {
-    const newItem: Omit<ShoppingListItem, 'id'> = { ...item, purchased: false }
+    if (!pantry.activeListId) return
+    const newItem: Omit<ShoppingListItem, 'id'> = { ...item, purchased: false, listId: pantry.activeListId }
     pantry.createShoppingItem.mutate(newItem, {
       onSuccess: (created) => {
         setAddModal({ open: false, context: 'shopping' })
@@ -143,6 +152,7 @@ export function useAppState() {
   }
 
   const handleAddToCart = (product: Product): void => {
+    if (!pantry.activeListId) return
     const existing = pantry.shoppingList.find(
       (i) => i.name.toLowerCase() === product.name.toLowerCase()
     )
@@ -161,6 +171,7 @@ export function useAppState() {
         expiryDate: '',
         location: '',
         purchased: false,
+        listId: pantry.activeListId,
       })
     }
     setSnackbar({ open: true, message: t('shopping.addedToCart') })
@@ -224,9 +235,50 @@ export function useAppState() {
     if (action === 'cart') handleAddToCart(product)
   }
 
+  const handleDeleteListClick = (): void => {
+    const list = pantry.shoppingLists.find((l) => l.id === pantry.activeListId)
+    if (!list || list.isGeneral) return // General is never deletable; button is hidden for it anyway
+    setDeleteListDialog({ open: true, list })
+  }
+
+  const handleConfirmDeleteList = (): void => {
+    const { list } = deleteListDialog
+    setDeleteListDialog({ open: false, list: null })
+    if (!list) return
+    pantry.deleteShoppingList.mutate(list.id, {
+      onSuccess: () => {
+        // Deleted the list currently being viewed — fall back to General
+        // (activeListId derives it automatically once selectedShoppingListId
+        // is cleared).
+        if (selectedShoppingListId === list.id) setSelectedShoppingListId(undefined)
+      },
+      onError: showError,
+    })
+  }
+
+  const handleCancelDeleteList = (): void => setDeleteListDialog({ open: false, list: null })
+
   const handleViewChange = (view: AppView): void => {
     setCurrentView(view)
     setSearchQuery('')
+  }
+
+  // Switches to the Shopping tab with a specific list pre-selected — used
+  // after "send recipe to new shopping list" so the user lands on it.
+  const switchToShoppingList = (listId: string): void => {
+    setSelectedShoppingListId(listId)
+    setCurrentView('shopping')
+    setSearchQuery('')
+  }
+
+  // Success snackbar for "send recipe to new shopping list", with an action
+  // to jump straight to that list on the Shopping tab.
+  const handleRecipeSentToList = (listId: string): void => {
+    setSnackbar({
+      open: true,
+      message: t('recipes.sentToList'),
+      action: { label: t('recipes.viewList'), onClick: () => switchToShoppingList(listId) },
+    })
   }
 
   const closeSnackbar = (): void => setSnackbar({ open: false, message: '' })
@@ -247,7 +299,8 @@ export function useAppState() {
   })
 
   const displayedProducts = sortProducts(filteredProducts, sortConfig)
-  const bottomNavValue = currentView === 'shopping' ? 1 : 0
+  const bottomNavValue = viewOrder.includes(currentView) ? viewOrder.indexOf(currentView) : 0
+  const handleBottomNavChange = (index: number): void => handleViewChange(viewOrder[index] ?? 'pantry')
 
   return {
     // state
@@ -259,6 +312,10 @@ export function useAppState() {
       pantry.updateShoppingItem.isPending,
     products: displayedProducts,
     shoppingList: pantry.shoppingList,
+    shoppingLists: pantry.shoppingLists,
+    selectedShoppingListId: pantry.activeListId,
+    createShoppingList: pantry.createShoppingList,
+    sendRecipeToShoppingList: pantry.sendRecipeToShoppingList,
     searchQuery,
     setSearchQuery,
     sortConfig,
@@ -281,6 +338,9 @@ export function useAppState() {
     handleShoppingQuantityChange,
     handleQuantityChange,
     handleViewChange,
+    switchToShoppingList,
+    setSelectedShoppingListId,
+    handleRecipeSentToList,
     openAddModal,
     openEditModal,
     handleEditProduct,
@@ -292,7 +352,12 @@ export function useAppState() {
     handleZeroQtyAction,
     zeroShoppingDialog,
     handleZeroShoppingAction,
+    deleteListDialog,
+    handleDeleteListClick,
+    handleConfirmDeleteList,
+    handleCancelDeleteList,
     // derived
     bottomNavValue,
+    handleBottomNavChange,
   }
 }

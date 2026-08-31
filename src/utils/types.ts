@@ -17,6 +17,7 @@ export type ProductFormData = Omit<Product, 'id'>
 
 export interface ShoppingListItem extends Product {
   purchased: boolean
+  listId: string
 }
 
 // ─── Sorting ─────────────────────────────────────────────────────────────────
@@ -30,7 +31,7 @@ export interface SortConfig {
 
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
-export type AppView = 'pantry' | 'shopping' | 'about'
+export type AppView = 'pantry' | 'shopping' | 'recipes' | 'favorites' | 'about'
 
 export type ModalContext = 'pantry' | 'shopping'
 
@@ -57,6 +58,7 @@ export interface ConfirmDialogState {
 export interface SnackbarState {
   open: boolean
   message: string
+  action?: { label: string; onClick: () => void }
 }
 
 export interface ZeroQuantityDialogState {
@@ -67,6 +69,11 @@ export interface ZeroQuantityDialogState {
 export interface ZeroShoppingDialogState {
   open: boolean
   item: ShoppingListItem | null
+}
+
+export interface DeleteListDialogState {
+  open: boolean
+  list: ShoppingList | null
 }
 
 // ─── Product suggestions (Autocomplete) ──────────────────────────────────────
@@ -110,7 +117,7 @@ export interface NearbyStore extends RawNearbyStore {
   distance: number
 }
 
-// ─── Recipes (Spoonacular) ────────────────────────────────────────────────────
+// ─── Recipes (Spoonacular via backend proxy + Groq translation) ──────────────
 
 export interface RecipeIngredient {
   id: number
@@ -118,18 +125,63 @@ export interface RecipeIngredient {
   amount: number
   unit: string
   original: string
-  image: string
 }
 
-export interface Recipe {
+export interface RecipeCard {
   id: number
   title: string
   image: string
-  usedIngredientCount: number
-  missedIngredientCount: number
-  usedIngredients: RecipeIngredient[]
-  missedIngredients: RecipeIngredient[]
-  likes: number
+  servings: number
+  readyInMinutes: number
+  ingredientNames: string[]
+  calories: number
+}
+
+export interface RecipeNutrition {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+export interface RecipeDetail {
+  id: number
+  title: string
+  image: string
+  servings: number
+  readyInMinutes: number
+  ingredients: RecipeIngredient[]
+  instructions: string[]
+  nutrition: RecipeNutrition
+}
+
+export interface RecipeSearchFilters {
+  query: string
+  cuisine: string
+  diet: string
+  includeIngredients: string
+  maxCalories: string
+}
+
+export interface RecipeSearchResponse {
+  results: RecipeCard[]
+  totalResults: number
+  offset: number
+  number: number
+}
+
+export interface FavoriteRecipesResponse {
+  results: RecipeCard[]
+}
+
+// ─── Shopping lists ────────────────────────────────────────────────────────────
+
+export interface ShoppingList {
+  id: string
+  name: string
+  ownerId: string
+  isGeneral: boolean
+  createdAt: string
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -211,7 +263,11 @@ export interface ShoppingItemProps {
 
 export interface ShoppingListProps {
   items: ShoppingListItem[]
+  lists?: ShoppingList[]
+  selectedListId?: string
+  onSelectList?: (listId: string) => void
   onAddClick: () => void
+  onDeleteListClick?: () => void
   onToggle: (id: number) => void
   onDelete: (id: number) => void
   onEdit: (id: number) => void

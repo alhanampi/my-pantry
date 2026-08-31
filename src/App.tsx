@@ -1,23 +1,29 @@
 import { ThemeProvider, StyledEngineProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
+import { useTranslation } from 'react-i18next'
 import { useColorScheme } from './contexts/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { useAppState } from './hooks/useAppState'
 import { AppWrapper, MainContent, AppSnackbar, AppAlert } from './App.styles'
 
+import Button from '@mui/material/Button'
 import Header from './components/Header'
 import AddProductModal from './components/AddProductModal'
 import ConfirmDialog from './components/ConfirmDialog'
 import ZeroQuantityDialog from './components/ZeroQuantityDialog'
 import ZeroShoppingQtyDialog from './components/ZeroShoppingQtyDialog'
+import ConfirmActionDialog from './components/ConfirmActionDialog'
 import BottomNav from './components/BottomNav'
 import PantryView from './views/PantryView'
 import ShoppingView from './views/ShoppingView'
+import RecipesView from './views/RecipesView'
+import FavoriteRecipesView from './views/FavoriteRecipesView'
 import AboutView from './views/AboutView'
 
 export default function App() {
   const { muiTheme } = useColorScheme()
   const app = useAppState()
+  const { t } = useTranslation()
 
   return (
     <StyledEngineProvider injectFirst>
@@ -53,7 +59,11 @@ export default function App() {
               {app.currentView === 'shopping' && (
                 <ShoppingView
                   items={app.shoppingList}
+                  lists={app.shoppingLists}
+                  selectedListId={app.selectedShoppingListId}
+                  onSelectList={app.setSelectedShoppingListId}
                   onAddClick={() => app.setAddModal({ open: true, context: 'shopping' })}
+                  onDeleteListClick={app.handleDeleteListClick}
                   onToggle={app.handleTogglePurchased}
                   onDelete={app.handleDeleteShoppingItem}
                   onEdit={app.openEditModal}
@@ -62,13 +72,22 @@ export default function App() {
                   isLoading={app.isLoading}
                 />
               )}
+              {app.currentView === 'recipes' && (
+                <RecipesView
+                  sendRecipeToShoppingList={app.sendRecipeToShoppingList}
+                  onSentToList={app.handleRecipeSentToList}
+                />
+              )}
+              {app.currentView === 'favorites' && (
+                <FavoriteRecipesView
+                  sendRecipeToShoppingList={app.sendRecipeToShoppingList}
+                  onSentToList={app.handleRecipeSentToList}
+                />
+              )}
               {app.currentView === 'about' && <AboutView />}
             </MainContent>
 
-            <BottomNav
-              value={app.bottomNavValue}
-              onChange={(v) => app.handleViewChange(v === 1 ? 'shopping' : 'pantry')}
-            />
+            <BottomNav value={app.bottomNavValue} onChange={app.handleBottomNavChange} />
 
             <AddProductModal
               open={app.addModal.open}
@@ -114,13 +133,40 @@ export default function App() {
               onAction={app.handleZeroShoppingAction}
             />
 
+            <ConfirmActionDialog
+              open={app.deleteListDialog.open}
+              title={t('shopping.deleteListConfirmTitle')}
+              body={t('shopping.deleteListConfirmBody', { name: app.deleteListDialog.list?.name ?? '' })}
+              confirmLabel={t('shopping.deleteList')}
+              onConfirm={app.handleConfirmDeleteList}
+              onCancel={app.handleCancelDeleteList}
+            />
+
             <AppSnackbar
               open={app.snackbar.open}
               autoHideDuration={2500}
               onClose={app.closeSnackbar}
               anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             >
-              <AppAlert severity="success" variant="filled" onClose={app.closeSnackbar}>
+              <AppAlert
+                severity="success"
+                variant="filled"
+                onClose={app.closeSnackbar}
+                action={
+                  app.snackbar.action ? (
+                    <Button
+                      color="inherit"
+                      size="small"
+                      onClick={() => {
+                        app.snackbar.action?.onClick()
+                        app.closeSnackbar()
+                      }}
+                    >
+                      {app.snackbar.action.label}
+                    </Button>
+                  ) : undefined
+                }
+              >
                 {app.snackbar.message}
               </AppAlert>
             </AppSnackbar>

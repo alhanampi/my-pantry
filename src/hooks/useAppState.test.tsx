@@ -26,6 +26,8 @@ function mockPantry(overrides: Record<string, unknown> = {}) {
   vi.mocked(usePantry).mockReturnValue({
     products: [],
     shoppingList: [],
+    shoppingLists: [{ id: 'list_1', name: 'General', ownerId: 'user_1', isGeneral: true, createdAt: '' }],
+    activeListId: 'list_1',
     isLoading: false,
     createProduct: mutationSpy(),
     updateProduct: mutationSpy(),
@@ -34,6 +36,8 @@ function mockPantry(overrides: Record<string, unknown> = {}) {
     updateShoppingItem: mutationSpy(),
     deleteShoppingItem: mutationSpy(),
     clearPurchasedItems: mutationSpy(),
+    createShoppingList: mutationSpy(),
+    sendRecipeToShoppingList: mutationSpy(),
     ...overrides,
   } as unknown as ReturnType<typeof usePantry>)
 }

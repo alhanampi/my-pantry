@@ -25,6 +25,8 @@ import {
   MdInfoOutline,
   MdStorefront,
   MdShoppingCart,
+  MdRestaurantMenu,
+  MdFavorite,
   MdClear,
   MdTranslate,
   MdPersonOutline,
@@ -72,10 +74,13 @@ export default function Header({
     void i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
   }
 
-  const tabValue = currentView === 'pantry' ? 0 : currentView === 'shopping' ? 1 : false
+  const tabOrder = ['pantry', 'recipes', 'favorites', 'shopping'] as const
+  const tabValue = tabOrder.includes(currentView as (typeof tabOrder)[number])
+    ? tabOrder.indexOf(currentView as (typeof tabOrder)[number])
+    : false
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number): void => {
-    onViewChange(newValue === 0 ? 'pantry' : 'shopping')
+    onViewChange(tabOrder[newValue] ?? 'pantry')
   }
 
   const displayName = user?.username ?? user?.firstName ?? t('auth.guest')
@@ -394,6 +399,30 @@ export default function Header({
           <Tab
             label={t('nav.pantry')}
             icon={<MdStorefront size={18} />}
+            iconPosition="start"
+            sx={{
+              minHeight: 40,
+              fontSize: '0.85rem',
+              color: 'var(--scheme-on-primary-muted)',
+              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
+              py: 0,
+            }}
+          />
+          <Tab
+            label={t('nav.recipes')}
+            icon={<MdRestaurantMenu size={18} />}
+            iconPosition="start"
+            sx={{
+              minHeight: 40,
+              fontSize: '0.85rem',
+              color: 'var(--scheme-on-primary-muted)',
+              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
+              py: 0,
+            }}
+          />
+          <Tab
+            label={t('nav.favorites')}
+            icon={<MdFavorite size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,

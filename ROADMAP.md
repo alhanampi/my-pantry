@@ -21,11 +21,23 @@ This file tracks the technical design of **pending** work only — data model ch
 - **Send items from shopping list to pantry automatically**: when a `ShoppingItem` is marked `purchased`, offer to create a matching `Product`. Needs a mapping decision (which shopping fields map to which product fields — mostly 1:1 already per `src/utils/types.ts`).
 - **Share shopping list (public link or PDF)**: public link needs a new unauthenticated read-only route (careful: must not leak other lists — scope by a random unguessable share token, not by `ownerId`). PDF export is simpler and fully client-side (e.g. render to a printable view, no new backend needed).
 - **Export pantry to CSV**: client-side only — serialize the already-fetched `Product[]` to CSV and trigger a download, no backend change needed.
-- **Recipe suggestions (Spoonacular)**: client exists (`src/api/spoonacularApi.ts`) but is unwired. Superseded in practice by the v1.5 recipe chat below — decide whether to wire it up as a secondary "browse by ingredient" feature or drop it in favor of the chat flow.
 
 ---
 
-## v1.5 — Recipe Chat (Groq)
+## v1.5 — Recipes tab (Spoonacular + Groq translation) — shipped
+
+**Shipped**: a "Recipes" tab (`src/views/RecipesView/`) — search/filters (query, cuisine, diet, includeIngredients, maxCalories), infinite scroll 4-at-a-time, a detail panel with an adjustable-servings scaler for ingredients and nutrition, and "send to a new shopping list" (creates a `ShoppingList` titled with the recipe name, seeded with the scaled ingredients — see "Multiple Shopping Lists" below, which this feature required as a prerequisite and which shipped in the same pass).
+
+Backend: `backend/src/services/spoonacular.ts` (key server-only, proxied through `GET/POST /api/recipes/*`, no `requireAuth` — public browsing incl. guests — own rate limiter) and `backend/src/services/groq.ts` (`translateRecipeContent`, since Spoonacular doesn't support Spanish on `complexSearch`/`recipe information`; module-scoped cache, fails soft to English on any error). `src/api/spoonacularApi.ts` (the old unwired `VITE_SPOONACULAR_KEY` client scaffold) was removed — retired in favor of the server-side proxy.
+
+**Randomized results** (added after initial ship): `searchRecipes` always passes `sort=random` to Spoonacular's `complexSearch`, including when a query/filters are active (a deliberate product decision — relevance sort was dropped entirely rather than only randomizing the unfiltered default view). Since Spoonacular re-randomizes per request rather than taking a stable seed, consecutive offset-paginated pages during one infinite-scroll session can occasionally repeat or skip a recipe — accepted trade-off, not worth a bespoke pagination/seeding scheme for a "browse for inspiration" feature.
+
+**Favorite recipes** (added after initial ship): a heart icon (top-right corner of the recipe photo, on both the search-result cards and the detail view) saves/unsaves a recipe; filled when saved. A separate **Favorites** tab (`src/views/FavoriteRecipesView/`, positioned Pantry → Recipes → Favorites → Shopping in the nav) lists saved recipes as the same card grid with no search bar or pagination — a personal, bounded list.
+- Schema: `FavoriteRecipe { id, ownerId, recipeId, createdAt }`, `@@unique([ownerId, recipeId])`, capped at `MAX_FAVORITES_PER_USER = 100`. Deliberately just a bookmark onto a Spoonacular recipe id, not a cached snapshot of its content — Spoonacular stays the single source of truth, so the list is re-hydrated (and re-translated, if the UI language calls for it) via the same recipe-detail lookup used elsewhere, on every read. Personal per-user, not shared with a linked partner via `accessibleUserIds` like pantry/shopping data is — favoriting felt closer to a personal bookmark than shared household data.
+- Backend: `backend/src/routes/recipeFavorites.ts`, mounted inside `recipes.ts` at `/favorites` *before* the `/:id` catch-all route (Express would otherwise match `/api/recipes/favorites` against `GET /:id` with `id='favorites'`). `GET /ids` is a cheap DB-only read (marks the heart on cards being browsed without paying for a Spoonacular hydration call); `GET /` hydrates the full list into cards, skipping any favorite whose recipe 404s upstream rather than failing the whole list. The serialization helpers (`serializeCard`/`serializeDetail`/`handleSpoonacularError`) were factored out of `recipes.ts` into `backend/src/services/recipeSerializers.ts` so both route files share them.
+- Frontend: `src/hooks/useFavorites.ts` — same guest/signed-in duality as `usePantry.ts` (signed-in hits the backend; guests get a `number[]` of recipe ids in `localStorage` via `guestStorage`, hydrated into cards client-side through the existing public per-id detail endpoint).
+
+**Still open / not built**: the general-purpose `POST /api/ai/recipe-chat` endpoint described below (user free-text prompt → AI-proposed recipe) was explicitly kept out of scope for the Recipes tab pass — Groq is wired up but only used for recipe-content translation, not chat. The design below is still accurate for whoever picks it up.
 
 **Goal**: user describes what they want to cook (or what they have), the AI proposes a recipe, and the missing ingredients get extracted into the shopping list.
 
@@ -58,29 +70,17 @@ This file tracks the technical design of **pending** work only — data model ch
 
 ---
 
-## v1.5 — Multiple Shopping Lists
+## v1.5 — Multiple Shopping Lists — shipped
 
-**Current state**: `ShoppingItem` has a flat `ownerId`, no list concept. Sharing between partners is via `UserLink` (max 1 partner) + `accessibleUserIds(userId)` helper in `backend/src/routes/pantry.ts`, which every shopping query already filters by.
+**Shipped**: `ShoppingList` model (`id`, `name`, `ownerId`, `isGeneral`, `createdAt`), `ShoppingItem.listId`, `GET/POST/PUT/DELETE /api/pantry/shopping-lists` (`backend/src/routes/shoppingLists.ts`, cap `MAX_LISTS_PER_USER = 20`, `isGeneral` not deletable, lazy-seeds a "General" list on first `GET`), existing `/api/pantry/shopping*` endpoints gained `listId` (GET/DELETE default to the caller's General list when omitted, POST requires it explicitly). Frontend: `usePantry`'s shopping-item query is list-scoped (`['shoppingList', listId]`), `guestStorage` got the same `listId` dimension, and `ShoppingView` has a `ShoppingListSelector` (hidden when the user only has one list).
 
-**Schema changes** (`backend/prisma/schema.prisma`):
-- New model `ShoppingList { id, name, ownerId, createdAt }` (owned like `Product`/`ShoppingItem`, visible to the same `accessibleUserIds` set).
-- Add `listId String` (FK to `ShoppingList`) on `ShoppingItem`.
-- **Migration for existing data**: create one `ShoppingList` named "General" per existing `ownerId`/`accessibleUserIds` group, then backfill `listId` on all current `ShoppingItem` rows to point at it. Needs a data migration script alongside the Prisma schema migration (`prisma migrate dev` won't do the backfill on its own).
+**Migration applied**: the `sqlite`/`postgresql` migration-lock drift that originally blocked this (`prisma/migrations/migration_lock.toml` said `sqlite`; the two checked-in migrations were genuine sqlite SQL from a pre-Clerk schema shape, unusable against the real Postgres DB) was repaired by baselining — the two broken migrations were archived to `backend/prisma/migrations_archive/` and replaced with one accurate baseline migration generated from the real pre-`ShoppingList` schema, marked applied via `prisma migrate resolve` (no data touched). The two-phase `ShoppingList` migration then ran normally: phase 1 (nullable `listId`) → `backfill-shopping-lists.ts` (also fixed: it was missing `import 'dotenv/config'`, so `DATABASE_URL` never loaded when run standalone) → verified `listId IS NULL` = 0 → phase 2 (`listId` `NOT NULL` + FK). Applied non-interactively (`prisma migrate dev` needs a TTY this environment doesn't have) via `prisma migrate diff --script` + `prisma migrate deploy`.
 
-**Backend** (`backend/src/routes/pantry.ts` or a new `backend/src/routes/shoppingLists.ts`):
-- `GET /api/pantry/shopping-lists` — list the user's lists.
-- `POST /api/pantry/shopping-lists` — create a list.
-- `PUT` / `DELETE /api/pantry/shopping-lists/:id` — rename/delete (with the same ownership `findFirst` check pattern used elsewhere per `docs/data-mutations.md`; deciding what happens to items when a list is deleted — cascade delete vs. reassign to "General" — is an open decision).
-- Existing shopping endpoints (`GET/POST/PUT/DELETE /api/pantry/shopping...`) gain a required `listId` (query param on GET, body field on POST/PUT).
+**Delete list UI** (added after initial ship): a "Delete list" button next to "Add product" in `ShoppingView`'s `TopBar`, shown only when the currently selected list isn't General (`selectedList.isGeneral`, checked client-side — the backend already rejected this, the button just avoids a doomed request). Confirms first via the new generic `ConfirmActionDialog` (see below) before calling the existing `DELETE /api/pantry/shopping-lists/:id`. No rename UI yet — the `PUT` endpoint exists for whenever that's wanted.
 
-**Frontend**:
-- `src/api/pantryApi.ts` — new functions for the list CRUD endpoints; existing shopping functions gain `listId`.
-- `src/hooks/usePantry.ts` — query key becomes list-scoped (e.g. `['shoppingList', listId]`) instead of the current flat `['shoppingList']`; guest-mode (`guestStorage`) path also needs a `listId` dimension added to its local storage shape.
-- `ShoppingView` — needs a list selector (tabs or a dropdown) above the item list; the "create shopping item" flow needs to know the currently selected list.
+**Future: archive instead of delete**. Not built yet — noted here as an explicit product decision to pick up later, not to be inferred/half-implemented from this entry. The idea: let a user keep a list around for reuse (e.g. a recurring "Asado" or "Fiesta" list) without it cluttering the `ShoppingListSelector` dropdown — an `archived: Boolean` (or `archivedAt: DateTime?`) column on `ShoppingList`, list-fetch endpoints/queries exclude archived lists by default, and a separate "Archived lists" surface (a filter toggle in the selector, or its own small view) to unarchive one back into the active dropdown. Deliberately kept separate from delete rather than folded in as a delete option, since the two have different data-retention implications (archive keeps the list + items; delete is the current permanent, cascading behavior) and different UI (archive doesn't need the "are you sure, this can't be undone" framing delete does).
 
-**Open decisions**:
-- Cap on number of lists per user/household (avoid unbounded growth)?
-- What happens to items when their list is deleted — block deletion if non-empty, cascade, or move to "General"?
+**Generic confirm-before-destructive-action dialog** (added after initial ship): `src/components/ConfirmActionDialog/` — a reusable "are you sure?" prompt (title/body/confirm label as props, danger-red confirm button, cancel). This is new: nothing in the codebase asked "are you sure?" before a delete previously (individual pantry/shopping items delete immediately, no confirmation) — the two first uses are deleting a shopping list and removing a recipe from favorites (see the Recipes tab section above). Reach for this component rather than adding another one-off dialog (`ZeroQuantityDialog`/`ZeroShoppingQtyDialog` remain separate since they're not yes/no confirmations — they offer a choice of *what* to do, not whether to proceed).
 
 ---
 

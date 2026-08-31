@@ -5,9 +5,9 @@ import BottomNav from './index'
 import '../../i18n'
 
 describe('BottomNav', () => {
-  it('renders pantry and shopping tabs', () => {
+  it('renders pantry, recipes, favorites and shopping tabs', () => {
     render(<BottomNav value={0} onChange={vi.fn()} />)
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.getAllByRole('button')).toHaveLength(4)
   })
 
   it('calls onChange with the new tab index when a tab is clicked', async () => {

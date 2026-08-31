@@ -40,6 +40,31 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Mark items as purchased with a checkbox.
 - Clear all purchased items in one click.
 
+### Recipes
+
+- Search recipes by keyword, cuisine, diet, included ingredients, and max calories, via a server-side **Spoonacular** proxy (the API key never reaches the client).
+- Results are always random (`sort=random`, even with filters/a search query active) and reshuffle every time the tab is opened or the page reloads — there's no "default browsing order" to get stale.
+- Infinite-scroll results grid, 4 recipes per page (`IntersectionObserver` sentinel).
+- Detail view with an adjustable servings stepper that scales ingredient amounts and nutrition (calories/protein/carbs/fat) live.
+- "Send to a new shopping list" creates a shopping list titled with the recipe name and seeded with the scaled ingredients, then offers to jump straight to it.
+- Recipe titles, ingredient names, and instructions are translated to Spanish via **Groq** when the UI is in Spanish (Spoonacular itself doesn't support Spanish content) — fixed nutrition labels/units stay on the normal i18n system. Falls back to English on any translation error.
+- Works fully for guests too (recipe browsing needs no auth; "send to list" writes to `localStorage` same as the rest of guest mode).
+
+### Favorite Recipes
+
+- A heart icon in the top-right corner of a recipe's photo — on the search grid cards and on the detail view — saves/unsaves it as a favorite; filled red when saved, regardless of color scheme.
+- A separate **Favorites** tab (between Recipes and Shopping) lists saved recipes as the same card grid, no search bar or pagination (personal list, not expected to be huge).
+- Signed-in: favorites are a per-user DB table storing just the Spoonacular recipe id (`FavoriteRecipe`, capped at 100/user) — Spoonacular stays the single source of truth for content, so the list is re-hydrated (and re-translated, if needed) via the same recipe-detail lookup each time it's opened. Personal, not shared with a linked partner. Guests: same idea, ids only, in `localStorage`.
+- Saving a recipe is immediate; removing one asks for confirmation first ("Remove from favorites?") via a reusable `ConfirmActionDialog`.
+
+### Multiple Shopping Lists
+
+- Every account has a non-deletable "General" shopping list, created automatically on first use.
+- Additional named lists can be created (e.g. one per recipe sent from the Recipes tab), up to 20 per user.
+- Any non-General list can be deleted (button next to "Add product", shown only when that list is selected) — asks for confirmation first, since it permanently deletes the list and everything in it.
+- Planned for later: archiving a list instead of deleting it, so it can be reused without cluttering the list dropdown — see `ROADMAP.md`.
+- A list selector appears above the shopping list items whenever there is more than one list.
+
 ### Nearby Supermarkets
 
 - Device geolocation.
@@ -148,6 +173,7 @@ For local development, both frontend and backend start together with a single `n
 | helmet + cors + express-rate-limit | Security headers, CORS, rate limiting         |
 | web-push                           | VAPID push notification delivery              |
 | Resend                             | Transactional email for link invitations      |
+| groq-sdk                           | Groq API client, used to translate recipe content to Spanish |
 
 ---
 
@@ -159,10 +185,13 @@ User (Clerk ID)
  ├── LinkInvitation[]     — pending/accepted/declined invitations (48-hour expiry)
  ├── PushSubscription[]   — Web Push endpoints for this user
  ├── Product[]            — pantry items owned by this user
- └── ShoppingItem[]       — shopping list items owned by this user
+ ├── ShoppingItem[]       — shopping list items owned by this user (each belongs to a ShoppingList)
+ └── ShoppingList[]       — named shopping lists (one auto-created "General" list per user, plus any created manually or from Recipes)
 ```
 
 When two users are linked, all pantry and shopping list reads include items from both users. Writes always set the current user as owner.
+
+> **Note**: `ShoppingItem.listId` is currently nullable in `schema.prisma` (phase 1 of a two-phase migration) — see `ROADMAP.md`'s "Multiple Shopping Lists" entry for why the `NOT NULL` phase 2 migration and the one-time backfill script haven't run yet on the shared dev database.
 
 ---
 
@@ -176,7 +205,9 @@ mi-despensa-app/
 │
 ├── backend/                  # Backend source
 │   ├── prisma/
-│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem
+│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe
+│   ├── scripts/
+│   │   └── backfill-shopping-lists.ts # One-time idempotent backfill: General list per user + listId on old items
 │   └── src/
 │       ├── app.ts            # Express app (no listen — shared by local and Vercel)
 │       ├── index.ts          # Local dev entry: imports app, calls listen
@@ -184,12 +215,18 @@ mi-despensa-app/
 │       │   └── index.ts      # Prisma client singleton (serverless-safe)
 │       ├── services/
 │       │   ├── webpush.ts    # VAPID push delivery and stale-subscription cleanup
-│       │   └── email.ts      # Resend transactional email (optional)
+│       │   ├── email.ts      # Resend transactional email (optional)
+│       │   ├── spoonacular.ts # Server-only Spoonacular client (searchRecipes/getRecipeInformation, always sort=random)
+│       │   ├── groq.ts       # translateRecipeContent — recipe content → Spanish, cached, fails soft to English
+│       │   └── recipeSerializers.ts # serializeCard/serializeDetail — shared between recipes.ts and recipeFavorites.ts
 │       ├── middleware/
 │       │   └── auth.ts       # Clerk JWT verification
 │       └── routes/
 │           ├── auth.ts       # /sync, /me, /link, /invite
-│           ├── pantry.ts     # Products and shopping list CRUD
+│           ├── pantry.ts     # Products and shopping list CRUD (listId-aware)
+│           ├── shoppingLists.ts # Shopping list CRUD (/api/pantry/shopping-lists)
+│           ├── recipes.ts    # Public recipe search/detail proxy (/api/recipes), own rate limiter; mounts recipeFavorites.ts
+│           ├── recipeFavorites.ts # Favorites CRUD (/api/recipes/favorites), auth'd, capped at 100/user
 │           └── notifications.ts # Push subscription CRUD + cron handler
 │
 └── src/                      # Frontend
@@ -199,17 +236,18 @@ mi-despensa-app/
     ├── sw.ts                 # Service worker source (injectManifest, handles push + notificationclick)
     ├── api/
     │   ├── authApi.ts           # Sync and link calls
-    │   ├── pantryApi.ts         # Products and shopping list calls
+    │   ├── pantryApi.ts         # Products, shopping list, and shopping list CRUD calls
+    │   ├── recipesApi.ts        # Recipe search/detail (public, no token) + favorites CRUD (auth'd, token as usual)
     │   ├── overpass.ts          # Geoapify Places API wrapper and shop-type map
     │   ├── productSuggestionsApi.ts # Open Food Facts live suggestions
-    │   ├── notificationsApi.ts  # Push subscription register/unregister calls
-    │   └── spoonacularApi.ts    # Spoonacular recipe-by-ingredients API client
+    │   └── notificationsApi.ts  # Push subscription register/unregister calls
     ├── components/
     │   ├── Header/              # AppBar with hamburger drawer (mobile) and tabs (desktop)
     │   ├── BottomNav/
     │   ├── AddProductModal/
     │   ├── AuthModal/           # Account linking modal
-    │   ├── ConfirmDialog/
+    │   ├── ConfirmDialog/       # Actually a post-action success/cancel notice, despite the name
+    │   ├── ConfirmActionDialog/ # Generic pre-action "are you sure?" — delete list, remove favorite
     │   ├── QuantityStepper/
     │   ├── ZeroQuantityDialog/  # Prompt when a pantry item hits 0 (offer to add to cart)
     │   ├── ZeroShoppingQtyDialog/ # Prompt when a shopping item hits 0 (offer to delete)
@@ -221,7 +259,16 @@ mi-despensa-app/
     │   ├── ShoppingView/
     │   │   ├── NearbyStores/    # Store list with type filter
     │   │   ├── StoreMapDialog/  # MapLibre GL dialog opened per store
+    │   │   ├── ShoppingListSelector/ # List picker, shown when the user has more than one list
     │   │   └── ShoppingSkeleton.tsx # Skeleton UI shown while shopping list loads
+    │   ├── RecipesView/
+    │   │   ├── RecipesFilterBar/  # Search + cuisine/diet/ingredients/maxCalories filters
+    │   │   ├── RecipeCardGrid/    # Grid — infinite scroll when onLoadMore is passed, static otherwise
+    │   │   ├── RecipeCard/        # Photo (+ favorite heart button), title, ingredient chips
+    │   │   ├── RecipeDetailPanel/ # Servings scaler, scaled ingredients/nutrition, favorite heart, "send to list"
+    │   │   ├── ServingsStepper/   # Thin wrapper reusing QuantityStepper
+    │   │   └── RecipesSkeleton.tsx # Skeleton UI shown while a search/detail loads
+    │   ├── FavoriteRecipesView/  # Bounded grid of saved recipes — reuses RecipeCardGrid/RecipeDetailPanel from RecipesView
     │   └── AboutView/
     ├── context/
     │   └── AuthContext.tsx      # Partner state, link/invite flow, and guest migration trigger
@@ -229,7 +276,9 @@ mi-despensa-app/
     │   └── ThemeContext.tsx
     ├── hooks/
     │   ├── useAppState.ts       # Central state: wires pantry hooks to UI handlers
-    │   ├── usePantry.ts         # React Query hooks for products and shopping list
+    │   ├── usePantry.ts         # React Query hooks for products, shopping lists (incl. delete), and shopping list items
+    │   ├── useRecipes.ts        # React Query hooks for recipe search (infinite) and detail — public, no isSignedIn gate
+    │   ├── useFavorites.ts      # Favorite recipe ids/cards + toggle — signed-in (DB) or guest (localStorage); useFavoriteToggle wraps the mutation with a confirm-before-remove step
     │   ├── useNearbyStores.ts
     │   ├── useLocalStorage.ts
     │   ├── useProductSuggestions.ts
@@ -285,7 +334,6 @@ VITE_API_URL=http://localhost:3001
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 VITE_GEOAPIFY_KEY=...
 VITE_VAPID_PUBLIC_KEY=...          # from step 3 below
-VITE_SPOONACULAR_KEY=...           # optional — only needed for recipe suggestions
 ```
 
 **Backend** (`backend/.env`):
@@ -302,6 +350,8 @@ VAPID_SUBJECT=mailto:you@email.com
 CRON_SECRET=...                    # any random secret string
 RESEND_API_KEY=...                 # optional — only needed to send invitation emails
 EMAIL_FROM=My Pantry <noreply@mypantry.app>  # optional — sender address for invitation emails
+SPOONACULAR_KEY=...                # optional — server-only; recipes routes return a configError without it
+GROQ_API_KEY=...                   # optional — recipe content is served in English without it
 ```
 
 ### 3. Generate VAPID keys (one-time)
@@ -343,6 +393,8 @@ npm run dev   # starts frontend (Vite) and backend (Express) together via concur
 | `npm run preview`       | Serves the production frontend build locally                        |
 | `npm run type-check`    | Runs `tsc --noEmit` on the frontend                                  |
 | `npm run format`        | Formats `src/**/*.{ts,tsx,json}` with Prettier                       |
+| `npm run test`          | Runs frontend tests (Vitest + React Testing Library)                 |
+| `npm run test:coverage` | Runs frontend tests with coverage                                    |
 
 **Backend** (`backend/package.json`):
 
@@ -353,6 +405,8 @@ npm run dev   # starts frontend (Vite) and backend (Express) together via concur
 | `npm start`           | Runs the compiled server (`dist/index.js`) |
 | `npm run db:migrate`  | Runs `prisma migrate dev`                  |
 | `npm run db:generate` | Runs `prisma generate`                     |
+| `npm run backfill:shopping-lists` | One-time idempotent backfill: ensures every user has a "General" shopping list and re-points pre-existing items at it |
+| `npm run test`        | Runs backend tests (Vitest + supertest)    |
 
 ### Deploying to Vercel
 
@@ -420,19 +474,22 @@ Authentication is fully delegated to Clerk:
 ### v1.4 — Sharing & Export
 
 - [ ] Real-time sync between linked accounts (WebSockets or polling)
-- [ ] Multiple shopping lists, to decide where to buy what
+- [x] Multiple shopping lists, to decide where to buy what — create, switch, and delete (with confirmation); archiving instead of deleting is planned for later, see `ROADMAP.md`
 - [ ] Send items from shopping list to pantry automatically
 - [ ] Share shopping list (public link or PDF)
 - [ ] Export pantry to CSV
-- [ ] Recipe suggestions based on available ingredients (Spoonacular API client scaffolded)
+- [x] Recipes tab — search/filter, always-random results, infinite scroll, detail with servings + nutrition scaling, "send to a new shopping list" (Spoonacular, server-side key)
+- [x] Favorite recipes — heart icon on the recipe photo (search cards and detail view) saves/unsaves it (removing asks for confirmation); separate Favorites tab lists them
 
 ### v1.5 — Recipe Chat & Multiple Lists
 
-Related to the pending Spoonacular/multiple-lists items in v1.4 above, but approached as a chat-driven flow instead of a static suggestions list — see `ROADMAP.md` for the technical design.
+Related to the v1.4 items above. Multiple shopping lists and the Recipes tab shipped (see above); the free-form AI chat below is still pending — see `ROADMAP.md` for the technical design.
 
 - [ ] Free AI chat (Groq) to think through a recipe from what you have or want to cook
 - [ ] Automatic extraction of missing ingredients from the recipe into the shopping list
-- [ ] Multiple named shopping lists (e.g. "Supermarket", "Farmers market", "Party")
+- [x] Multiple named shopping lists — a "General" list per user plus any created manually or from a recipe; no rename/delete UI yet (endpoints exist)
+- [x] Groq wired up — currently used to translate recipe content (title/ingredients/instructions) to Spanish, not yet for the free-form chat above
+- [ ] Metric or imperial system settings.
 
 ### v1.6 — Testing & Environments
 

@@ -8,6 +8,8 @@
   "nav": {
     "pantry": "My Pantry",
     "shopping": "Shopping List",
+    "recipes": "Recipes",
+    "favorites": "Favorites",
     "about": "About"
   },
   "header": {
@@ -94,7 +96,49 @@
     "markPending": "Mark as pending",
     "deleteItem": "Remove from list",
     "purchased": "Purchased",
-    "addProduct": "Add product"
+    "addProduct": "Add product",
+    "selectList": "Shopping list",
+    "deleteList": "Delete list",
+    "deleteListConfirmTitle": "Delete this list?",
+    "deleteListConfirmBody": "\"{{name}}\" and all its items will be permanently deleted. This can't be undone.",
+    "lists": {
+      "general": "General"
+    }
+  },
+  "confirmAction": {
+    "cancel": "Cancel"
+  },
+  "recipes": {
+    "searchPlaceholder": "Search recipes...",
+    "cuisine": "Cuisine",
+    "diet": "Diet",
+    "includeIngredients": "Ingredients",
+    "maxCalories": "Max calories",
+    "emptyTitle": "No recipes found. Try different filters.",
+    "back": "Back to recipes",
+    "retry": "Try again",
+    "servings": "Servings",
+    "calories": "Calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "minutes": "min",
+    "kcal": "kcal",
+    "ingredients": "Ingredients",
+    "instructions": "Instructions",
+    "sendToList": "Send to a new shopping list",
+    "sentToList": "Ingredients added to a new shopping list",
+    "viewList": "View list",
+    "addFavorite": "Save recipe",
+    "removeFavorite": "Remove from favorites",
+    "removeFavoriteConfirmTitle": "Remove from favorites?",
+    "removeFavoriteConfirmBody": "You can always save this recipe again later.",
+    "favoritesEmptyTitle": "No favorite recipes yet. Tap the heart on a recipe to save it here.",
+    "errors": {
+      "quotaExceeded": "Recipe search is temporarily unavailable. Try again later.",
+      "configError": "Recipe search is not configured on this server.",
+      "generic": "Something went wrong loading recipes."
+    }
   },
   "stores": {
     "title": "Nearby stores",

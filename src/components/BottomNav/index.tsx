@@ -1,4 +1,4 @@
-import { MdStorefront, MdShoppingCart } from 'react-icons/md'
+import { MdStorefront, MdShoppingCart, MdRestaurantMenu, MdFavorite } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { NavPaper, StyledBottomNavigation, NavAction } from './BottomNav.styles'
 import type { BottomNavProps } from '../../utils/types'
@@ -10,6 +10,8 @@ export default function BottomNav({ value, onChange }: BottomNavProps) {
     <NavPaper elevation={4}>
       <StyledBottomNavigation value={value} onChange={(_, newValue: number) => onChange(newValue)}>
         <NavAction label={t('nav.pantry')} icon={<MdStorefront size={24} />} />
+        <NavAction label={t('nav.recipes')} icon={<MdRestaurantMenu size={24} />} />
+        <NavAction label={t('nav.favorites')} icon={<MdFavorite size={24} />} />
         <NavAction label={t('nav.shopping')} icon={<MdShoppingCart size={24} />} />
       </StyledBottomNavigation>
     </NavPaper>

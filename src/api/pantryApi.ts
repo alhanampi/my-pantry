@@ -1,4 +1,4 @@
-import type { Product, ShoppingListItem } from '../utils/types'
+import type { Product, ShoppingListItem, ShoppingList } from '../utils/types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -55,8 +55,9 @@ export async function apiDeleteProduct(token: string, id: number): Promise<void>
 
 // ── Shopping list ─────────────────────────────────────────────────────────────
 
-export async function apiGetShoppingItems(token: string): Promise<ShoppingListItem[]> {
-  const res = await fetch(`${API_URL}/api/pantry/shopping`, { headers: headers(token) })
+export async function apiGetShoppingItems(token: string, listId?: string): Promise<ShoppingListItem[]> {
+  const qs = listId ? `?listId=${encodeURIComponent(listId)}` : ''
+  const res = await fetch(`${API_URL}/api/pantry/shopping${qs}`, { headers: headers(token) })
   const json = await handleResponse<{ items: ApiShoppingItem[] }>(res)
   return json.items
 }
@@ -89,8 +90,47 @@ export async function apiDeleteShoppingItem(token: string, id: number): Promise<
   await handleResponse<{ success: boolean }>(res)
 }
 
-export async function apiClearPurchasedItems(token: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/pantry/shopping`, {
+export async function apiClearPurchasedItems(token: string, listId?: string): Promise<void> {
+  const qs = listId ? `?listId=${encodeURIComponent(listId)}` : ''
+  const res = await fetch(`${API_URL}/api/pantry/shopping${qs}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  })
+  await handleResponse<{ success: boolean }>(res)
+}
+
+// ── Shopping lists ────────────────────────────────────────────────────────────
+
+type ApiShoppingList = ShoppingList
+
+export async function apiGetShoppingLists(token: string): Promise<ShoppingList[]> {
+  const res = await fetch(`${API_URL}/api/pantry/shopping-lists`, { headers: headers(token) })
+  const json = await handleResponse<{ lists: ApiShoppingList[] }>(res)
+  return json.lists
+}
+
+export async function apiCreateShoppingList(token: string, name: string): Promise<ShoppingList> {
+  const res = await fetch(`${API_URL}/api/pantry/shopping-lists`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify({ name }),
+  })
+  const json = await handleResponse<{ list: ApiShoppingList }>(res)
+  return json.list
+}
+
+export async function apiUpdateShoppingList(token: string, id: string, name: string): Promise<ShoppingList> {
+  const res = await fetch(`${API_URL}/api/pantry/shopping-lists/${id}`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify({ name }),
+  })
+  const json = await handleResponse<{ list: ApiShoppingList }>(res)
+  return json.list
+}
+
+export async function apiDeleteShoppingList(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/pantry/shopping-lists/${id}`, {
     method: 'DELETE',
     headers: headers(token),
   })

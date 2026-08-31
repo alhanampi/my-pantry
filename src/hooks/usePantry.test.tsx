@@ -12,7 +12,10 @@ vi.mock('./useGuestStorage', () => ({
   guestStorage: {
     getProducts: vi.fn(() => []),
     getShopping: vi.fn(() => []),
+    getShoppingLists: vi.fn(() => [{ id: 'guest-general', name: 'General', ownerId: 'guest', isGeneral: true, createdAt: '' }]),
     createProduct: vi.fn(),
+    createShoppingItem: vi.fn(),
+    createShoppingList: vi.fn(),
   },
 }))
 

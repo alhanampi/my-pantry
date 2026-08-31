@@ -2,9 +2,10 @@ import List from '@mui/material/List'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import { MdShoppingCart, MdAdd, MdDeleteSweep } from 'react-icons/md'
+import { MdShoppingCart, MdAdd, MdDeleteSweep, MdDeleteOutline } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ShoppingItem from './ShoppingItem'
+import ShoppingListSelector from './ShoppingListSelector'
 import NearbyStores from './NearbyStores'
 import ShoppingSkeleton from './ShoppingSkeleton'
 import {
@@ -20,7 +21,11 @@ import type { ShoppingListProps } from '../../utils/types'
 
 export default function ShoppingView({
   items,
+  lists = [],
+  selectedListId,
+  onSelectList,
   onAddClick,
+  onDeleteListClick,
   onToggle,
   onDelete,
   onEdit,
@@ -34,9 +39,13 @@ export default function ShoppingView({
 
   const pendingItems = items.filter((i) => !i.purchased)
   const purchasedItems = items.filter((i) => i.purchased)
+  const selectedList = lists.find((l) => l.id === selectedListId)
 
   return (
     <Wrapper>
+      {onSelectList && (
+        <ShoppingListSelector lists={lists} selectedListId={selectedListId} onSelectList={onSelectList} />
+      )}
       <TopBar>
         <Button
           variant="contained"
@@ -47,6 +56,18 @@ export default function ShoppingView({
         >
           {t('shopping.addProduct')}
         </Button>
+
+        {selectedList && !selectedList.isGeneral && onDeleteListClick && (
+          <ClearButton
+            variant="outlined"
+            color="inherit"
+            startIcon={<MdDeleteOutline size={16} />}
+            onClick={onDeleteListClick}
+            size="small"
+          >
+            {t('shopping.deleteList')}
+          </ClearButton>
+        )}
 
         {items.length > 0 && (
           <CountText color="text.secondary">
