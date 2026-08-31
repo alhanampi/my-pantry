@@ -7,6 +7,7 @@ const mockPrisma = vi.hoisted(() => ({
   userLink: { findFirst: vi.fn() },
   product: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
   shoppingItem: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), deleteMany: vi.fn() },
+  shoppingList: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
 }))
 
 vi.mock('../db/index.js', () => ({ default: mockPrisma }))
@@ -26,6 +27,9 @@ describe('pantry routes', () => {
     vi.clearAllMocks()
     vi.mocked(verifyToken).mockResolvedValue({ sub: 'user_1' } as never)
     mockPrisma.userLink.findFirst.mockResolvedValue(null) // no partner: accessibleUserIds === [userId]
+    // Default: caller has a General shopping list — used by resolveListId
+    // whenever a request omits ?listId, and by POST /shopping's ownership check.
+    mockPrisma.shoppingList.findFirst.mockResolvedValue({ id: 'list_general', ownerId: 'user_1', isGeneral: true })
   })
 
   it('GET /api/pantry/products returns the caller-scoped product list', async () => {
@@ -181,10 +185,32 @@ describe('pantry routes', () => {
     const res = await request(app)
       .post('/api/pantry/shopping')
       .set('Authorization', 'Bearer good-token')
-      .send({ name: 'Arroz', quantity: '1kg' })
+      .send({ name: 'Arroz', quantity: '1kg', listId: 'list_general' })
 
     expect(res.status).toBe(201)
     expect(res.body.item.name).toBe('Arroz')
+  })
+
+  it('POST /api/pantry/shopping returns 400 when listId is missing', async () => {
+    const res = await request(app)
+      .post('/api/pantry/shopping')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Arroz', quantity: '1kg' })
+
+    expect(res.status).toBe(400)
+    expect(mockPrisma.shoppingItem.create).not.toHaveBeenCalled()
+  })
+
+  it('POST /api/pantry/shopping returns 404 when the listId is not owned by the caller', async () => {
+    mockPrisma.shoppingList.findFirst.mockResolvedValue(null)
+
+    const res = await request(app)
+      .post('/api/pantry/shopping')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Arroz', quantity: '1kg', listId: 'someone-elses-list' })
+
+    expect(res.status).toBe(404)
+    expect(mockPrisma.shoppingItem.create).not.toHaveBeenCalled()
   })
 
   it('POST /api/pantry/shopping accepts an empty-string expiryDate (regression)', async () => {
@@ -197,7 +223,7 @@ describe('pantry routes', () => {
     const res = await request(app)
       .post('/api/pantry/shopping')
       .set('Authorization', 'Bearer good-token')
-      .send({ name: 'Pasta', quantity: '3', brand: 'Barilla', details: '', purchaseDate: '', expiryDate: '', location: '', purchased: false })
+      .send({ name: 'Pasta', quantity: '3', brand: 'Barilla', details: '', purchaseDate: '', expiryDate: '', location: '', purchased: false, listId: 'list_general' })
 
     expect(res.status).toBe(201)
     expect(mockPrisma.shoppingItem.create).toHaveBeenCalled()
@@ -232,11 +258,11 @@ describe('pantry routes', () => {
     expect(mockPrisma.shoppingItem.delete).toHaveBeenCalledWith({ where: { id: 1 } })
   })
 
-  it('DELETE /api/pantry/shopping clears purchased items in bulk', async () => {
+  it('DELETE /api/pantry/shopping clears purchased items in bulk (defaults to the General list)', async () => {
     const res = await request(app).delete('/api/pantry/shopping').set('Authorization', 'Bearer good-token')
     expect(res.status).toBe(200)
     expect(mockPrisma.shoppingItem.deleteMany).toHaveBeenCalledWith({
-      where: { ownerId: { in: ['user_1'] }, purchased: true },
+      where: { listId: 'list_general', ownerId: { in: ['user_1'] }, purchased: true },
     })
   })
 })

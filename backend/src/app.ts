@@ -5,6 +5,8 @@ import rateLimit from 'express-rate-limit'
 import authRoutes from './routes/auth'
 import pantryRoutes from './routes/pantry'
 import notificationsRoutes from './routes/notifications'
+import recipesRoutes from './routes/recipes'
+import shoppingListsRoutes from './routes/shoppingLists'
 
 const app = express()
 
@@ -28,9 +30,19 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later' },
 })
 
+const recipesLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+})
+
 app.use('/api/auth', limiter, authRoutes)
+app.use('/api/pantry/shopping-lists', shoppingListsRoutes)
 app.use('/api/pantry', pantryRoutes)
 app.use('/api/notifications', notificationsRoutes)
+app.use('/api/recipes', recipesLimiter, recipesRoutes)
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 
