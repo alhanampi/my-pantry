@@ -27,16 +27,7 @@ export const StyledBottomNavigation = styled(BottomNavigation)`
 export const NavAction = styled(BottomNavigationAction)`
   &&.Mui-selected {
     color: var(--scheme-primary);
-
-    /* Material-3-style "active indicator": a pill behind the icon filled
-       with the page background color, so the selected tab reads as if a
-       bit of the page itself pokes up into the bar. Padding on the svg
-       itself (not a wrapper) is what gives the pill its size, since
-       react-icons renders the icon directly with no wrapping span. */
-    svg {
-      background-color: var(--scheme-bg);
-      border-radius: 999px;
-      padding: 6px;
-    }
+    background-color: var(--scheme-bg);
+    border-radius: 12px 12px 0 0;
   }
 `
