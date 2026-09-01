@@ -23,10 +23,11 @@ import Chip from '@mui/material/Chip'
 import {
   MdSearch,
   MdInfoOutline,
-  MdStorefront,
-  MdShoppingCart,
-  MdRestaurantMenu,
-  MdFavorite,
+  MdOutlineStorefront,
+  MdOutlineShoppingCart,
+  MdOutlineRestaurantMenu,
+  MdOutlineFavorite,
+  MdOutlineLightbulb,
   MdClear,
   MdTranslate,
   MdPersonOutline,
@@ -35,11 +36,6 @@ import {
   MdMenu,
   MdPeopleOutline,
 } from 'react-icons/md'
-// Not react-icons — MdChatBubbleOutline is a thin outline icon that reads
-// visually lighter than the other (filled) tab icons above. @mui/icons-
-// material's default (non-Outlined/Rounded) variant is filled, matching
-// their weight.
-import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects'
 import appIcon from '../../assets/icon.png'
 import { useTranslation } from 'react-i18next'
 import {
@@ -411,7 +407,7 @@ export default function Header({
         >
           <Tab
             label={t('nav.pantry')}
-            icon={<MdStorefront size={18} />}
+            icon={<MdOutlineStorefront size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
@@ -423,7 +419,7 @@ export default function Header({
           />
           <Tab
             label={t('nav.recipes')}
-            icon={<MdRestaurantMenu size={18} />}
+            icon={<MdOutlineRestaurantMenu size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
@@ -435,7 +431,7 @@ export default function Header({
           />
           <Tab
             label={t('nav.favorites')}
-            icon={<MdFavorite size={18} />}
+            icon={<MdOutlineFavorite size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
@@ -447,7 +443,7 @@ export default function Header({
           />
           <Tab
             label={t('nav.chat')}
-            icon={<EmojiObjectsIcon sx={{ fontSize: 18 }} />}
+            icon={<MdOutlineLightbulb size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
@@ -459,7 +455,7 @@ export default function Header({
           />
           <Tab
             label={t('nav.shopping')}
-            icon={<MdShoppingCart size={18} />}
+            icon={<MdOutlineShoppingCart size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
