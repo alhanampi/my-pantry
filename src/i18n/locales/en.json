@@ -222,7 +222,8 @@
     },
     "suggestRecipe": "Suggest a recipe",
     "suggesting": "Looking for recipes...",
-    "noSuggestions": "Couldn't find a matching recipe this time — try again or keep chatting for a bit.",
+    "suggestionsIntro": "Here are a few tasty ideas for you! 🍳😋",
+    "noSuggestions": "Hmm, couldn't find a matching recipe this time 😅 — try again or keep chatting for a bit.",
     "backToChat": "Back to chat",
     "conversationTooLong": "This conversation has gotten long — start a new one to keep going.",
     "errors": {

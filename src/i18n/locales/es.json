@@ -222,7 +222,8 @@
     },
     "suggestRecipe": "Sugerir una receta",
     "suggesting": "Buscando recetas...",
-    "noSuggestions": "No encontré una receta esta vez — probá de nuevo o seguí contándome un poco más.",
+    "suggestionsIntro": "¡Acá van algunas ideas ricas para vos! 🍳😋",
+    "noSuggestions": "Mmm, no encontré una receta esta vez 😅 — probá de nuevo o seguí contándome un poco más.",
     "backToChat": "Volver al chat",
     "conversationTooLong": "Esta conversación ya es muy larga — empezá una nueva para seguir.",
     "errors": {

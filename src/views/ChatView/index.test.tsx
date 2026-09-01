@@ -117,7 +117,7 @@ describe('ChatView', () => {
     await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
 
     await waitFor(() => expect(sendMessage).toHaveBeenCalledWith('pollo', undefined))
-    await waitFor(() => expect(suggestRecipe.mutate).toHaveBeenCalledWith('new1'))
+    await waitFor(() => expect(suggestRecipe.mutate).toHaveBeenCalledWith('new1', expect.anything()))
   })
 
   it('still requests suggestions after onboarding even with an empty query (diet-only fallback)', async () => {
@@ -135,7 +135,7 @@ describe('ChatView', () => {
     render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
     await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
 
-    await waitFor(() => expect(suggestRecipe.mutate).toHaveBeenCalledWith('new2'))
+    await waitFor(() => expect(suggestRecipe.mutate).toHaveBeenCalledWith('new2', expect.anything()))
     expect(sendMessage).not.toHaveBeenCalled()
   })
 
@@ -148,7 +148,13 @@ describe('ChatView', () => {
     expect(screen.queryByPlaceholderText(i18n.t('chat.placeholder'))).not.toBeInTheDocument()
   })
 
-  it('shows the suggest-recipe button once there are enough messages, and renders suggestions', async () => {
+  function suggestRecipeSpyWithRecipes(recipes: unknown[]) {
+    return mutationSpy({
+      mutate: vi.fn((_id, opts) => opts?.onSuccess?.({ recipes })),
+    })
+  }
+
+  it('shows the suggest-recipe button once there are enough messages, and renders suggestions inline after clicking it', async () => {
     vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
     vi.mocked(useChatSession).mockReturnValue({
       ...defaultSessionMock(),
@@ -158,13 +164,9 @@ describe('ChatView', () => {
       ],
     } as never)
     vi.mocked(useSuggestRecipe).mockReturnValue(
-      mutationSpy({
-        data: {
-          recipes: [
-            { id: 1, title: 'Arroz con pollo', image: 'img.jpg', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
-          ],
-        },
-      }) as never,
+      suggestRecipeSpyWithRecipes([
+        { id: 1, title: 'Arroz con pollo', image: 'img.jpg', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
+      ]) as never,
     )
 
     render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
@@ -172,19 +174,25 @@ describe('ChatView', () => {
     await userEvent.click(screen.getByText(existingConversation.title))
 
     expect(screen.getByText(i18n.t('chat.suggestRecipe'))).toBeInTheDocument()
+    expect(screen.queryByText('Arroz con pollo')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByText(i18n.t('chat.suggestRecipe')))
     expect(screen.getByText('Arroz con pollo')).toBeInTheDocument()
   })
 
   it('lets a suggested recipe be favorited from the chat', async () => {
     vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
+    vi.mocked(useChatSession).mockReturnValue({
+      ...defaultSessionMock(),
+      messages: [
+        { id: '1', role: 'user', content: 'tengo arroz', createdAt: '' },
+        { id: '2', role: 'assistant', content: 'genial', createdAt: '' },
+      ],
+    } as never)
     vi.mocked(useSuggestRecipe).mockReturnValue(
-      mutationSpy({
-        data: {
-          recipes: [
-            { id: 1, title: 'Arroz con pollo', image: 'img.jpg', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
-          ],
-        },
-      }) as never,
+      suggestRecipeSpyWithRecipes([
+        { id: 1, title: 'Arroz con pollo', image: 'img.jpg', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
+      ]) as never,
     )
     const favoriteToggle = favoriteToggleSpy()
     vi.mocked(useFavoriteToggle).mockReturnValue(favoriteToggle as never)
@@ -192,9 +200,54 @@ describe('ChatView', () => {
     render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
     await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
     await userEvent.click(screen.getByText(existingConversation.title))
+    await userEvent.click(screen.getByText(i18n.t('chat.suggestRecipe')))
 
     await userEvent.click(screen.getByLabelText(i18n.t('recipes.addFavorite')))
     expect(favoriteToggle.requestToggle).toHaveBeenCalledWith(1, false)
+  })
+
+  it('hides the quick-reply chips once a recipe has already been suggested', async () => {
+    vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
+    vi.mocked(useChatSession).mockReturnValue({
+      ...defaultSessionMock(),
+      messages: [
+        { id: '1', role: 'user', content: 'tengo arroz', createdAt: '' },
+        { id: '2', role: 'assistant', content: 'genial', createdAt: '' },
+      ],
+    } as never)
+    vi.mocked(useSuggestRecipe).mockReturnValue(
+      suggestRecipeSpyWithRecipes([
+        { id: 1, title: 'Arroz con pollo', image: 'img.jpg', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
+      ]) as never,
+    )
+
+    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
+    await userEvent.click(screen.getByText(existingConversation.title))
+
+    expect(screen.getByText(i18n.t('chat.quickReplies.time10Label'))).toBeInTheDocument()
+
+    await userEvent.click(screen.getByText(i18n.t('chat.suggestRecipe')))
+
+    expect(screen.queryByText(i18n.t('chat.quickReplies.time10Label'))).not.toBeInTheDocument()
+  })
+
+  it('only offers pantry-ingredient chips that are actually mentioned in the conversation so far', async () => {
+    vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
+    vi.mocked(useChatSession).mockReturnValue({
+      ...defaultSessionMock(),
+      messages: [{ id: '1', role: 'user', content: 'Tengo queso fresco a mano', createdAt: '' }],
+    } as never)
+    vi.mocked(usePantry).mockReturnValue({
+      products: [{ id: 1, name: 'Queso fresco' }, { id: 2, name: 'Lentejas' }],
+    } as never)
+
+    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
+    await userEvent.click(screen.getByText(existingConversation.title))
+
+    expect(screen.getByText('Queso fresco')).toBeInTheDocument()
+    expect(screen.queryByText('Lentejas')).not.toBeInTheDocument()
   })
 
   it('opens the history drawer and shows the delete-conversation confirm dialog from it', async () => {

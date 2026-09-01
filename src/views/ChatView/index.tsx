@@ -12,10 +12,9 @@ import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects'
 import { useTranslation } from 'react-i18next'
 import ChatSidebar from './ChatSidebar'
 import NewChatOnboarding from './NewChatOnboarding'
-import ChatMessageList from './ChatMessageList'
+import ChatMessageList, { type SuggestionEvent } from './ChatMessageList'
 import ChatComposer, { type ChatComposerHandle } from './ChatComposer'
 import QuickReplies from './QuickReplies'
-import ChatSuggestionCards from './ChatSuggestionCards'
 import ChatSkeleton from './ChatSkeleton'
 import ConfirmActionDialog from '../../components/ConfirmActionDialog'
 import RecipeDetailPanel from '../RecipesView/RecipeDetailPanel'
@@ -82,6 +81,11 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
   // active — see the effect's own comment for why this can't just happen
   // inline in the onSuccess callback.
   const [autoStart, setAutoStart] = useState<{ conversationId: string; initialQuery: string } | null>(null)
+  // Each "suggest a recipe" result, positioned where it happened in the
+  // conversation (see ChatMessageList's SuggestionEvent doc) — reset
+  // whenever the active conversation changes so a switch never carries
+  // stale suggestions over.
+  const [suggestionEvents, setSuggestionEvents] = useState<SuggestionEvent[]>([])
 
   const conversationsQuery = useConversations()
   const conversationQuery = useConversation(activeConversationId)
@@ -100,6 +104,12 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
   const session = useChatSession(activeConversationId, [])
   const loadedConversationRef = useRef<string | null>(null)
   const composerRef = useRef<ChatComposerHandle>(null)
+  // Always holds the latest session.messages, readable from inside async
+  // callbacks (mutation onSuccess, effect .then chains) that would otherwise
+  // see a stale snapshot from whatever render created them — see
+  // pushSuggestionEvent's call sites for why this matters.
+  const messagesRef = useRef(session.messages)
+  messagesRef.current = session.messages
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -119,6 +129,21 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
           .map((s) => `${s.name} (${s.distance}m)`)
           .join(', ')
       : undefined
+
+  // Ingredient quick-reply chips are filtered down to pantry items actually
+  // mentioned somewhere in the conversation so far (the opening message —
+  // which is the typed recipe/ingredient from onboarding — plus anything
+  // since, including the assistant's own follow-up questions), rather than
+  // dumping the whole pantry regardless of what's being discussed. No extra
+  // AI call: purely a local match against text already on screen.
+  const conversationText = session.messages.map((m) => m.content).join(' ').toLowerCase()
+  const relevantPantryNames = pantryProducts
+    .filter((p) => conversationText.includes(p.name.toLowerCase()))
+    .map((p) => p.name)
+
+  const pushSuggestionEvent = (afterIndex: number, recipes: SuggestionEvent['recipes']): void => {
+    setSuggestionEvents((prev) => [...prev, { id: `sugg-${Date.now()}-${prev.length}`, afterIndex, recipes }])
+  }
 
   useEffect(() => {
     requestLocation()
@@ -141,6 +166,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
   useEffect(() => {
     if (conversationQuery.data && loadedConversationRef.current !== activeConversationId) {
       session.resetMessages(conversationQuery.data.messages)
+      setSuggestionEvents([])
       loadedConversationRef.current = activeConversationId
     }
     // Only re-sync when switching conversations, not on every background
@@ -162,10 +188,14 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
     setAutoStart(null)
     if (initialQuery) {
       void session.sendMessage(initialQuery, nearbyStoresSummary).then(() => {
-        suggestRecipe.mutate(conversationId)
+        suggestRecipe.mutate(conversationId, {
+          onSuccess: (data) => pushSuggestionEvent(messagesRef.current.length, data.recipes),
+        })
       })
     } else {
-      suggestRecipe.mutate(conversationId)
+      suggestRecipe.mutate(conversationId, {
+        onSuccess: (data) => pushSuggestionEvent(messagesRef.current.length, data.recipes),
+      })
     }
     // session/suggestRecipe/nearbyStoresSummary are re-derived every render
     // and intentionally excluded — this should only re-run when autoStart or
@@ -205,6 +235,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
           setActiveConversationId(conversation.id)
           loadedConversationRef.current = conversation.id
           session.resetMessages([])
+          setSuggestionEvents([])
           // Picked up by the auto-start effect above once activeConversationId
           // has actually become conversation.id on a subsequent render.
           setAutoStart({ conversationId: conversation.id, initialQuery })
@@ -226,6 +257,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
         if (activeConversationId === id) {
           setActiveConversationId(null)
           loadedConversationRef.current = null
+          setSuggestionEvents([])
         }
       },
     })
@@ -233,7 +265,10 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
 
   const handleSuggestRecipe = (): void => {
     if (!activeConversationId) return
-    suggestRecipe.mutate(activeConversationId)
+    const afterIndex = messagesRef.current.length
+    suggestRecipe.mutate(activeConversationId, {
+      onSuccess: (data) => pushSuggestionEvent(afterIndex, data.recipes),
+    })
   }
 
   const handleSendToShoppingList = (payload: { recipeTitle: string; ingredients: RecipeIngredient[] }): void => {
@@ -317,6 +352,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
             onClick={() => {
               setCreatingNew(true)
               setActiveConversationId(null)
+              setSuggestionEvents([])
             }}
           >
             <MdAddComment size={20} />
@@ -334,7 +370,14 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
       {!creatingNew && activeConversationId !== null && (
         <ChatBody ref={chatBodyRef} style={{ height: availableHeight }}>
           <ScrollArea>
-            <ChatMessageList messages={session.messages} />
+            <ChatMessageList
+              messages={session.messages}
+              suggestionEvents={suggestionEvents}
+              onSelectRecipe={setSuggestedRecipeId}
+              favoriteIds={favoriteIdSet}
+              onToggleFavorite={handleToggleFavorite}
+              pendingFavoriteId={favoriteToggle.pendingRecipeId}
+            />
 
             {session.streamError && (
               <ErrorState>
@@ -366,31 +409,20 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
                 {suggestRecipe.isPending ? t('chat.suggesting') : t('chat.suggestRecipe')}
               </Button>
             )}
-
-            {suggestRecipe.data?.recipes.length === 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {t('chat.noSuggestions')}
-              </Typography>
-            )}
-
-            {suggestRecipe.data && suggestRecipe.data.recipes.length > 0 && (
-              <ChatSuggestionCards
-                recipes={suggestRecipe.data.recipes}
-                onSelect={setSuggestedRecipeId}
-                favoriteIds={favoriteIdSet}
-                onToggleFavorite={handleToggleFavorite}
-                pendingFavoriteId={favoriteToggle.pendingRecipeId}
-              />
-            )}
           </ScrollArea>
 
-          <QuickReplies
-            pantryItemNames={pantryProducts.map((p) => p.name)}
-            onPickTime={(phrase) => composerRef.current?.appendPhrase(phrase)}
-            onPickIngredient={(name) =>
-              composerRef.current?.appendIngredient(name, t('chat.quickReplies.haveIngredientsPrefix'))
-            }
-          />
+          {/* Once at least one batch of recipes has been offered, the
+              "collecting info" phase is over — quick-reply chips stop being
+              useful and just clutter the view from then on. */}
+          {suggestionEvents.length === 0 && (
+            <QuickReplies
+              pantryItemNames={relevantPantryNames}
+              onPickTime={(phrase) => composerRef.current?.appendPhrase(phrase)}
+              onPickIngredient={(name) =>
+                composerRef.current?.appendIngredient(name, t('chat.quickReplies.haveIngredientsPrefix'))
+              }
+            />
+          )}
 
           <ChatComposer
             ref={composerRef}
