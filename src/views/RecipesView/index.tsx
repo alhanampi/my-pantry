@@ -12,6 +12,7 @@ import ConfirmActionDialog from '../../components/ConfirmActionDialog'
 import { Wrapper, EmptyState, ErrorState, BackRow, BackButton } from './RecipesView.styles'
 import { useRecipeSearch, useRecipeDetail } from '../../hooks/useRecipes'
 import { useFavoriteIds, useFavoriteToggle } from '../../hooks/useFavorites'
+import { useDebounce } from '../../hooks/useDebounce'
 import type { RecipeSearchFilters, RecipeIngredient } from '../../utils/types'
 
 const EMPTY_FILTERS: RecipeSearchFilters = {
@@ -36,7 +37,11 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
   const [filters, setFilters] = useState<RecipeSearchFilters>(EMPTY_FILTERS)
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
 
-  const search = useRecipeSearch(filters)
+  // Filters drive the TextFields directly (no typing lag), but the query
+  // itself is debounced — otherwise every keystroke would fire a fresh
+  // Spoonacular search call (see ROADMAP.md's Recipes tab entry).
+  const debouncedFilters = useDebounce(filters, 400)
+  const search = useRecipeSearch(debouncedFilters)
   const detail = useRecipeDetail(selectedRecipeId)
   const favoriteIds = useFavoriteIds()
   const favoriteToggle = useFavoriteToggle()

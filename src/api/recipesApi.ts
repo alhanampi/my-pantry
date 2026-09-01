@@ -1,4 +1,12 @@
 import type { RecipeDetail, RecipeSearchFilters, RecipeSearchResponse, FavoriteRecipesResponse } from '../utils/types'
+import {
+  getCached,
+  setCached,
+  searchCacheKey,
+  detailCacheKey,
+  SEARCH_CACHE_TTL_MS,
+  DETAIL_CACHE_TTL_MS,
+} from '../utils/recipeCache'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -19,11 +27,23 @@ async function handleResponse<T>(res: Response): Promise<T> {
 // (browsing works for guests too), so there is no token to pass. See the
 // note added to docs/data-fetching.md.
 
+// Cache-first, with a stale-on-error fallback: Spoonacular's free-tier quota
+// is easy to exhaust (each search/detail call spends it), so identical
+// requests are served from localStorage instead of hitting the network, and
+// a live failure (typically 'quotaExceeded') falls back to a stale cached
+// value rather than surfacing an error, if one exists. See ROADMAP.md's
+// Recipes tab entry for why this replaced the earlier "no caching, Spoonacular
+// is always the source of truth" decision.
+
 export async function apiSearchRecipes(
   filters: RecipeSearchFilters,
   offset: number,
   lang: string,
 ): Promise<RecipeSearchResponse> {
+  const cacheKey = searchCacheKey(filters as unknown as Record<string, string | undefined>, offset, lang)
+  const cached = getCached<RecipeSearchResponse>(cacheKey, SEARCH_CACHE_TTL_MS)
+  if (cached && !cached.stale) return cached.value
+
   const params = new URLSearchParams({ offset: String(offset), lang })
   if (filters.query) params.set('query', filters.query)
   if (filters.cuisine) params.set('cuisine', filters.cuisine)
@@ -31,14 +51,37 @@ export async function apiSearchRecipes(
   if (filters.includeIngredients) params.set('includeIngredients', filters.includeIngredients)
   if (filters.maxCalories) params.set('maxCalories', filters.maxCalories)
 
-  const res = await fetch(`${API_URL}/api/recipes/search?${params.toString()}`)
-  return handleResponse<RecipeSearchResponse>(res)
+  try {
+    const res = await fetch(`${API_URL}/api/recipes/search?${params.toString()}`)
+    const result = await handleResponse<RecipeSearchResponse>(res)
+    setCached(cacheKey, result)
+    return result
+  } catch (err) {
+    if (cached) {
+      console.warn('Spoonacular search failed, serving stale cached results', err)
+      return cached.value
+    }
+    throw err
+  }
 }
 
 export async function apiGetRecipeDetail(id: number, lang: string): Promise<RecipeDetail> {
-  const res = await fetch(`${API_URL}/api/recipes/${id}?lang=${lang}`)
-  const json = await handleResponse<{ recipe: RecipeDetail }>(res)
-  return json.recipe
+  const cacheKey = detailCacheKey(id, lang)
+  const cached = getCached<RecipeDetail>(cacheKey, DETAIL_CACHE_TTL_MS)
+  if (cached && !cached.stale) return cached.value
+
+  try {
+    const res = await fetch(`${API_URL}/api/recipes/${id}?lang=${lang}`)
+    const json = await handleResponse<{ recipe: RecipeDetail }>(res)
+    setCached(cacheKey, json.recipe)
+    return json.recipe
+  } catch (err) {
+    if (cached) {
+      console.warn('Spoonacular recipe detail failed, serving stale cached recipe', err)
+      return cached.value
+    }
+    throw err
+  }
 }
 
 // ── Favorites — per-user data, so these DO take a token (unlike the two
