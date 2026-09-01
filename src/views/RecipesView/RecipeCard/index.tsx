@@ -1,4 +1,5 @@
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import { MdSchedule, MdLocalFireDepartment, MdFavorite, MdFavoriteBorder } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,11 +19,21 @@ export interface RecipeCardProps {
   onClick: (id: number) => void
   isFavorite?: boolean
   onToggleFavorite?: (id: number) => void
+  // True while this specific recipe's favorite toggle is in flight — shows a
+  // spinner instead of the heart and blocks a second click during a slow API
+  // call, rather than leaving no feedback at all.
+  isTogglingFavorite?: boolean
 }
 
 const MAX_CHIPS = 3
 
-export default function RecipeCard({ recipe, onClick, isFavorite = false, onToggleFavorite }: RecipeCardProps) {
+export default function RecipeCard({
+  recipe,
+  onClick,
+  isFavorite = false,
+  onToggleFavorite,
+  isTogglingFavorite = false,
+}: RecipeCardProps) {
   const { t } = useTranslation()
 
   return (
@@ -35,12 +46,19 @@ export default function RecipeCard({ recipe, onClick, isFavorite = false, onTogg
             $active={isFavorite}
             aria-pressed={isFavorite}
             aria-label={t(isFavorite ? 'recipes.removeFavorite' : 'recipes.addFavorite')}
+            disabled={isTogglingFavorite}
             onClick={(e) => {
               e.stopPropagation()
               onToggleFavorite(recipe.id)
             }}
           >
-            {isFavorite ? <MdFavorite size={18} /> : <MdFavoriteBorder size={18} />}
+            {isTogglingFavorite ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : isFavorite ? (
+              <MdFavorite size={18} />
+            ) : (
+              <MdFavoriteBorder size={18} />
+            )}
           </FavoriteButton>
         )}
       </ImageWrapper>

@@ -19,9 +19,10 @@ import {
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { useNearbyStores } from '../../../hooks/useNearbyStores'
+import { useGeolocation } from '../../../hooks/useGeolocation'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
 import StoreMapDialog from '../StoreMapDialog'
-import type { ShopType, Coordinates, NearbyStore } from '../../../utils/types'
+import type { ShopType, NearbyStore } from '../../../utils/types'
 import {
   StoresPaper,
   StoresTitle,
@@ -69,25 +70,14 @@ function getShopIcon(type: string) {
 
 export default function NearbyStores() {
   const { t } = useTranslation()
-  const [coords, setCoords] = useState<Coordinates | null>(null)
-  const [geoError, setGeoError] = useState<string | null>(null)
+  const { coords, error: geoError, requestLocation } = useGeolocation()
   const [shopTypes, setShopTypes] = useState<ShopType[]>(DEFAULT_SHOP_TYPES)
   const [selectedStore, setSelectedStore] = useState<NearbyStore | null>(null)
 
   const { data: stores, isLoading, isError } = useNearbyStores(coords, shopTypes)
 
   const handleSearch = (): void => {
-    setGeoError(null)
-    if (!navigator.geolocation) {
-      setGeoError(t('stores.notSupported'))
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => {
-        setGeoError(err.code === 1 ? t('stores.locationDenied') : t('stores.locationError'))
-      }
-    )
+    requestLocation()
   }
 
   const handleTypeChange = (e: SelectChangeEvent<ShopType[]>): void => {

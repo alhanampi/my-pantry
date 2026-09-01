@@ -48,6 +48,18 @@ describe('RecipeDetailPanel', () => {
     })
   })
 
+  it('does not render a "view full recipe" link even when sourceUrl is present (no navigating out of the app)', () => {
+    render(<RecipeDetailPanel recipe={{ ...recipe, sourceUrl: 'https://example.com/pasta' }} onSendToShoppingList={vi.fn()} />)
+    expect(screen.queryByText(/view full recipe/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('defaults servings from initialServings when provided', () => {
+    render(<RecipeDetailPanel recipe={recipe} onSendToShoppingList={vi.fn()} initialServings={4} />)
+    // 200g * (4/2) = 400g
+    expect(screen.getByText(/400 g Pasta/)).toBeInTheDocument()
+  })
+
   it('does not render a favorite button when onToggleFavorite is omitted', () => {
     render(<RecipeDetailPanel recipe={recipe} onSendToShoppingList={vi.fn()} />)
     expect(screen.queryByRole('button', { name: /favorite|favorita/i })).not.toBeInTheDocument()
@@ -65,5 +77,24 @@ describe('RecipeDetailPanel', () => {
     )
     await userEvent.click(screen.getByRole('button', { pressed: false }))
     expect(onToggleFavorite).toHaveBeenCalledWith(1)
+  })
+
+  it('shows a spinner and disables the favorite button while isTogglingFavorite is true', () => {
+    render(
+      <RecipeDetailPanel
+        recipe={recipe}
+        onSendToShoppingList={vi.fn()}
+        isFavorite={false}
+        onToggleFavorite={vi.fn()}
+        isTogglingFavorite
+      />,
+    )
+    expect(screen.getByRole('button', { pressed: false })).toBeDisabled()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
+
+  it('shows a spinner on the send-to-shopping-list button while isSending is true', () => {
+    render(<RecipeDetailPanel recipe={recipe} onSendToShoppingList={vi.fn()} isSending />)
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 })

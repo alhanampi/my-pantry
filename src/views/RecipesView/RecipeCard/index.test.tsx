@@ -44,4 +44,10 @@ describe('RecipeCard', () => {
     render(<RecipeCard recipe={recipe} onClick={vi.fn()} isFavorite onToggleFavorite={vi.fn()} />)
     expect(screen.getByRole('button', { pressed: true })).toBeInTheDocument()
   })
+
+  it('shows a spinner and disables the favorite button while isTogglingFavorite is true', () => {
+    render(<RecipeCard recipe={recipe} onClick={vi.fn()} onToggleFavorite={vi.fn()} isTogglingFavorite />)
+    expect(screen.getByRole('button', { pressed: false })).toBeDisabled()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
 })

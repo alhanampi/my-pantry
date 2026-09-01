@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 import { MdOutlineShoppingCartCheckout, MdFavorite, MdFavoriteBorder } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ServingsStepper from '../ServingsStepper'
@@ -26,6 +27,13 @@ export interface RecipeDetailPanelProps {
   isSending?: boolean
   isFavorite?: boolean
   onToggleFavorite?: (id: number) => void
+  // True while this recipe's favorite toggle is in flight — see RecipeCard's
+  // identical prop for why (spinner + click-guard during a slow API call).
+  isTogglingFavorite?: boolean
+  // Overrides the initial servings shown/scaled from — used by Chat to
+  // default to the conversation's own servings preference instead of
+  // whatever Spoonacular's recipe.servings happens to be.
+  initialServings?: number
 }
 
 function round2(n: number): number {
@@ -38,9 +46,11 @@ export default function RecipeDetailPanel({
   isSending = false,
   isFavorite = false,
   onToggleFavorite,
+  isTogglingFavorite = false,
+  initialServings,
 }: RecipeDetailPanelProps) {
   const { t } = useTranslation()
-  const [servings, setServings] = useState(recipe.servings)
+  const [servings, setServings] = useState(initialServings ?? recipe.servings)
 
   const ratio = servings / recipe.servings
 
@@ -71,9 +81,16 @@ export default function RecipeDetailPanel({
             $active={isFavorite}
             aria-pressed={isFavorite}
             aria-label={t(isFavorite ? 'recipes.removeFavorite' : 'recipes.addFavorite')}
+            disabled={isTogglingFavorite}
             onClick={() => onToggleFavorite(recipe.id)}
           >
-            {isFavorite ? <MdFavorite size={22} /> : <MdFavoriteBorder size={22} />}
+            {isTogglingFavorite ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : isFavorite ? (
+              <MdFavorite size={22} />
+            ) : (
+              <MdFavoriteBorder size={22} />
+            )}
           </HeroFavoriteButton>
         )}
       </HeroImageWrapper>
@@ -126,7 +143,7 @@ export default function RecipeDetailPanel({
       <Button
         variant="contained"
         disableElevation
-        startIcon={<MdOutlineShoppingCartCheckout size={18} />}
+        startIcon={isSending ? <CircularProgress size={16} color="inherit" /> : <MdOutlineShoppingCartCheckout size={18} />}
         disabled={isSending}
         onClick={() => onSendToShoppingList({ recipeTitle: recipe.title, ingredients: scaledIngredients })}
       >

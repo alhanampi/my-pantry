@@ -78,6 +78,7 @@ export interface SearchRecipesParams {
   diet?: string
   includeIngredients?: string
   maxCalories?: number
+  maxReadyTime?: number
   number: number
   offset: number
 }
@@ -102,9 +103,55 @@ export async function searchRecipes(params: SearchRecipesParams): Promise<Comple
   if (params.diet) usp.set('diet', params.diet)
   if (params.includeIngredients) usp.set('includeIngredients', params.includeIngredients)
   if (params.maxCalories) usp.set('maxCalories', String(params.maxCalories))
+  if (params.maxReadyTime) usp.set('maxReadyTime', String(params.maxReadyTime))
 
   const res = await fetch(`${BASE}/recipes/complexSearch?${usp.toString()}`)
   return (await handle(res)) as ComplexSearchResponse
+}
+
+// Progressive relaxation for a criteria-driven search that must not come
+// back empty in practice. Combining every extracted field at once (query +
+// includeIngredients + cuisine + diet + maxReadyTime, all ANDed by
+// complexSearch) is easy to over-constrain to zero results even when each
+// field individually would match something. Tries the fullest criteria
+// first, then relaxes step by step, stopping at the first non-empty result
+// — the last step drops every optional field, which Spoonacular's own
+// random sort (see searchRecipes above) always answers with real recipes.
+export interface FallbackSearchCriteria {
+  query?: string
+  cuisine?: string
+  includeIngredients?: string
+  maxReadyTime?: number
+  diet?: string
+}
+
+export async function searchRecipesWithFallback(
+  criteria: FallbackSearchCriteria,
+  number: number,
+): Promise<ComplexSearchResponse> {
+  const { query, cuisine, includeIngredients, maxReadyTime, diet } = criteria
+
+  const attempts: SearchRecipesParams[] = [
+    // 1. Everything the AI extracted, as-is.
+    { query, cuisine, includeIngredients, maxReadyTime, diet, number, offset: 0 },
+    // 2. Drop the most likely culprits for over-constraining: the time
+    //    window and the cuisine tag.
+    { query, includeIngredients, diet, number, offset: 0 },
+    // 3. Keep only one main term (prefer includeIngredients — it's closer
+    //    to "what the user actually has") plus diet.
+    { ...(includeIngredients ? { includeIngredients } : { query }), diet, number, offset: 0 },
+    // 4. No filters at all — guaranteed non-empty via Spoonacular's random
+    //    sort.
+    { number, offset: 0 },
+  ]
+
+  let last: ComplexSearchResponse = { results: [], offset: 0, number, totalResults: 0 }
+  for (const params of attempts) {
+    const result = await searchRecipes(params)
+    if (result.results.length > 0) return result
+    last = result
+  }
+  return last
 }
 
 export async function getRecipeInformation(id: number): Promise<SpoonacularRecipe> {

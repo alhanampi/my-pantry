@@ -121,5 +121,16 @@ export function useFavoriteToggle() {
 
   const cancelRemove = (): void => setPendingRemoveId(null)
 
-  return { requestToggle, confirmRemove, cancelRemove, pendingRemoveId, isPending: toggle.isPending }
+  return {
+    requestToggle,
+    confirmRemove,
+    cancelRemove,
+    pendingRemoveId,
+    isPending: toggle.isPending,
+    // Which specific recipe's toggle request is currently in flight — lets a
+    // list of cards show a spinner only on the one actually being toggled,
+    // not the whole list. React Query exposes `.variables` for the duration
+    // of a pending mutation.
+    pendingRecipeId: toggle.isPending ? toggle.variables?.recipeId : undefined,
+  }
 }

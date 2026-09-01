@@ -15,6 +15,9 @@ export interface RecipeCardGridProps {
   onLoadMore?: () => void
   favoriteIds?: Set<number>
   onToggleFavorite?: (id: number) => void
+  // Id of the recipe whose favorite toggle is currently in flight, if any —
+  // see RecipeCard's isTogglingFavorite prop.
+  pendingFavoriteId?: number
 }
 
 export default function RecipeCardGrid({
@@ -25,6 +28,7 @@ export default function RecipeCardGrid({
   onLoadMore,
   favoriteIds,
   onToggleFavorite,
+  pendingFavoriteId,
 }: RecipeCardGridProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -57,6 +61,7 @@ export default function RecipeCardGrid({
             onClick={onSelect}
             isFavorite={favoriteIds?.has(recipe.id)}
             onToggleFavorite={onToggleFavorite}
+            isTogglingFavorite={pendingFavoriteId === recipe.id}
           />
         ))}
       </Grid>

@@ -31,7 +31,7 @@ export interface SortConfig {
 
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
-export type AppView = 'pantry' | 'shopping' | 'recipes' | 'favorites' | 'about'
+export type AppView = 'pantry' | 'shopping' | 'recipes' | 'favorites' | 'chat' | 'about'
 
 export type ModalContext = 'pantry' | 'shopping'
 
@@ -135,6 +135,7 @@ export interface RecipeCard {
   readyInMinutes: number
   ingredientNames: string[]
   calories: number
+  sourceUrl?: string
 }
 
 export interface RecipeNutrition {
@@ -150,6 +151,7 @@ export interface RecipeDetail {
   image: string
   servings: number
   readyInMinutes: number
+  sourceUrl?: string
   ingredients: RecipeIngredient[]
   instructions: string[]
   nutrition: RecipeNutrition
@@ -182,6 +184,28 @@ export interface ShoppingList {
   ownerId: string
   isGeneral: boolean
   createdAt: string
+}
+
+// ─── Chat (Groq AI cooking assistant) ──────────────────────────────────────
+
+export interface ChatConversation {
+  id: string
+  title: string
+  dietaryRestrictions: string[]
+  servings: number
+  updatedAt: string
+}
+
+export interface ChatMessageItem {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+export interface DeleteConversationDialogState {
+  open: boolean
+  conversation: ChatConversation | null
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

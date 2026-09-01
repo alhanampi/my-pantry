@@ -23,6 +23,40 @@ model User {
   receivedInvitations LinkInvitation[]   @relation("ReceivedInvitations")
   shoppingLists       ShoppingList[]
   favoriteRecipes     FavoriteRecipe[]
+  chatConversations   ChatConversation[]
+}
+
+// Personal AI cooking-assistant conversations (Groq-backed "Chat" tab).
+// Not shared with a linked partner via accessibleUserIds — same reasoning as
+// FavoriteRecipe: a personal conversation isn't shared household data.
+// dietaryRestrictions/servings are captured once via UI chips/stepper when
+// the conversation is created and fed into every system-prompt build, rather
+// than asked conversationally by the model.
+model ChatConversation {
+  id                  String   @id @default(cuid())
+  ownerId             String
+  title               String
+  dietaryRestrictions String[] @default([])
+  servings            Int      @default(2)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([ownerId])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String // 'user' | 'assistant'
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
 }
 
 // A bookmark onto a Spoonacular recipe id — deliberately not a cached

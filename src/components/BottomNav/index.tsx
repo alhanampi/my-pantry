@@ -1,4 +1,8 @@
 import { MdStorefront, MdShoppingCart, MdRestaurantMenu, MdFavorite } from 'react-icons/md'
+// Not react-icons — see Header/index.tsx's comment for why: the filled MUI
+// icon matches the other (filled) tab icons' weight where the outline
+// version didn't.
+import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects'
 import { useTranslation } from 'react-i18next'
 import { NavPaper, StyledBottomNavigation, NavAction } from './BottomNav.styles'
 import type { BottomNavProps } from '../../utils/types'
@@ -12,6 +16,7 @@ export default function BottomNav({ value, onChange }: BottomNavProps) {
         <NavAction label={t('nav.pantry')} icon={<MdStorefront size={24} />} />
         <NavAction label={t('nav.recipes')} icon={<MdRestaurantMenu size={24} />} />
         <NavAction label={t('nav.favorites')} icon={<MdFavorite size={24} />} />
+        <NavAction label={t('nav.chat')} icon={<EmojiObjectsIcon sx={{ fontSize: 24 }} />} />
         <NavAction label={t('nav.shopping')} icon={<MdShoppingCart size={24} />} />
       </StyledBottomNavigation>
     </NavPaper>

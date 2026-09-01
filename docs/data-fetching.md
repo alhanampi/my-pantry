@@ -95,12 +95,20 @@ Do not create additional `QueryClient` instances.
 | Recipe detail | `['recipes', 'detail', id, i18n.language]` |
 | Favorite recipe ids | `['recipes', 'favorites', 'ids']` |
 | Favorite recipe cards | `['recipes', 'favorites', 'cards', i18n.language]` |
+| Chat conversations (the list) | `['chat', 'conversations']` |
+| Chat conversation detail (incl. messages) | `['chat', 'conversation', id]` |
 
 Keep query keys simple and stable. After a mutation, invalidate the relevant key (see data-mutations.md).
 
 ### Exception: recipe queries have no `enabled: !!isSignedIn`
 
 `/api/recipes/*` is a public, unauthenticated endpoint (browsing and viewing recipes works for guests too — sending a recipe's ingredients to a shopping list is the only part that needs a destination, and that works client-side via `guestStorage` same as everything else in guest mode). `useRecipeSearch`/`useRecipeDetail` (`src/hooks/useRecipes.ts`) and `apiSearchRecipes`/`apiGetRecipeDetail` (`src/api/recipesApi.ts`) are the only place in the codebase without `enabled: !!isSignedIn` and without a `token` first parameter — both are deliberate, documented exceptions to the rules above, not an oversight. Favorites are different: `/api/recipes/favorites*` IS `requireAuth`'d (per-user data, unlike search/detail), so `useFavoriteIds`/`useFavoriteRecipes`/`useToggleFavorite` (`src/hooks/useFavorites.ts`) follow the normal `enabled: !!isSignedIn` + guest-storage-fallback pattern from `usePantry.ts`, and `apiGetFavoriteIds`/`apiGetFavoriteRecipes`/`apiAddFavorite`/`apiRemoveFavorite` (`src/api/recipesApi.ts`) do take a token — only the two public calls above are the exception.
+
+### Exception: streaming a chat reply doesn't go through `useQuery`/`useMutation`
+
+`POST /api/chat/conversations/:id/messages` streams its response as hand-rolled SSE frames (`data: {...}\n\n`), which doesn't fit React Query's single-resolved-value model. `streamChatMessage` (`src/api/chatApi.ts`) is a third exception to the "API functions just call `fetch` and return typed data" rule — it reads the response body incrementally via `ReadableStream`/`TextDecoder` and invokes `onToken`/`onDone`/`onError` callbacks instead of returning a value. It's called from `useChatSession` (`src/hooks/useChatSession.ts`), a hook that owns local message state directly rather than wrapping a `useMutation` — optimistic user+placeholder-assistant bubbles are pushed immediately, tokens are appended to the placeholder as they arrive, and `['chat', 'conversation', id]` is invalidated once the stream's `done` frame arrives to reconcile with the server-persisted messages. Every other chat operation (listing/creating/deleting conversations, requesting a recipe suggestion) is a normal `useQuery`/`useMutation` in `src/hooks/useChat.ts` — only sending a message itself is different, and only because of streaming.
+
+Unlike recipe search/detail, chat requires `enabled: !!isSignedIn` like normal — conversation history is DB-persisted per-user, there's no guest mode for chat (see data-mutations.md).
 
 ---
 

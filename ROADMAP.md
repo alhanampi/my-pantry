@@ -37,36 +37,18 @@ Backend: `backend/src/services/spoonacular.ts` (key server-only, proxied through
 - Backend: `backend/src/routes/recipeFavorites.ts`, mounted inside `recipes.ts` at `/favorites` *before* the `/:id` catch-all route (Express would otherwise match `/api/recipes/favorites` against `GET /:id` with `id='favorites'`). `GET /ids` is a cheap DB-only read (marks the heart on cards being browsed without paying for a Spoonacular hydration call); `GET /` hydrates the full list into cards, skipping any favorite whose recipe 404s upstream rather than failing the whole list. The serialization helpers (`serializeCard`/`serializeDetail`/`handleSpoonacularError`) were factored out of `recipes.ts` into `backend/src/services/recipeSerializers.ts` so both route files share them.
 - Frontend: `src/hooks/useFavorites.ts` — same guest/signed-in duality as `usePantry.ts` (signed-in hits the backend; guests get a `number[]` of recipe ids in `localStorage` via `guestStorage`, hydrated into cards client-side through the existing public per-id detail endpoint).
 
-**Still open / not built**: the general-purpose `POST /api/ai/recipe-chat` endpoint described below (user free-text prompt → AI-proposed recipe) was explicitly kept out of scope for the Recipes tab pass — Groq is wired up but only used for recipe-content translation, not chat. The design below is still accurate for whoever picks it up.
+**AI cooking-assistant chat — shipped** (built after the Recipes tab, in a later pass — the design sketched below at v1.5 planning time called for a single-turn `POST /api/ai/recipe-chat`; what actually shipped is a full multi-turn, streaming, DB-persisted chat instead, described here):
 
-**Goal**: user describes what they want to cook (or what they have), the AI proposes a recipe, and the missing ingredients get extracted into the shopping list.
+A **Chat** tab (`src/views/ChatView/`, positioned Pantry → Recipes → Favorites → Chat → Shopping in the nav) where the user has an open-ended conversation with Groq about what to cook — ingredients on hand, available time, dietary restrictions, proximity to shops — and can ask for a concrete recipe suggestion (a real Spoonacular recipe with a photo and a link, not AI-invented text) at any point, then send its missing ingredients to a new shopping list.
 
-**Provider**: [Groq](https://groq.com) — free tier, no credit card, fast inference on open-weight models (Llama 3.x). The API key is a single server-side secret owned by the app operator; **end users never see or need a key/account of their own** — same pattern as any other backend-only secret (Resend, Geoapify).
-
-- Alternative: **Google Gemini (Flash)** — generous free daily quota and native JSON mode, which is convenient for structured ingredient extraction, but requires a Google Cloud project to set up. Keep as a fallback if Groq's free-tier rate limits (requests/minute) turn out to be too tight for real usage.
-
-**Backend**:
-- New route, e.g. `backend/src/routes/ai.ts`, mounted at `/api/ai`.
-- `POST /api/ai/recipe-chat` — order per `docs/data-mutations.md`: `requireAuth` → `express-validator` (validate prompt length/content) → call Groq → return structured response. **The Groq key lives only in a backend env var** (`GROQ_API_KEY`), never exposed to the client — unlike the current Spoonacular key, which is `VITE_`-prefixed and client-side (don't repeat that pattern here).
-- Response shape (ask the model for JSON, e.g. via Groq's JSON mode / a strict system prompt):
-  ```json
-  {
-    "title": "string",
-    "steps": ["string", ...],
-    "ingredients": [{ "name": "string", "quantity": "string" }]
-  }
-  ```
-- Basic guardrails: cap prompt length, maybe a simple per-user rate limit (reuse `express-rate-limit`, already a dependency) to avoid burning through the free-tier quota from one user hammering it.
-
-**Frontend**:
-- New hook (`src/hooks/useRecipeChat.ts`) following `docs/data-fetching.md` conventions (token fetched inside `mutationFn`/`queryFn`, `enabled: !!isSignedIn` where relevant).
-- New API function in `src/api/` (e.g. `aiApi.ts`) — plain fetch wrapper, no Clerk/React Query logic inside, per `docs/data-fetching.md`.
-- UI: a chat-style modal/panel (entry point likely from `ShoppingView` or a new lightweight view) showing the proposed recipe + an ingredient checklist, with an "Add to shopping list" action that reuses the existing `createShoppingItem` mutation (or a new bulk-create endpoint if adding N items one-by-one is too chatty).
-- If Multiple Shopping Lists (below) ships in the same cycle, "Add to shopping list" should let the user pick which list.
-
-**Open decisions**:
-- Single-turn (one prompt → one recipe) vs. multi-turn chat (follow-ups like "make it vegetarian"). Start single-turn — much simpler, no conversation state to persist.
-- Whether to persist recipe chat history at all, or treat it as ephemeral (not stored server-side beyond the request/response).
+- **Sign-in required, no guest mode** — unlike Recipes/Favorites. Conversation history is DB-persisted per account (`ChatConversation`/`ChatMessage` models, `ownerId`-scoped like `FavoriteRecipe`, not shared with a linked partner), so there's nothing sensible to store for an anonymous guest. `ChatView` shows a "sign in to chat" prompt when signed out.
+- **Dietary restrictions and servings are collected up front via UI**, not asked conversationally by the model — `NewChatOnboarding` (predefined restriction chips: vegetarian/vegan/gluten-free/etc., plus free-text custom entries, via `DietaryChipPicker`) + a servings stepper, shown before a new conversation's first message. Both are stored on the `ChatConversation` row and fed into every system-prompt build.
+- **Streaming replies**: `POST /api/chat/conversations/:id/messages` streams via hand-rolled SSE (`res.write('data: {...}\n\n')`, no library) — `backend/src/services/chatAssistant.ts`'s `streamChatReply` iterates Groq's streamed chunks; the frontend's `streamChatMessage` (`src/api/chatApi.ts`) parses frames with a plain `ReadableStream`/`TextDecoder` reader, tolerating a frame split across chunk boundaries. The user's message is persisted before Groq is ever called, so a Groq failure never loses what was typed; only the assistant's optimistic placeholder rolls back on error (`useChatSession.ts`).
+- **Time estimates are deliberately pessimistic**: the system prompt instructs the model to round up, assume home-cook (not professional-kitchen) pace, and — when the user might walk to a nearby store for something missing — ask how many blocks away and add ~2-3 minutes/block **round trip** (doubled) to the estimate. `nearbyStoresSummary` (store names + distances from the existing `useNearbyStores`/Geoapify integration, reused client-side — no new server-side geolocation call) is passed along so the model can reference real nearby options.
+- **Recipe suggestions route through Spoonacular, not freeform AI text** — so every suggestion has a real photo and a "view full recipe" link (`sourceUrl`, added to `RecipeCard`/`RecipeDetail` and `serializeCard`/`serializeDetail` in `recipeSerializers.ts` — a small shared addition, not chat-only). The explicit "Suggest a recipe" button calls `extractSearchCriteria` (a separate, non-streaming, low-temperature Groq JSON-mode call reading the whole transcript) to derive Spoonacular search terms; `diet` is derived deterministically from the conversation's own predefined restriction chips (`mapDietaryRestrictionsToSpoonacularDiet`) rather than asked of the model. Selecting a suggestion reuses `RecipesView/RecipeDetailPanel` as-is (photo, translated ingredients/instructions/nutrition, servings scaling defaulted to the conversation's own servings via a new `initialServings` prop) and the existing `sendRecipeToShoppingList` mutation — no bespoke suggestion-card UI or ingredient-checklist was built, since the real recipe detail flow already covers it.
+- **Markdown rendering**: assistant replies render via `react-markdown` + `remark-gfm` + `rehype-sanitize` (a deliberate, explicitly-requested exception to "don't add tooling without being asked") — no `rehype-raw` plugin, so raw HTML in the model's output is never rendered live, with `rehype-sanitize`'s default schema as a second explicit layer. User-typed messages stay plain text.
+- **Guardrail instead of summarization**: a conversation stops accepting new messages past `MAX_MESSAGES_PER_CONVERSATION = 60` (400 `conversationTooLong`) rather than truncating/summarizing history — the full transcript is sent to Groq every turn, same "accepted limitation" style as the Groq translation cache elsewhere.
+- Backend: `backend/src/routes/chat.ts` (`requireAuth` everywhere, own `chatLimiter` — 15/min, tighter than `recipesLimiter` since streaming LLM calls are the most expensive thing in the app), `backend/src/services/chatAssistant.ts` (own `Groq` client, separate from `groq.ts`'s translation-only one — this one throws real typed errors instead of failing soft, since chat needs to surface "AI isn't configured" to the user). Frontend: `src/hooks/useChat.ts` (conversations/suggest-recipe as normal `useQuery`/`useMutation`) + `src/hooks/useChatSession.ts` (sending a message is *not* a mutation — streaming doesn't fit that shape, so it's a plain async function owning local message state) + `src/hooks/useGeolocation.ts` (extracted from `ShoppingView/NearbyStores`' previously-inline geolocation call so both can share it).
 
 ---
 
@@ -110,6 +92,8 @@ Backend: `backend/src/services/spoonacular.ts` (key server-only, proxied through
 **Offline conflict resolution**: the service worker (`src/sw.ts`) already caches for offline use, but there's no defined behavior for what happens when the same item was edited on two devices while one was offline and both come back online. Needs a decision: simplest is last-write-wins (already the implicit behavior via `updatedAt`), the more correct option is surfacing a merge conflict to the user — worth explicitly deciding rather than leaving as undefined behavior.
 
 **Lightweight usage analytics**: a privacy-friendly, cookie-free option (e.g. self-hosted Plausible, or a minimal custom event counter) to understand which features actually get used before investing more in any of them.
+
+**Revisit navigation icons**: the current tab icons (`react-icons/md`, with one `@mui/icons-material` icon for Chat) still don't read as visually consistent to the user despite a couple of rounds of adjustment (size tweaks, then swapping outline→filled for the mismatched one). Worth a proper pass browsing https://react-icons.github.io/react-icons/ for a full, deliberately-matched icon set for all five tabs (pantry/recipes/favorites/chat/shopping) rather than one-off swaps — likely means picking a single icon family/weight across the board instead of mixing `Md*` with MUI icons.
 
 **Open decisions**:
 - Sentry/analytics both touch privacy — worth deciding what's collected (and disclosing it) before wiring either in, even at hobby-project scale.

@@ -22,10 +22,20 @@ export function ingredientNames(recipe: SpoonacularRecipe): string[] {
   return (recipe.extendedIngredients ?? []).map((i) => i.name)
 }
 
+// Flattens across every group in analyzedInstructions, not just the first —
+// Spoonacular sometimes splits a recipe into more than one group (e.g. a
+// separate "Marinade" section before "Instructions"); reading only [0]
+// silently dropped real steps whenever that first group happened to be
+// empty. If there's truly no analyzedInstructions data at all, fall back to
+// the raw `instructions` HTML string — stripped of tags and collapsed to
+// plain text — rather than dumping markup into a single list item.
 export function instructionSteps(recipe: SpoonacularRecipe): string[] {
-  const steps = recipe.analyzedInstructions?.[0]?.steps
-  if (steps && steps.length > 0) return steps.map((s) => s.step)
-  return recipe.instructions ? [recipe.instructions] : []
+  const allSteps = (recipe.analyzedInstructions ?? []).flatMap((group) => group.steps ?? [])
+  if (allSteps.length > 0) return allSteps.map((s) => s.step)
+
+  if (!recipe.instructions) return []
+  const plain = recipe.instructions.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return plain ? [plain] : []
 }
 
 export async function serializeCard(recipe: SpoonacularRecipe, lang: string) {
@@ -46,6 +56,7 @@ export async function serializeCard(recipe: SpoonacularRecipe, lang: string) {
     readyInMinutes: recipe.readyInMinutes,
     ingredientNames: names,
     calories: nutrientValue(recipe, 'Calories'),
+    sourceUrl: recipe.sourceUrl,
   }
 }
 
@@ -79,6 +90,7 @@ export async function serializeDetail(recipe: SpoonacularRecipe, lang: string) {
     image: recipe.image,
     servings: recipe.servings,
     readyInMinutes: recipe.readyInMinutes,
+    sourceUrl: recipe.sourceUrl,
     ingredients,
     instructions: translatedSteps,
     nutrition: {

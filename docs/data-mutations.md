@@ -39,10 +39,14 @@ After every successful mutation call `queryClient.invalidateQueries()` with the 
 | Shopping list items | `['shoppingList']` |
 | Shopping lists | `['shoppingLists']` |
 | Favorite recipes | `['recipes', 'favorites']` |
+| Chat conversations | `['chat', 'conversations']` |
+| Chat conversation detail | `['chat', 'conversation', id]` |
 
-`sendRecipeToShoppingList` (in `usePantry.ts`) creates a new `ShoppingList` titled with the recipe name, then creates one item per (already-scaled) ingredient via `Promise.all`, and invalidates both `['shoppingLists']` and `['shoppingList']` on success.
+`sendRecipeToShoppingList` (in `usePantry.ts`) creates a new `ShoppingList` titled with the recipe name, then creates one item per (already-scaled) ingredient via `Promise.all`, and invalidates both `['shoppingLists']` and `['shoppingList']` on success. `ChatView` reuses this exact mutation (via `useAppState`) when sending a suggested recipe's missing ingredients to a new list — nothing chat-specific was added for that step.
 
 `useToggleFavorite` (in `useFavorites.ts`) invalidates `queryKey: ['recipes', 'favorites']` — a partial key match, so it catches both the `['recipes','favorites','ids']` and `['recipes','favorites','cards',lang]` queries in one call rather than invalidating each separately.
+
+`useCreateConversation`/`useDeleteConversation` (in `useChat.ts`) invalidate `['chat', 'conversations']` on success, same pattern as everything else. Sending a chat message is the one exception — it's not a `useMutation` at all (see data-fetching.md's streaming exception); `useChatSession` invalidates `['chat', 'conversation', id]` itself once the SSE stream's `done` frame arrives, since there's no `onSuccess` to hang the invalidation off of.
 
 ### Surface errors to the user
 
@@ -115,6 +119,12 @@ Return `{ error: 'Server error' }` with status `500` for unexpected failures. Do
 ## Partner access
 
 `accessibleUserIds(userId)` returns an array containing the authenticated user's ID plus their linked partner's ID (if any). All reads and ownership checks for products and shopping items must use `ownerId: { in: ids }` — not just `ownerId: userId` — so partners can share the pantry.
+
+**Exception**: `FavoriteRecipe` and `ChatConversation`/`ChatMessage` are personal, not shared household data — ownership checks for both use `ownerId: req.clerkUserId` directly, not `accessibleUserIds`. A linked partner sees the same pantry and shopping lists, but not each other's saved recipes or chat conversations.
+
+### Chat is sign-in-only — no guest mode
+
+Unlike pantry/shopping/recipes, `/api/chat/*` has no guest-mode equivalent in `guestStorage` — conversation history is DB-persisted per account, so there's nothing sensible to store in `localStorage` for an anonymous guest. `ChatView` checks `isSignedIn` itself (via Clerk's `useAuth`) and shows a "sign in to chat" prompt instead of rendering the chat UI when signed out, rather than gating individual queries with `enabled: !!isSignedIn` and silently showing empty state (which is how every other guest-unfriendly-but-still-visible piece of the app behaves). If a future feature needs the same "this whole view requires an account" gate, follow `ChatView`'s pattern rather than inventing a new one.
 
 ---
 

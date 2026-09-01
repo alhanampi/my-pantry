@@ -7,6 +7,7 @@ import pantryRoutes from './routes/pantry'
 import notificationsRoutes from './routes/notifications'
 import recipesRoutes from './routes/recipes'
 import shoppingListsRoutes from './routes/shoppingLists'
+import chatRoutes from './routes/chat'
 
 const app = express()
 
@@ -38,11 +39,22 @@ const recipesLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later' },
 })
 
+// Tighter than recipesLimiter — streaming LLM calls are the most expensive
+// thing in the app.
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+})
+
 app.use('/api/auth', limiter, authRoutes)
 app.use('/api/pantry/shopping-lists', shoppingListsRoutes)
 app.use('/api/pantry', pantryRoutes)
 app.use('/api/notifications', notificationsRoutes)
 app.use('/api/recipes', recipesLimiter, recipesRoutes)
+app.use('/api/chat', chatLimiter, chatRoutes)
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 

@@ -58,6 +58,7 @@ describe('RecipesView', () => {
       cancelRemove: vi.fn(),
       pendingRemoveId: null,
       isPending: false,
+      pendingRecipeId: undefined,
     })
   })
 
@@ -116,6 +117,7 @@ describe('RecipesView', () => {
       cancelRemove: vi.fn(),
       pendingRemoveId: 1,
       isPending: false,
+      pendingRecipeId: undefined,
     })
 
     render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)

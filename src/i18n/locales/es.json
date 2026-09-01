@@ -10,6 +10,7 @@
     "shopping": "Mi Lista de Súper",
     "recipes": "Recetas",
     "favorites": "Favoritas",
+    "chat": "Chat",
     "about": "Acerca de"
   },
   "header": {
@@ -168,6 +169,66 @@
       "cheese": "Quesería / Lácteos",
       "health_food": "Dietética",
       "organic": "Tienda orgánica"
+    }
+  },
+  "chat": {
+    "title": "Asistente de cocina IA",
+    "signedOutTitle": "Iniciá sesión para chatear",
+    "signedOutBody": "El chat del asistente de cocina necesita una cuenta, ya que tus conversaciones se guardan para que puedas retomarlas.",
+    "newChat": "Nuevo chat",
+    "history": "Historial de conversaciones",
+    "deleteChat": "Borrar conversación",
+    "deleteChatConfirmTitle": "¿Borrar esta conversación?",
+    "deleteChatConfirmBody": "\"{{title}}\" y todos sus mensajes se van a borrar de forma permanente. Esta acción no se puede deshacer.",
+    "emptySidebar": "Todavía no hay conversaciones. ¡Empezá una nueva!",
+    "placeholder": "Contame qué tenés a mano...",
+    "send": "Enviar",
+    "onboardingTitle": "Antes de empezar",
+    "onboardingQuery": "¿Qué querés cocinar?",
+    "onboardingQueryPlaceholder": "Una receta o un ingrediente que tengas, ej: pollo, pasta, tarta de manzana...",
+    "onboardingDietary": "¿Alguna restricción dietaria?",
+    "onboardingDietaryNone": "Ninguna de estas — agrego la mía",
+    "onboardingAddOther": "Agregar otra",
+    "onboardingAddOtherPlaceholder": "Escribí una restricción y presioná Enter",
+    "onboardingServings": "¿Para cuántas porciones?",
+    "onboardingStart": "Empezar chat",
+    "dietary": {
+      "vegetarian": "Vegetariano",
+      "vegan": "Vegano",
+      "glutenFree": "Sin gluten (celíaco)",
+      "lactoseFree": "Sin lactosa",
+      "nutFree": "Sin frutos secos",
+      "keto": "Keto",
+      "lowSugar": "Bajo en azúcar",
+      "halal": "Halal",
+      "kosher": "Kosher",
+      "pescetarian": "Pescetariano",
+      "paleo": "Paleo",
+      "lowSodium": "Bajo en sodio",
+      "eggFree": "Sin huevo"
+    },
+    "quickReplies": {
+      "timeGroupLabel": "Respuestas rápidas de tiempo",
+      "ingredientsGroupLabel": "Respuestas rápidas de ingredientes de tu despensa",
+      "time10Label": "10 min",
+      "time10Phrase": "Tengo unos 10 minutos.",
+      "time30Label": "30 min",
+      "time30Phrase": "Tengo unos 30 minutos.",
+      "time60Label": "1 hora",
+      "time60Phrase": "Tengo alrededor de 1 hora.",
+      "timeMoreLabel": "Más de 1 hora",
+      "timeMorePhrase": "Tengo más de 1 hora.",
+      "haveIngredientsPrefix": "Tengo: "
+    },
+    "suggestRecipe": "Sugerir una receta",
+    "suggesting": "Buscando recetas...",
+    "noSuggestions": "No encontré una receta esta vez — probá de nuevo o seguí contándome un poco más.",
+    "backToChat": "Volver al chat",
+    "conversationTooLong": "Esta conversación ya es muy larga — empezá una nueva para seguir.",
+    "errors": {
+      "quotaExceeded": "El chat asistente no está disponible por el momento. Probá de nuevo más tarde.",
+      "configError": "El chat asistente no está configurado en este servidor.",
+      "generic": "Algo salió mal. Probá de nuevo."
     }
   },
   "auth": {

@@ -57,6 +57,16 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Signed-in: favorites are a per-user DB table storing just the Spoonacular recipe id (`FavoriteRecipe`, capped at 100/user) — Spoonacular stays the single source of truth for content, so the list is re-hydrated (and re-translated, if needed) via the same recipe-detail lookup each time it's opened. Personal, not shared with a linked partner. Guests: same idea, ids only, in `localStorage`.
 - Saving a recipe is immediate; removing one asks for confirmation first ("Remove from favorites?") via a reusable `ConfirmActionDialog`.
 
+### Chat (AI cooking assistant)
+
+- A **Chat** tab (between Favorites and Shopping) for an open-ended conversation with an AI cooking assistant about what to cook — ingredients on hand, available time, dietary restrictions, proximity to shops.
+- **Sign-in required, no guest mode** — conversations are persisted per account in the database, not shared with a linked partner. Signed-out users see a "sign in to chat" prompt.
+- Before the first message, `NewChatOnboarding` collects dietary restrictions (predefined chips — vegetarian, vegan, gluten-free, etc. — plus free-text custom entries) and a servings count; both are stored on the conversation and factored into every reply.
+- Replies stream token-by-token via server-sent events, powered by **Groq**. Time estimates are deliberately pessimistic (home-cook pace, plus round-trip walking time to a nearby store when relevant, using the same nearby-stores data as the Shopping tab).
+- A "Suggest a recipe" action turns the conversation so far into a real **Spoonacular** recipe suggestion (photo + link, not AI-invented text), reusing the same recipe detail view as the Recipes tab — including "send to a new shopping list".
+- Assistant replies render as Markdown (`react-markdown` + `remark-gfm`, sanitized with `rehype-sanitize`); user messages stay plain text.
+- A conversation stops accepting new messages after 60, with an explicit "conversation too long" error rather than silently truncating history.
+
 ### Multiple Shopping Lists
 
 - Every account has a non-deletable "General" shopping list, created automatically on first use.
@@ -156,6 +166,7 @@ For local development, both frontend and backend start together with a single `n
 | i18next + react-i18next      | Internationalization (ES / EN)             |
 | react-map-gl + MapLibre GL   | Nearby supermarkets map                    |
 | react-icons v5               | Icon set (Material Design, `react-icons/md`) |
+| react-markdown + remark-gfm + rehype-sanitize | Renders assistant chat replies as sanitized Markdown |
 | axios                        | HTTP client for API calls                  |
 | vite-plugin-pwa              | Service worker and PWA manifest            |
 | concurrently                 | Runs frontend and backend in one terminal  |
@@ -186,7 +197,9 @@ User (Clerk ID)
  ├── PushSubscription[]   — Web Push endpoints for this user
  ├── Product[]            — pantry items owned by this user
  ├── ShoppingItem[]       — shopping list items owned by this user (each belongs to a ShoppingList)
- └── ShoppingList[]       — named shopping lists (one auto-created "General" list per user, plus any created manually or from Recipes)
+ ├── ShoppingList[]       — named shopping lists (one auto-created "General" list per user, plus any created manually or from Recipes)
+ └── ChatConversation[]   — AI chat conversations (dietaryRestrictions, servings), personal, capped at 20/user
+      └── ChatMessage[]   — messages in a conversation (role: 'user' | 'assistant'), capped at 60/conversation
 ```
 
 When two users are linked, all pantry and shopping list reads include items from both users. Writes always set the current user as owner.
@@ -205,7 +218,7 @@ mi-despensa-app/
 │
 ├── backend/                  # Backend source
 │   ├── prisma/
-│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe
+│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe, ChatConversation, ChatMessage
 │   ├── scripts/
 │   │   └── backfill-shopping-lists.ts # One-time idempotent backfill: General list per user + listId on old items
 │   └── src/
@@ -218,7 +231,8 @@ mi-despensa-app/
 │       │   ├── email.ts      # Resend transactional email (optional)
 │       │   ├── spoonacular.ts # Server-only Spoonacular client (searchRecipes/getRecipeInformation, always sort=random)
 │       │   ├── groq.ts       # translateRecipeContent — recipe content → Spanish, cached, fails soft to English
-│       │   └── recipeSerializers.ts # serializeCard/serializeDetail — shared between recipes.ts and recipeFavorites.ts
+│       │   ├── chatAssistant.ts # streamChatReply (SSE streaming) + extractSearchCriteria — own Groq client, throws real errors (no fail-soft)
+│       │   └── recipeSerializers.ts # serializeCard/serializeDetail — shared between recipes.ts, recipeFavorites.ts, and chat.ts
 │       ├── middleware/
 │       │   └── auth.ts       # Clerk JWT verification
 │       └── routes/
@@ -227,6 +241,7 @@ mi-despensa-app/
 │           ├── shoppingLists.ts # Shopping list CRUD (/api/pantry/shopping-lists)
 │           ├── recipes.ts    # Public recipe search/detail proxy (/api/recipes), own rate limiter; mounts recipeFavorites.ts
 │           ├── recipeFavorites.ts # Favorites CRUD (/api/recipes/favorites), auth'd, capped at 100/user
+│           ├── chat.ts       # Chat conversations/messages CRUD + streaming reply (/api/chat), requireAuth everywhere, own rate limiter (15/min)
 │           └── notifications.ts # Push subscription CRUD + cron handler
 │
 └── src/                      # Frontend
@@ -238,6 +253,7 @@ mi-despensa-app/
     │   ├── authApi.ts           # Sync and link calls
     │   ├── pantryApi.ts         # Products, shopping list, and shopping list CRUD calls
     │   ├── recipesApi.ts        # Recipe search/detail (public, no token) + favorites CRUD (auth'd, token as usual)
+    │   ├── chatApi.ts           # Conversations CRUD + streamChatMessage (parses SSE frames via ReadableStream/TextDecoder)
     │   ├── overpass.ts          # Geoapify Places API wrapper and shop-type map
     │   ├── productSuggestionsApi.ts # Open Food Facts live suggestions
     │   └── notificationsApi.ts  # Push subscription register/unregister calls
@@ -269,6 +285,14 @@ mi-despensa-app/
     │   │   ├── ServingsStepper/   # Thin wrapper reusing QuantityStepper
     │   │   └── RecipesSkeleton.tsx # Skeleton UI shown while a search/detail loads
     │   ├── FavoriteRecipesView/  # Bounded grid of saved recipes — reuses RecipeCardGrid/RecipeDetailPanel from RecipesView
+    │   ├── ChatView/             # AI cooking-assistant chat (sign-in required)
+    │   │   ├── ChatSidebar/      # Conversation list
+    │   │   ├── ChatMessageList/  # Rendered messages (Markdown for assistant replies)
+    │   │   ├── ChatComposer/     # Message input + "Suggest a recipe" action
+    │   │   ├── ChatSuggestionCards/ # Recipe suggestion cards (Spoonacular-backed)
+    │   │   ├── NewChatOnboarding/ # Collects dietary restrictions + servings before the first message
+    │   │   ├── DietaryChipPicker/ # Predefined + free-text dietary restriction chips
+    │   │   └── ChatSkeleton.tsx  # Skeleton UI shown while a conversation loads
     │   └── AboutView/
     ├── context/
     │   └── AuthContext.tsx      # Partner state, link/invite flow, and guest migration trigger
@@ -279,6 +303,9 @@ mi-despensa-app/
     │   ├── usePantry.ts         # React Query hooks for products, shopping lists (incl. delete), and shopping list items
     │   ├── useRecipes.ts        # React Query hooks for recipe search (infinite) and detail — public, no isSignedIn gate
     │   ├── useFavorites.ts      # Favorite recipe ids/cards + toggle — signed-in (DB) or guest (localStorage); useFavoriteToggle wraps the mutation with a confirm-before-remove step
+    │   ├── useChat.ts           # Conversations list + suggest-recipe as normal React Query hooks
+    │   ├── useChatSession.ts    # Sending a message — plain async function owning local message state (streaming doesn't fit useMutation)
+    │   ├── useGeolocation.ts    # Device geolocation, extracted from NearbyStores so ChatView can share it
     │   ├── useNearbyStores.ts
     │   ├── useLocalStorage.ts
     │   ├── useProductSuggestions.ts
@@ -351,7 +378,7 @@ CRON_SECRET=...                    # any random secret string
 RESEND_API_KEY=...                 # optional — only needed to send invitation emails
 EMAIL_FROM=My Pantry <noreply@mypantry.app>  # optional — sender address for invitation emails
 SPOONACULAR_KEY=...                # optional — server-only; recipes routes return a configError without it
-GROQ_API_KEY=...                   # optional — recipe content is served in English without it
+GROQ_API_KEY=...                   # optional for recipe translation (falls back to English); required for the Chat tab (returns a config error without it)
 ```
 
 ### 3. Generate VAPID keys (one-time)
@@ -428,7 +455,7 @@ Authentication is fully delegated to Clerk:
 | User data integrity    | Backend fetches user info from Clerk's API — never trusts client-provided values |
 | HTTP security headers  | `helmet`                                                                         |
 | CORS                   | Restricted to `FRONTEND_ORIGIN`                                                  |
-| Rate limiting          | `express-rate-limit` (60 req / 15 min on auth routes)                            |
+| Rate limiting          | `express-rate-limit` (60 req / 15 min on auth routes; own limiters on recipes and chat routes, chat tighter at 15 req/min given streaming LLM cost) |
 | Cron endpoint          | `CRON_SECRET` header required; unauthorized calls return 401                   |
 
 ---
@@ -483,12 +510,12 @@ Authentication is fully delegated to Clerk:
 
 ### v1.5 — Recipe Chat & Multiple Lists
 
-Related to the v1.4 items above. Multiple shopping lists and the Recipes tab shipped (see above); the free-form AI chat below is still pending — see `ROADMAP.md` for the technical design.
+Related to the v1.4 items above. Multiple shopping lists and the Recipes tab shipped (see above), and so has the AI chat — see `ROADMAP.md` for the technical design and how the shipped version differs from the original single-turn design.
 
-- [ ] Free AI chat (Groq) to think through a recipe from what you have or want to cook
-- [ ] Automatic extraction of missing ingredients from the recipe into the shopping list
+- [x] Free-form AI chat (Groq) to think through a recipe from what you have or want to cook — streaming, DB-persisted, sign-in required, dietary restrictions + servings collected up front, recipe suggestions routed through Spoonacular (see the Chat feature above)
+- [ ] Automatic extraction of missing ingredients from the recipe into the shopping list (the chat's "suggest a recipe" flow already reuses the existing recipe-detail "send to a new shopping list" action; a dedicated extraction-from-freeform-text flow is still pending)
 - [x] Multiple named shopping lists — a "General" list per user plus any created manually or from a recipe; no rename/delete UI yet (endpoints exist)
-- [x] Groq wired up — currently used to translate recipe content (title/ingredients/instructions) to Spanish, not yet for the free-form chat above
+- [x] Groq wired up — used both to translate recipe content (title/ingredients/instructions) to Spanish and to power the Chat tab's streaming replies and recipe-suggestion extraction
 - [ ] Metric or imperial system settings.
 
 ### v1.6 — Testing & Environments
@@ -510,6 +537,7 @@ See `ROADMAP.md` for the technical design.
 - [ ] More languages beyond ES/EN
 - [ ] Conflict resolution for edits made on two devices while one was offline
 - [ ] Lightweight, privacy-friendly usage analytics
+- [ ] Revisit the navigation tab icons with a deliberate pass over [react-icons](https://react-icons.github.io/react-icons/) for a fully consistent set
 
 ### v1.8 — Smart Planning
 

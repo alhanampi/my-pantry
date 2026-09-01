@@ -44,6 +44,7 @@ describe('FavoriteRecipesView', () => {
       cancelRemove: vi.fn(),
       pendingRemoveId: null,
       isPending: false,
+      pendingRecipeId: undefined,
     })
     vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
   })

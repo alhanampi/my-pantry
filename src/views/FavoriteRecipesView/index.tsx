@@ -72,6 +72,7 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
             isSending={sendRecipeToShoppingList.isPending}
             isFavorite={favoriteIdSet.has(detail.data.id)}
             onToggleFavorite={handleToggleFavorite}
+            isTogglingFavorite={favoriteToggle.pendingRecipeId === detail.data.id}
           />
         )}
 
@@ -112,6 +113,7 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
           onSelect={setSelectedRecipeId}
           favoriteIds={favoriteIdSet}
           onToggleFavorite={handleToggleFavorite}
+          pendingFavoriteId={favoriteToggle.pendingRecipeId}
         />
       )}
 

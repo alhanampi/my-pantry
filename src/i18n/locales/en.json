@@ -10,6 +10,7 @@
     "shopping": "Shopping List",
     "recipes": "Recipes",
     "favorites": "Favorites",
+    "chat": "Chat",
     "about": "About"
   },
   "header": {
@@ -168,6 +169,66 @@
       "cheese": "Cheese & dairy",
       "health_food": "Health food store",
       "organic": "Organic store"
+    }
+  },
+  "chat": {
+    "title": "AI cooking assistant",
+    "signedOutTitle": "Sign in to chat",
+    "signedOutBody": "The cooking assistant chat needs an account, since your conversations are saved so you can pick them back up.",
+    "newChat": "New chat",
+    "history": "Conversation history",
+    "deleteChat": "Delete conversation",
+    "deleteChatConfirmTitle": "Delete this conversation?",
+    "deleteChatConfirmBody": "\"{{title}}\" and all its messages will be permanently deleted. This can't be undone.",
+    "emptySidebar": "No conversations yet. Start a new one!",
+    "placeholder": "Tell me what you have on hand...",
+    "send": "Send",
+    "onboardingTitle": "Before we start",
+    "onboardingQuery": "What do you want to cook?",
+    "onboardingQueryPlaceholder": "A recipe or an ingredient you have, e.g. chicken, pasta, apple pie...",
+    "onboardingDietary": "Any dietary restrictions?",
+    "onboardingDietaryNone": "None of these — I'll add my own",
+    "onboardingAddOther": "Add other",
+    "onboardingAddOtherPlaceholder": "Type a restriction and press Enter",
+    "onboardingServings": "How many servings?",
+    "onboardingStart": "Start chat",
+    "dietary": {
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "glutenFree": "Gluten-free (celiac)",
+      "lactoseFree": "Lactose-free",
+      "nutFree": "Nut-free",
+      "keto": "Keto",
+      "lowSugar": "Low sugar",
+      "halal": "Halal",
+      "kosher": "Kosher",
+      "pescetarian": "Pescetarian",
+      "paleo": "Paleo",
+      "lowSodium": "Low sodium",
+      "eggFree": "Egg-free"
+    },
+    "quickReplies": {
+      "timeGroupLabel": "Quick time replies",
+      "ingredientsGroupLabel": "Quick ingredient replies from your pantry",
+      "time10Label": "10 min",
+      "time10Phrase": "About 10 minutes.",
+      "time30Label": "30 min",
+      "time30Phrase": "About 30 minutes.",
+      "time60Label": "1 hour",
+      "time60Phrase": "About 1 hour.",
+      "timeMoreLabel": "More than 1 hour",
+      "timeMorePhrase": "More than 1 hour.",
+      "haveIngredientsPrefix": "I have: "
+    },
+    "suggestRecipe": "Suggest a recipe",
+    "suggesting": "Looking for recipes...",
+    "noSuggestions": "Couldn't find a matching recipe this time — try again or keep chatting for a bit.",
+    "backToChat": "Back to chat",
+    "conversationTooLong": "This conversation has gotten long — start a new one to keep going.",
+    "errors": {
+      "quotaExceeded": "The chat assistant is temporarily unavailable. Try again later.",
+      "configError": "The chat assistant is not configured on this server.",
+      "generic": "Something went wrong. Try again."
     }
   },
   "auth": {

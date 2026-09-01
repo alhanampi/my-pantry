@@ -30,7 +30,7 @@ function sortProducts(products: Product[], sortConfig: SortConfig): Product[] {
   })
 }
 
-const viewOrder: AppView[] = ['pantry', 'recipes', 'favorites', 'shopping']
+const viewOrder: AppView[] = ['pantry', 'recipes', 'favorites', 'chat', 'shopping']
 
 export function useAppState() {
   const { t } = useTranslation()
