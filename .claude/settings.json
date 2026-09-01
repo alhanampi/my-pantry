@@ -21,10 +21,11 @@
         "matcher": "Write|Edit",
         "hooks": [
           {
-            "type": "agent",
-            "prompt": "Read $ARGUMENTS to get tool_input.file_path. If it ends with 'schema.prisma', print exactly: 'SCHEMA CHANGED — run: cd backend && npx prisma migrate dev'. Otherwise output nothing.",
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-schema.ps1",
+            "shell": "powershell",
             "statusMessage": "Checking Prisma schema...",
-            "timeout": 30
+            "timeout": 10
           }
         ]
       }

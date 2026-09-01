@@ -1,99 +1,99 @@
 # mi-despensa-app
 
-PWA para gestionar la despensa del hogar: inventario, lista de compras, notificaciones de vencimiento.
+PWA for managing a household pantry: inventory, shopping list, expiration notifications.
 
 ## Stack
 
 - **Frontend**: React 18 + TypeScript + Vite 5, PWA via `vite-plugin-pwa`.
-- **UI**: MUI v5 + styled-components v6 (archivos `.styles.ts`, no `.css`/`.module.css`).
-- **Estado de servidor**: React Query (`@tanstack/react-query`).
-- **Auth**: Clerk (`@clerk/clerk-react` en frontend, `@clerk/backend` en backend).
+- **UI**: MUI v5 + styled-components v6 (`.styles.ts` files, no `.css`/`.module.css`).
+- **Server state**: React Query (`@tanstack/react-query`).
+- **Auth**: Clerk (`@clerk/clerk-react` on the frontend, `@clerk/backend` on the backend).
 - **i18n**: i18next / react-i18next.
-- **Mapas**: MapLibre GL + react-map-gl (búsqueda de supermercados cercanos).
+- **Maps**: MapLibre GL + react-map-gl (nearby supermarket search).
 - **Backend**: Express + TypeScript, Prisma 5 (`backend/prisma/schema.prisma`).
-- **Deploy**: Vercel (`api/` es el entry serverless que envuelve `backend/`).
+- **Deploy**: Vercel (`api/` is the serverless entry point that wraps `backend/`).
 
-No hay ESLint ni tests configurados en este repo — no asumas que existen.
+No ESLint is configured in this repo. Tests (Vitest, frontend and backend) and CI (`.github/workflows/ci.yml`) **are** configured — don't assume otherwise.
 
-## Variables de entorno
+## Environment variables
 
-- Frontend (`VITE_*`, ver `vite.config.ts` / `.env`): `VITE_API_URL`, claves públicas de Clerk.
-- Backend: claves privadas de Clerk, `DATABASE_URL` (Prisma), claves VAPID (web push), credenciales de Resend (email).
+- Frontend (`VITE_*`, see `vite.config.ts` / `.env`): `VITE_API_URL`, Clerk public keys.
+- Backend: Clerk private keys, `DATABASE_URL` (Prisma), VAPID keys (web push), Resend credentials (email).
 
-No hardcodees URLs, keys ni secretos — siempre vía `import.meta.env.*` (frontend) o `process.env.*` (backend).
+Never hardcode URLs, keys, or secrets — always via `import.meta.env.*` (frontend) or `process.env.*` (backend).
 
 ## Service worker
 
-`src/sw.ts` es el source del service worker (`vite-plugin-pwa`, modo `injectManifest`) — maneja push y `notificationclick`. Tocar caching o el manejo de push ahí tiene impacto directo en producción (usuarios con una versión vieja cacheada); cambios ahí requieren más cuidado que un componente normal.
+`src/sw.ts` is the source of the service worker (`vite-plugin-pwa`, `injectManifest` mode) — handles push and `notificationclick`. Touching caching or push handling there has a direct impact in production (users with an old cached version); changes there need more care than a normal component.
 
-## Estructura
+## Structure
 
 ```
 src/
-  components/<Nombre>/     componentes reutilizables
-  views/<Nombre>/          vistas (pantry, shopping, about), con subcomponentes anidados
-  hooks/                   toda la lógica de fetching/mutations vive acá
-  api/                     un archivo por dominio (pantryApi.ts, authApi.ts, ...)
-  context(s)/              contextos de React
-  styles/                  colorSchemes.ts (6 esquemas), theme.ts
+  components/<Name>/       reusable components
+  views/<Name>/            views (pantry, shopping, about), with nested subcomponents
+  hooks/                   all fetching/mutation logic lives here
+  api/                     one file per domain (pantryApi.ts, authApi.ts, ...)
+  context(s)/              React contexts
+  styles/                  colorSchemes.ts (6 schemes), theme.ts
   i18n/locales/
   utils/
   data/
 backend/src/
   app.ts, index.ts
-  db/                      cliente Prisma
-  middleware/              auth.ts (verificación Clerk)
+  db/                      Prisma client
+  middleware/              auth.ts (Clerk verification)
   routes/                  auth.ts, notifications.ts, pantry.ts
   services/                email.ts, webpush.ts
-docs/                      specs de convenciones por capa (ver abajo)
+docs/                      per-layer convention specs (see below)
 ```
 
-## Comandos
+## Commands
 
-- `npm run dev` — levanta frontend (Vite) y backend (Express) juntos vía `concurrently`.
+- `npm run dev` — runs frontend (Vite) and backend (Express) together via `concurrently`.
 - `npm run build` — `prisma generate` + `vite build`.
 - `npm run type-check` — `tsc --noEmit`.
-- `npm run format` — prettier sobre `src/`.
+- `npm run format` — prettier over `src/`.
 
-Entorno de desarrollo: Windows, PowerShell.
+Development environment: Windows, PowerShell.
 
-## Convenciones de código
+## Code conventions
 
-Las reglas detalladas y accionables por capa están en `docs/`, léelas antes de asumir un patrón:
+Detailed, actionable per-layer rules live in `docs/` — read them before assuming a pattern:
 
-- `docs/ui.md` — estilos, colores, esquemas
-- `docs/auth.md` — Clerk, dónde va `ClerkProvider`, cómo se identifica al usuario
+- `docs/ui.md` — styles, colors, schemes
+- `docs/auth.md` — Clerk, where `ClerkProvider` goes, how the user is identified
 - `docs/data-fetching.md` — hooks, React Query, `enabled: !!isSignedIn`
-- `docs/data-mutations.md` — `useMutation`, invalidación de queries, ownership en backend
-- `docs/routing.md` — no hay router, navegación es view-state
-- `docs/server-components.md` — estructura y convenciones del backend Express/Prisma
+- `docs/data-mutations.md` — `useMutation`, query invalidation, ownership on the backend
+- `docs/routing.md` — no router, navigation is view-state
+- `docs/server-components.md` — structure and conventions of the Express/Prisma backend
 
-Resumen de lo más importante:
-- Sin React Router ni ningún router de URLs — la vista activa es un string union en `useAppState`.
-- Los componentes nunca llaman `fetch()` directo; todo pasa por hooks en `src/hooks/` + `src/api/`.
-- Toda query de datos de usuario va con `enabled: !!isSignedIn`.
-- El backend identifica al usuario con `req.clerkUserId` (nunca desde body/params/query), y hace ownership check antes de escribir.
-- Colores: variables CSS `--scheme-*` definidas en `src/styles/colorSchemes.ts` para los 6 esquemas — nunca hex/rgb hardcodeado en componentes.
+Summary of the most important points:
+- No React Router or any URL router — the active view is a string union in `useAppState`.
+- Components never call `fetch()` directly; everything goes through hooks in `src/hooks/` + `src/api/`.
+- Every user-data query goes with `enabled: !!isSignedIn`.
+- The backend identifies the user via `req.clerkUserId` (never from body/params/query), and does an ownership check before writing.
+- Colors: CSS variables `--scheme-*` defined in `src/styles/colorSchemes.ts` for the 6 schemes — never hardcoded hex/rgb in components.
 
-## Modo invitado (guest mode)
+## Guest mode
 
-Patrón no cubierto en `docs/` pero real y no trivial — antes de tocar `useGuestStorage`, `useGuestMigration` o `AuthContext`:
-- Un usuario no autenticado puede usar la app con datos en `localStorage` (`src/utils/migrations.ts` migra claves ES→EN de versiones viejas).
-- Al iniciar sesión, esos datos se migran al servidor. La migración usa `Promise.allSettled` (no `Promise.all`) para que un item que falle no tumbe el resto, y expone el error de forma explícita en vez de tragárselo.
-- Las query keys de React Query deben mantenerse estables entre el estado invitado y el autenticado para que el cache no quede inconsistente durante/después de la migración.
+A pattern not covered in `docs/` but real and non-trivial — before touching `useGuestStorage`, `useGuestMigration`, or `AuthContext`:
+- A signed-out user can use the app with data in `localStorage` (`src/utils/migrations.ts` migrates ES→EN keys from old versions).
+- On sign-in, that data gets migrated to the server. The migration uses `Promise.allSettled` (not `Promise.all`) so one failing item doesn't take down the rest, and surfaces the error explicitly instead of swallowing it.
+- React Query query keys must stay stable between guest and signed-in state so the cache doesn't end up inconsistent during/after migration.
 
-## Mantenimiento del README
+## README maintenance
 
-No hay hook automático que actualice el README en cada edición (se sacó por costo). Cuando quieras una pasada, usá explícitamente `/update-readme`.
+There's no automatic hook that updates the README on every edit (removed for cost reasons). When you want a pass, explicitly use `/update-readme`.
 
 ## Roadmap
 
-`ROADMAP.md` (raíz) tiene el detalle técnico de todo lo que está planeado pero no implementado (modelos de datos, endpoints, decisiones abiertas). `README.md` tiene la versión de producto (checklist por versión). Antes de proponer una feature nueva o una decisión de arquitectura, revisar si ya está contemplada ahí.
+`ROADMAP.md` (root) has the technical detail of everything that's planned but not implemented (data models, endpoints, open decisions). `README.md` has the product-facing version (checklist per version). Before proposing a new feature or an architecture decision, check whether it's already covered there.
 
 ## Git
 
-Nunca hacer `git push` (ni de `main` ni de una branch) sin que se pida explícitamente en ese momento — ni siquiera como parte de otro comando (ver `/merge-and-create-branch`, que commitea/mergea/crea branch pero no pushea).
+Never run `git push` (neither on `main` nor on a branch) without it being explicitly requested at that moment — not even as part of another command (see `/merge-and-create-branch`, which commits/merges/creates a branch but doesn't push).
 
-## No agregar herramientas por iniciativa propia
+## Don't add tooling on your own initiative
 
-Hoy no hay ESLint, ni tests, ni CI configurados (`ROADMAP.md` v1.6 los tiene planeados). No los agregues, ni cambies de formatter/linter, ni introduzcas un framework de testing, salvo que se pida explícitamente — aunque parezca una mejora obvia.
+No ESLint is configured. Don't add ESLint, and don't change the formatter, the test runner (Vitest), or the CI config (`.github/workflows/ci.yml`) unless explicitly asked — even if it seems like an obvious improvement. This does **not** apply to regular npm libraries/dependencies: adding those is fine without asking first.
