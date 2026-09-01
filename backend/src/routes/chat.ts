@@ -6,6 +6,7 @@ import {
   streamChatReply,
   extractSearchCriteria,
   mapDietaryRestrictionsToSpoonacularDiet,
+  resolveUnitSystem,
   ChatConfigError,
   ChatQuotaError,
   type ChatHistoryMessage,
@@ -148,6 +149,15 @@ router.post(
         nearbyStoresSummary?: string
       }
 
+      // Read from the account's own DB row, not the request body — a global
+      // preference like this shouldn't be trustable from the client, unlike
+      // language (which is just "what to reply in", not account state).
+      const user = await prisma.user.findUnique({
+        where: { id: req.clerkUserId! },
+        select: { unitSystem: true },
+      })
+      const unitSystem = resolveUnitSystem(user?.unitSystem, language)
+
       // Persist the user's message before calling Groq, so a Groq failure
       // never loses what the user typed.
       await prisma.chatMessage.create({
@@ -176,6 +186,7 @@ router.post(
           language,
           dietaryRestrictions: conversation.dietaryRestrictions,
           servings: conversation.servings,
+          unitSystem,
           nearbyStoresSummary,
           onToken: (token) => writeFrame({ type: 'token', value: token }),
         })

@@ -9,6 +9,9 @@ import type { RecipeCard, RecipeDetail } from '../../utils/types'
 
 vi.mock('../../hooks/useRecipes')
 vi.mock('../../hooks/useFavorites')
+vi.mock('../../hooks/useUnitSystem', () => ({
+  useUnitSystem: () => ({ unitSystem: 'metric', setUnitSystem: vi.fn(), isPending: false }),
+}))
 
 const recipe: RecipeCard = {
   id: 1,
@@ -26,9 +29,27 @@ const detail: RecipeDetail = {
   image: 'img.jpg',
   servings: 2,
   readyInMinutes: 25,
-  ingredients: [{ id: 10, name: 'Pasta', amount: 200, unit: 'g', original: '200g pasta' }],
+  ingredients: [
+    {
+      id: 10,
+      name: 'Pasta',
+      amount: 200,
+      unit: 'g',
+      original: '200g pasta',
+      measures: { metric: { amount: 200, unit: 'g' }, us: { amount: 7, unit: 'oz' } },
+    },
+  ],
   instructions: ['Boil water.'],
-  nutrition: { calories: 400, protein: 20, carbs: 60, fat: 10 },
+  nutrition: {
+    calories: 400,
+    protein: 20,
+    carbs: 60,
+    fat: 10,
+    caloriesPercent: 20,
+    proteinPercent: 40,
+    carbsPercent: 20,
+    fatPercent: 15,
+  },
 }
 
 function mutationSpy() {

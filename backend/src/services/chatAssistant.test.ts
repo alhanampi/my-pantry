@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapDietaryRestrictionsToSpoonacularDiet } from './chatAssistant'
+import { mapDietaryRestrictionsToSpoonacularDiet, resolveUnitSystem } from './chatAssistant'
 
 describe('mapDietaryRestrictionsToSpoonacularDiet', () => {
   it('maps pescetarian and paleo chips onto their Spoonacular diet values', () => {
@@ -26,5 +26,25 @@ describe('mapDietaryRestrictionsToSpoonacularDiet', () => {
 
   it('picks the first matching restriction when multiple are given', () => {
     expect(mapDietaryRestrictionsToSpoonacularDiet(['lowSodium', 'vegan'])).toBe('vegan')
+  })
+})
+
+describe('resolveUnitSystem', () => {
+  it('returns the explicit choice regardless of language', () => {
+    expect(resolveUnitSystem('imperial', 'es')).toBe('imperial')
+    expect(resolveUnitSystem('metric', 'en')).toBe('metric')
+  })
+
+  it('defaults to metric for Spanish when never explicitly chosen', () => {
+    expect(resolveUnitSystem(null, 'es')).toBe('metric')
+    expect(resolveUnitSystem(undefined, 'es')).toBe('metric')
+  })
+
+  it('defaults to imperial for any other language when never explicitly chosen', () => {
+    expect(resolveUnitSystem(null, 'en')).toBe('imperial')
+  })
+
+  it('ignores a garbage stored value and falls back to the locale default', () => {
+    expect(resolveUnitSystem('bogus', 'es')).toBe('metric')
   })
 })

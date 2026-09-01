@@ -33,6 +33,28 @@ export async function apiSyncUser(token: string): Promise<{ partner: Partner | n
   return { partner: json.user.partner }
 }
 
+export async function apiGetMe(token: string): Promise<{ unitSystem: 'metric' | 'imperial' | null }> {
+  const res = await fetch(`${API_URL}/api/auth/me`, { headers: headers(token) })
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(json.error ?? 'auth.errorGeneric')
+  }
+  const json = (await res.json()) as { user: { unitSystem: 'metric' | 'imperial' | null } }
+  return { unitSystem: json.user.unitSystem }
+}
+
+export async function apiUpdateUnitSystem(token: string, unitSystem: 'metric' | 'imperial'): Promise<void> {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ unitSystem }),
+  })
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(json.error ?? 'auth.errorGeneric')
+  }
+}
+
 export async function apiSendInvite(
   token: string,
   username: string,

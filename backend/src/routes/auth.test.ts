@@ -4,7 +4,7 @@ import { verifyToken } from '@clerk/backend'
 import app from '../app'
 
 const mockPrisma = vi.hoisted(() => ({
-  user: { upsert: vi.fn(), findUnique: vi.fn() },
+  user: { upsert: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
   userLink: { findFirst: vi.fn(), create: vi.fn() },
   linkInvitation: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   $transaction: vi.fn(),
@@ -73,6 +73,33 @@ describe('auth routes', () => {
       mockPrisma.user.findUnique.mockResolvedValue(null)
       const res = await authed()
       expect(res.status).toBe(404)
+    })
+  })
+
+  describe('PATCH /api/auth/me', () => {
+    const patch = (body: Record<string, unknown>) =>
+      request(app).patch('/api/auth/me').set('Authorization', 'Bearer good-token').send(body)
+
+    it('updates the unit system preference and returns the user with partner info', async () => {
+      mockPrisma.user.update.mockResolvedValue({ id: 'user_1', username: 'pat', unitSystem: 'imperial' })
+      const res = await patch({ unitSystem: 'imperial' })
+      expect(res.status).toBe(200)
+      expect(res.body.user).toMatchObject({ unitSystem: 'imperial', partner: null })
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user_1' },
+        data: { unitSystem: 'imperial' },
+      })
+    })
+
+    it('rejects a value other than metric/imperial', async () => {
+      const res = await patch({ unitSystem: 'bogus' })
+      expect(res.status).toBe(400)
+      expect(mockPrisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('rejects a missing unitSystem', async () => {
+      const res = await patch({})
+      expect(res.status).toBe(400)
     })
   })
 

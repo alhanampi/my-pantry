@@ -6,6 +6,8 @@ import {
   apiConfirmInvite,
   apiDeclineInvite,
   apiGetPendingInvites,
+  apiGetMe,
+  apiUpdateUnitSystem,
 } from './authApi'
 
 describe('authApi', () => {
@@ -80,5 +82,32 @@ describe('authApi', () => {
   it('apiGetPendingInvites returns an empty list on failure instead of throwing', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 500 }))
     await expect(apiGetPendingInvites('token')).resolves.toEqual({ invites: [] })
+  })
+
+  it('apiGetMe returns the unit system from the user profile', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ user: { unitSystem: 'imperial' } }), { status: 200 }),
+    )
+    const result = await apiGetMe('token')
+    expect(result).toEqual({ unitSystem: 'imperial' })
+  })
+
+  it('apiGetMe throws the server error message on failure', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'boom' }), { status: 500 }))
+    await expect(apiGetMe('token')).rejects.toThrow('boom')
+  })
+
+  it('apiUpdateUnitSystem resolves without a value on success', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 200 }))
+    await expect(apiUpdateUnitSystem('token', 'metric')).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/me'),
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ unitSystem: 'metric' }) }),
+    )
+  })
+
+  it('apiUpdateUnitSystem throws the server error message on failure', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'bad value' }), { status: 400 }))
+    await expect(apiUpdateUnitSystem('token', 'metric')).rejects.toThrow('bad value')
   })
 })

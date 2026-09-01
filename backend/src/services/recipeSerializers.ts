@@ -18,6 +18,15 @@ export function nutrientValue(recipe: SpoonacularRecipe, name: string): number {
   return n ? Math.round(n.amount) : 0
 }
 
+// Powers the nutrition bars (% of daily needs) in RecipeDetailPanel — a
+// separate field from nutrientValue's raw amount, sourced from the same
+// Spoonacular nutrient entry (already fetched via includeNutrition=true, no
+// extra request needed).
+export function nutrientPercent(recipe: SpoonacularRecipe, name: string): number {
+  const n = recipe.nutrition?.nutrients.find((x) => x.name === name)
+  return n?.percentOfDailyNeeds ? Math.round(n.percentOfDailyNeeds) : 0
+}
+
 export function ingredientNames(recipe: SpoonacularRecipe): string[] {
   return (recipe.extendedIngredients ?? []).map((i) => i.name)
 }
@@ -76,13 +85,27 @@ export async function serializeDetail(recipe: SpoonacularRecipe, lang: string) {
     translatedSteps = translated.instructionSteps
   }
 
-  const ingredients = (recipe.extendedIngredients ?? []).map((ing, idx) => ({
-    id: ing.id,
-    name: translatedNames[idx] ?? ing.name,
-    amount: ing.amount,
-    unit: ing.unit,
-    original: ing.original,
-  }))
+  // measures.metric/measures.us carry both unit systems for the same
+  // ingredient, straight from Spoonacular — no manual conversion math needed
+  // for the frontend's metric/imperial toggle. Falls back to the flat
+  // amount/unit (US-authored, Spoonacular's default) for both systems on the
+  // rare response that's missing `measures`, so the toggle degrades to "no
+  // visible change" rather than breaking.
+  const ingredients = (recipe.extendedIngredients ?? []).map((ing, idx) => {
+    const fallback = { amount: ing.amount, unit: ing.unit }
+    const us = ing.measures ? { amount: ing.measures.us.amount, unit: ing.measures.us.unitShort } : fallback
+    const metric = ing.measures
+      ? { amount: ing.measures.metric.amount, unit: ing.measures.metric.unitShort }
+      : fallback
+    return {
+      id: ing.id,
+      name: translatedNames[idx] ?? ing.name,
+      amount: metric.amount,
+      unit: metric.unit,
+      original: ing.original,
+      measures: { metric, us },
+    }
+  })
 
   return {
     id: recipe.id,
@@ -98,6 +121,10 @@ export async function serializeDetail(recipe: SpoonacularRecipe, lang: string) {
       protein: nutrientValue(recipe, 'Protein'),
       carbs: nutrientValue(recipe, 'Carbohydrates'),
       fat: nutrientValue(recipe, 'Fat'),
+      caloriesPercent: nutrientPercent(recipe, 'Calories'),
+      proteinPercent: nutrientPercent(recipe, 'Protein'),
+      carbsPercent: nutrientPercent(recipe, 'Carbohydrates'),
+      fatPercent: nutrientPercent(recipe, 'Fat'),
     },
   }
 }

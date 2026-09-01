@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import { apiCreateProduct, apiCreateShoppingItem } from '../api/pantryApi'
+import { apiUpdateUnitSystem } from '../api/authApi'
 import { guestStorage } from './useGuestStorage'
 
 export function useGuestMigration() {
@@ -11,10 +12,20 @@ export function useGuestMigration() {
     mutationFn: async () => {
       const guestProducts = guestStorage.getProducts()
       const guestShopping = guestStorage.getShopping()
-      if (guestProducts.length === 0 && guestShopping.length === 0) return
+      // Only migrate if the guest actually touched the switch — an untouched
+      // (null) guest preference must never overwrite whatever the account
+      // already has set server-side.
+      const guestUnitSystem = guestStorage.getUnitSystem()
+      if (guestProducts.length === 0 && guestShopping.length === 0 && !guestUnitSystem) return
 
       const token = await getToken()
       if (!token) throw new Error('Not authenticated')
+
+      if (guestUnitSystem) {
+        // Best-effort — failing to carry over this one preference shouldn't
+        // block/fail the rest of the migration or surface as the same error.
+        await apiUpdateUnitSystem(token, guestUnitSystem).catch(() => {})
+      }
 
       const [productResults, shoppingResults] = await Promise.all([
         Promise.allSettled(
@@ -46,10 +57,12 @@ export function useGuestMigration() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['products'] })
       void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+      void qc.invalidateQueries({ queryKey: ['unitSystem'] })
     },
     onError: () => {
       void qc.invalidateQueries({ queryKey: ['products'] })
       void qc.invalidateQueries({ queryKey: ['shoppingList'] })
+      void qc.invalidateQueries({ queryKey: ['unitSystem'] })
     },
   })
 }

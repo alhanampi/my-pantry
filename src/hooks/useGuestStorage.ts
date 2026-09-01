@@ -4,6 +4,7 @@ const PRODUCTS_KEY = 'guest_products'
 const SHOPPING_KEY = 'guest_shopping'
 const SHOPPING_LISTS_KEY = 'guest_shopping_lists'
 const FAVORITE_RECIPES_KEY = 'guest_favorite_recipes'
+const UNIT_SYSTEM_KEY = 'guest_unit_system'
 
 const GENERAL_LIST_ID = 'guest-general'
 
@@ -113,6 +114,17 @@ export const guestStorage = {
 
   getFavoriteIds: readFavoriteIds,
 
+  // null = never explicitly chosen — the caller resolves a default from the
+  // UI language in that case (see resolveUnitSystem in useUnitSystem.ts).
+  getUnitSystem(): 'metric' | 'imperial' | null {
+    const raw = localStorage.getItem(UNIT_SYSTEM_KEY)
+    return raw === 'metric' || raw === 'imperial' ? raw : null
+  },
+
+  setUnitSystem(value: 'metric' | 'imperial'): void {
+    localStorage.setItem(UNIT_SYSTEM_KEY, value)
+  },
+
   addFavorite(recipeId: number): number[] {
     const ids = readFavoriteIds()
     if (ids.includes(recipeId)) return ids
@@ -176,5 +188,6 @@ export const guestStorage = {
     localStorage.removeItem(SHOPPING_KEY)
     localStorage.removeItem(SHOPPING_LISTS_KEY)
     localStorage.removeItem(FAVORITE_RECIPES_KEY)
+    localStorage.removeItem(UNIT_SYSTEM_KEY)
   },
 }

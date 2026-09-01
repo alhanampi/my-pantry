@@ -29,6 +29,10 @@ vi.mock('../../hooks/usePushNotifications', () => ({
   }),
 }))
 
+vi.mock('../../hooks/useUnitSystem', () => ({
+  useUnitSystem: () => ({ unitSystem: 'metric', setUnitSystem: vi.fn(), isPending: false }),
+}))
+
 function renderHeader(props: Partial<React.ComponentProps<typeof Header>> = {}) {
   return render(
     <ThemeContextProvider>

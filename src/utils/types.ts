@@ -119,12 +119,23 @@ export interface NearbyStore extends RawNearbyStore {
 
 // ─── Recipes (Spoonacular via backend proxy + Groq translation) ──────────────
 
+export interface RecipeMeasure {
+  amount: number
+  unit: string
+}
+
 export interface RecipeIngredient {
   id: number
   name: string
+  // amount/unit default to the metric measure — kept flat for back-compat
+  // with anything reading them directly (e.g. favorites/shopping-list code
+  // that doesn't care about unit system). measures carries both systems so
+  // the metric/imperial toggle can switch instantly, client-side, without a
+  // refetch — see useUnitSystem / RecipeDetailPanel.
   amount: number
   unit: string
   original: string
+  measures: { metric: RecipeMeasure; us: RecipeMeasure }
 }
 
 export interface RecipeCard {
@@ -143,6 +154,12 @@ export interface RecipeNutrition {
   protein: number
   carbs: number
   fat: number
+  // Percent of Spoonacular's "daily needs" for each — powers the nutrition
+  // bars in RecipeDetailPanel.
+  caloriesPercent: number
+  proteinPercent: number
+  carbsPercent: number
+  fatPercent: number
 }
 
 export interface RecipeDetail {

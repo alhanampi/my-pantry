@@ -55,7 +55,23 @@ export async function translateRecipeContent(
 
   const key = cacheKey(recipe.id, targetLang)
   const cached = cache.get(key)
-  if (cached) return cached
+  // A cache hit is only trustworthy if its array lengths still match the
+  // CURRENT call's input — without this check, a translation cached once
+  // (even a length-0 one, e.g. from a since-fixed upstream bug that used to
+  // produce empty instructionSteps) would be returned forever, silently
+  // ignoring a real, non-empty `recipe` passed in later. This is what made
+  // a recipe's Spanish instructions stay empty indefinitely (until the
+  // server process restarted and the in-memory cache reset) even after the
+  // underlying instructionSteps() extraction was fixed — English never hit
+  // this cache at all, since serializeDetail only calls this function for
+  // 'es', which is why only Spanish stayed broken.
+  if (
+    cached &&
+    cached.ingredientNames.length === recipe.ingredientNames.length &&
+    cached.instructionSteps.length === recipe.instructionSteps.length
+  ) {
+    return cached
+  }
 
   if (!groq) return englishFallback(recipe)
 

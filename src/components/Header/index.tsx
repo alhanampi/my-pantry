@@ -56,6 +56,7 @@ import {
   UserGreeting,
 } from './Header.styles'
 import ThemePicker from '../ThemePicker'
+import UnitSystemToggle from '../UnitSystemToggle'
 import NotificationBell from '../NotificationBell'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useAuth } from '../../context/AuthContext'
@@ -227,6 +228,11 @@ export default function Header({
           <ThemePicker />
         </ListItem>
 
+        <ListItem sx={{ py: 0.5 }}>
+          <ListItemIcon sx={{ minWidth: 36 }} />
+          <UnitSystemToggle variant="plain" />
+        </ListItem>
+
         {isSignedIn && (
           <ListItem sx={{ py: 0.5 }}>
             <ListItemIcon sx={{ minWidth: 36 }} />
@@ -340,6 +346,8 @@ export default function Header({
             <NotificationBell />
 
             <ThemePicker />
+
+            <UnitSystemToggle />
 
             <Tooltip title={t('header.switchLanguage')}>
               <Button

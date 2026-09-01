@@ -47,6 +47,33 @@ router.get('/me', requireAuth, async (req: Request, res: Response): Promise<void
   }
 })
 
+// PATCH /api/auth/me — update the caller's own profile-level preferences.
+// Currently just unitSystem; kept generic-shaped (a small allowlisted body)
+// rather than a one-off /unit-system route, since more account-level
+// preferences of this kind are likely to follow.
+router.patch(
+  '/me',
+  requireAuth,
+  [body('unitSystem').isIn(['metric', 'imperial']).withMessage('unitSystem must be metric or imperial')],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) { res.status(400).json({ errors: errors.array() }); return }
+
+    const { unitSystem } = req.body as { unitSystem: 'metric' | 'imperial' }
+
+    try {
+      const user = await prisma.user.update({
+        where: { id: req.clerkUserId! },
+        data: { unitSystem },
+      })
+      const partner = await resolvePartner(req.clerkUserId!)
+      res.json({ user: { ...user, partner } })
+    } catch {
+      res.status(500).json({ error: 'Server error' })
+    }
+  }
+)
+
 // POST /api/auth/link — send a pantry-sharing invitation by username
 router.post(
   '/link',

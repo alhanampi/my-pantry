@@ -18,7 +18,10 @@
     "addProduct": "Add product",
     "about": "About",
     "colorScheme": "Color scheme",
-    "switchLanguage": "Switch to Spanish"
+    "switchLanguage": "Switch to Spanish",
+    "unitSystem": "Measurement system",
+    "unitSystemMetric": "Metric",
+    "unitSystemImperial": "Imperial"
   },
   "table": {
     "name": "Name",
@@ -127,6 +130,7 @@
     "kcal": "kcal",
     "ingredients": "Ingredients",
     "instructions": "Instructions",
+    "noInstructions": "This recipe doesn't include step-by-step instructions — it likely combines other already-prepared recipes.",
     "sendToList": "Send to a new shopping list",
     "sentToList": "Ingredients added to a new shopping list",
     "viewList": "View list",

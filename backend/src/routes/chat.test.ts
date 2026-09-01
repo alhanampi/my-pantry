@@ -6,6 +6,7 @@ import app from '../app'
 const mockPrisma = vi.hoisted(() => ({
   chatConversation: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
   chatMessage: { create: vi.fn() },
+  user: { findUnique: vi.fn() },
 }))
 
 vi.mock('../db/index.js', () => ({ default: mockPrisma }))
@@ -23,6 +24,11 @@ vi.mock('../services/chatAssistant.js', () => ({
   streamChatReply: mockStreamChatReply,
   extractSearchCriteria: mockExtractSearchCriteria,
   mapDietaryRestrictionsToSpoonacularDiet: vi.fn(() => undefined),
+  // Real logic (not a stub) — several assertions below care about which
+  // unitSystem actually reaches streamChatReply.
+  resolveUnitSystem: vi.fn((explicit: string | null | undefined, language: string) =>
+    explicit === 'metric' || explicit === 'imperial' ? explicit : language.startsWith('es') ? 'metric' : 'imperial',
+  ),
   ChatConfigError: class ChatConfigError extends Error {},
   ChatQuotaError: class ChatQuotaError extends Error {},
 }))
@@ -117,6 +123,39 @@ describe('chat routes', () => {
       })
       mockPrisma.chatMessage.create.mockResolvedValue({ id: 'm1' })
       mockPrisma.chatConversation.update.mockResolvedValue({})
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: null })
+    })
+
+    it('resolves unitSystem from the account (not the request body) and passes it to streamChatReply', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'imperial' })
+      mockStreamChatReply.mockResolvedValue('ok')
+
+      await request(app)
+        .post('/api/chat/conversations/c1/messages')
+        .set('Authorization', 'Bearer good-token')
+        .send({ content: 'hola', language: 'es' })
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user_1' },
+        select: { unitSystem: true },
+      })
+      expect(mockStreamChatReply).toHaveBeenCalledWith(
+        expect.objectContaining({ unitSystem: 'imperial' }),
+      )
+    })
+
+    it('falls back to the language-based default when the account never set unitSystem', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: null })
+      mockStreamChatReply.mockResolvedValue('ok')
+
+      await request(app)
+        .post('/api/chat/conversations/c1/messages')
+        .set('Authorization', 'Bearer good-token')
+        .send({ content: 'hola', language: 'es' })
+
+      expect(mockStreamChatReply).toHaveBeenCalledWith(
+        expect.objectContaining({ unitSystem: 'metric' }),
+      )
     })
 
     it('streams tokens and persists the user + assistant messages', async () => {

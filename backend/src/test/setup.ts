@@ -9,3 +9,4 @@ process.env.VAPID_PUBLIC_KEY ??= 'BHzqze4Kg0l4LJq216hqsXh-ckEYVvW0zrF6wc7W0ln18v
 process.env.VAPID_PRIVATE_KEY ??= 'ZzXkNFuBVO_88ldbXOek8HHSxVb-6BhmNa47ZjYbdEM'
 process.env.RESEND_API_KEY ??= 'test_resend_key'
 process.env.EMAIL_FROM ??= 'test@example.com'
+process.env.GROQ_API_KEY ??= 'test_groq_key'

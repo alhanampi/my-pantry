@@ -3,15 +3,18 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import { useGuestMigration } from './useGuestMigration'
 import { guestStorage } from './useGuestStorage'
 import * as pantryApi from '../api/pantryApi'
+import * as authApi from '../api/authApi'
 import { createTestQueryClient } from '../test/test-utils'
 import { QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('../api/pantryApi')
+vi.mock('../api/authApi')
 vi.mock('./useGuestStorage', () => ({
   guestStorage: {
     getProducts: vi.fn(() => []),
     getShopping: vi.fn(() => []),
     removeMigratedItems: vi.fn(),
+    getUnitSystem: vi.fn(() => null),
   },
 }))
 
@@ -77,6 +80,47 @@ describe('useGuestMigration', () => {
 
     expect(guestStorage.removeMigratedItems).toHaveBeenCalledWith([good.id], [])
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  })
+
+  it('migrates an explicitly-chosen guest unit system to the account', async () => {
+    vi.mocked(guestStorage.getProducts).mockReturnValue([])
+    vi.mocked(guestStorage.getShopping).mockReturnValue([])
+    vi.mocked(guestStorage.getUnitSystem).mockReturnValue('imperial')
+    vi.mocked(authApi.apiUpdateUnitSystem).mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useGuestMigration(), { wrapper })
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(authApi.apiUpdateUnitSystem).toHaveBeenCalledWith('token-123', 'imperial')
+  })
+
+  it('does not touch the account unit system when the guest never explicitly set one', async () => {
+    vi.mocked(guestStorage.getProducts).mockReturnValue([])
+    vi.mocked(guestStorage.getShopping).mockReturnValue([])
+    vi.mocked(guestStorage.getUnitSystem).mockReturnValue(null)
+
+    const { result } = renderHook(() => useGuestMigration(), { wrapper })
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(authApi.apiUpdateUnitSystem).not.toHaveBeenCalled()
+  })
+
+  it('does not let a unit-system migration failure fail the whole migration', async () => {
+    vi.mocked(guestStorage.getProducts).mockReturnValue([])
+    vi.mocked(guestStorage.getShopping).mockReturnValue([])
+    vi.mocked(guestStorage.getUnitSystem).mockReturnValue('metric')
+    vi.mocked(authApi.apiUpdateUnitSystem).mockRejectedValue(new Error('server error'))
+
+    const { result } = renderHook(() => useGuestMigration(), { wrapper })
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(result.current.isError).toBe(false)
   })
 
   it('throws when there is no auth token', async () => {

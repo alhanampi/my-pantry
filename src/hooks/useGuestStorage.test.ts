@@ -110,4 +110,21 @@ describe('guestStorage', () => {
     guestStorage.clearAll()
     expect(guestStorage.getFavoriteIds()).toEqual([])
   })
+
+  it('starts with no explicit unit system, then remembers what is set', () => {
+    expect(guestStorage.getUnitSystem()).toBeNull()
+    guestStorage.setUnitSystem('imperial')
+    expect(guestStorage.getUnitSystem()).toBe('imperial')
+  })
+
+  it('treats a corrupt/unexpected stored unit-system value as unset', () => {
+    localStorage.setItem('guest_unit_system', 'bogus')
+    expect(guestStorage.getUnitSystem()).toBeNull()
+  })
+
+  it('clearAll also wipes the unit-system preference', () => {
+    guestStorage.setUnitSystem('metric')
+    guestStorage.clearAll()
+    expect(guestStorage.getUnitSystem()).toBeNull()
+  })
 })

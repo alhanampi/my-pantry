@@ -40,6 +40,13 @@ interface SpoonacularNutrient {
   name: string
   amount: number
   unit: string
+  percentOfDailyNeeds?: number
+}
+
+interface SpoonacularMeasure {
+  amount: number
+  unitShort: string
+  unitLong: string
 }
 
 interface SpoonacularIngredient {
@@ -49,6 +56,11 @@ interface SpoonacularIngredient {
   unit: string
   original: string
   image?: string
+  // Present on every ingredient whenever fillIngredients=true/includeNutrition=true
+  // are requested (both already are, below) — Spoonacular returns both unit
+  // systems per ingredient regardless of any `unit` request param, so the
+  // metric/imperial toggle can convert client-side with no extra request.
+  measures?: { us: SpoonacularMeasure; metric: SpoonacularMeasure }
 }
 
 export interface SpoonacularRecipe {

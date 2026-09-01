@@ -18,7 +18,10 @@
     "addProduct": "Agregar producto",
     "about": "Acerca de",
     "colorScheme": "Esquema de color",
-    "switchLanguage": "Cambiar a inglés"
+    "switchLanguage": "Cambiar a inglés",
+    "unitSystem": "Sistema de medidas",
+    "unitSystemMetric": "Métrico",
+    "unitSystemImperial": "Imperial"
   },
   "table": {
     "name": "Nombre",
@@ -127,6 +130,7 @@
     "kcal": "kcal",
     "ingredients": "Ingredientes",
     "instructions": "Instrucciones",
+    "noInstructions": "Esta receta no trae instrucciones paso a paso — probablemente combina otras recetas ya preparadas.",
     "sendToList": "Enviar a una nueva lista de compras",
     "sentToList": "Ingredientes agregados a una nueva lista de compras",
     "viewList": "Ver lista",

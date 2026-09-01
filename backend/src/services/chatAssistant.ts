@@ -39,10 +39,23 @@ export interface ChatHistoryMessage {
   content: string
 }
 
+export type UnitSystem = 'metric' | 'imperial'
+
+// The account's own choice always wins; when they've never explicitly
+// touched it (unitSystem is null — see the User.unitSystem Prisma comment),
+// resolve from the conversation's language: Spanish defaults to metric,
+// everything else to imperial. Mirrored on the frontend (useUnitSystem.ts) —
+// keep both in sync if this rule ever changes.
+export function resolveUnitSystem(explicit: string | null | undefined, language: string): UnitSystem {
+  if (explicit === 'metric' || explicit === 'imperial') return explicit
+  return language.startsWith('es') ? 'metric' : 'imperial'
+}
+
 function buildSystemPrompt(
   language: string,
   dietaryRestrictions: string[],
   servings: number,
+  unitSystem: UnitSystem,
   nearbyStoresSummary?: string,
 ): string {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
@@ -95,6 +108,9 @@ function buildSystemPrompt(
       'the app for concrete recipe options with photos once ready. Your job is only to gather the ' +
       'minimum needed (main ingredients, time, and — only if relevant — store distance) as briefly as ' +
       'possible, then point them to that action.',
+    `The user prefers the ${unitSystem} measurement system. If you ever mention a quantity yourself ` +
+      `(e.g. suggesting how much of something to use), use ${unitSystem === 'metric' ? 'grams/ml/°C' : 'oz/cups/°F'} ` +
+      'rather than the other system.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -105,6 +121,7 @@ export interface StreamChatReplyParams {
   language: string
   dietaryRestrictions: string[]
   servings: number
+  unitSystem: UnitSystem
   nearbyStoresSummary?: string
   onToken: (token: string) => void
 }
@@ -122,6 +139,7 @@ export async function streamChatReply(params: StreamChatReplyParams): Promise<st
     params.language,
     params.dietaryRestrictions,
     params.servings,
+    params.unitSystem,
     params.nearbyStoresSummary,
   )
 

@@ -516,7 +516,7 @@ Related to the v1.4 items above. Multiple shopping lists and the Recipes tab shi
 - [ ] Automatic extraction of missing ingredients from the recipe into the shopping list (the chat's "suggest a recipe" flow already reuses the existing recipe-detail "send to a new shopping list" action; a dedicated extraction-from-freeform-text flow is still pending)
 - [x] Multiple named shopping lists — a "General" list per user plus any created manually or from a recipe; no rename/delete UI yet (endpoints exist)
 - [x] Groq wired up — used both to translate recipe content (title/ingredients/instructions) to Spanish and to power the Chat tab's streaming replies and recipe-suggestion extraction
-- [ ] Metric or imperial system settings.
+- [x] Metric or imperial system settings — a switch in Preferencias and on each recipe's detail view (same persisted account preference either way), auto-converts ingredient amounts instantly (no refetch), and is passed to the AI chat prompt
 
 ### v1.6 — Testing & Environments
 
@@ -535,8 +535,10 @@ See `ROADMAP.md` for the technical design.
 - [ ] Invite a partner via QR code, as an alternative to the shareable link
 - [ ] Production error monitoring (Sentry free tier)
 - [ ] More languages beyond ES/EN
+- [ ] header and general UI improvements to account for the app's growth
 - [ ] Conflict resolution for edits made on two devices while one was offline
 - [ ] Lightweight, privacy-friendly usage analytics
+- [ ] migrate from MUI icons to react-icons
 - [ ] Revisit the navigation tab icons with a deliberate pass over [react-icons](https://react-icons.github.io/react-icons/) for a fully consistent set
 
 ### v1.8 — Smart Planning
