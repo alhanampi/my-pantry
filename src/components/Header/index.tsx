@@ -23,7 +23,7 @@ import Chip from '@mui/material/Chip'
 import {
   MdSearch,
   MdInfoOutline,
-  MdOutlineStorefront,
+  MdOutlineInventory2,
   MdOutlineShoppingCart,
   MdOutlineRestaurantMenu,
   MdOutlineFavorite,
@@ -407,7 +407,7 @@ export default function Header({
         >
           <Tab
             label={t('nav.pantry')}
-            icon={<MdOutlineStorefront size={18} />}
+            icon={<MdOutlineInventory2 size={18} />}
             iconPosition="start"
             sx={{
               minHeight: 40,
