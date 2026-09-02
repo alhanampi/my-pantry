@@ -2,9 +2,9 @@
 
 ## Component library
 
-**Material-UI (MUI) v5** is the primary component library (`@mui/material`, `@mui/icons-material`). Styling is a hybrid of MUI's `ThemeProvider` and **styled-components v6** for custom layout and component overrides.
+**Material-UI (MUI) v5** is the primary component library (`@mui/material`, for components only — MUI's icon package is not used, see below). Styling is a hybrid of MUI's `ThemeProvider` and **styled-components v6** for custom layout and component overrides.
 
-Icons come from **react-icons v5** (Material Design set, `react-icons/md`).
+Icons come from **react-icons v5** (Material Design set, `react-icons/md`) exclusively — `@mui/icons-material` was removed from the project. The 5 bottom-nav/header-tab icons (pantry/recipes/favorites/chat/shopping) deliberately use the `MdOutline*` variant across the board, so they share the same visual weight instead of mixing filled and outline glyphs.
 
 ---
 

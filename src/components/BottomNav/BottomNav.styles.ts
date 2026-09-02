@@ -27,5 +27,11 @@ export const StyledBottomNavigation = styled(BottomNavigation)`
 export const NavAction = styled(BottomNavigationAction)`
   &&.Mui-selected {
     color: var(--scheme-primary);
+    background-color: var(--scheme-bg);
+    /* No border-radius here on purpose — a rounded chip reads as a
+       separate floating box (small white triangles show through the
+       rounded corners against the bar's own background). A flush,
+       square-edged fill spanning the tab's full slot instead reads as a
+       straight continuation of the page background behind it. */
   }
 `

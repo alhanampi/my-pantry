@@ -23,10 +23,11 @@ import Chip from '@mui/material/Chip'
 import {
   MdSearch,
   MdInfoOutline,
-  MdStorefront,
-  MdShoppingCart,
-  MdRestaurantMenu,
-  MdFavorite,
+  MdOutlineInventory2,
+  MdOutlineShoppingCart,
+  MdOutlineRestaurantMenu,
+  MdOutlineFavorite,
+  MdOutlineLightbulb,
   MdClear,
   MdTranslate,
   MdPersonOutline,
@@ -35,11 +36,6 @@ import {
   MdMenu,
   MdPeopleOutline,
 } from 'react-icons/md'
-// Not react-icons — MdChatBubbleOutline is a thin outline icon that reads
-// visually lighter than the other (filled) tab icons above. @mui/icons-
-// material's default (non-Outlined/Rounded) variant is filled, matching
-// their weight.
-import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects'
 import appIcon from '../../assets/icon.png'
 import { useTranslation } from 'react-i18next'
 import {
@@ -61,6 +57,22 @@ import NotificationBell from '../NotificationBell'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useAuth } from '../../context/AuthContext'
 import type { HeaderProps } from '../../utils/types'
+
+// Selected tab takes the page background and squares off its bottom corners
+// (only the top ones stay rounded) so it reads as merging into MainContent
+// right below it, like a folder tab that's part of the same sheet — instead
+// of the underline-indicator style used before.
+const desktopTabSx = {
+  minHeight: 40,
+  fontSize: '0.85rem',
+  color: 'var(--scheme-on-primary-muted)',
+  borderRadius: '8px 8px 0 0',
+  '&.Mui-selected': {
+    color: 'var(--scheme-text-primary)',
+    backgroundColor: 'var(--scheme-bg)',
+  },
+  py: 0,
+}
 
 export default function Header({
   searchQuery,
@@ -406,68 +418,38 @@ export default function Header({
           value={tabValue}
           onChange={handleTabChange}
           textColor="inherit"
-          TabIndicatorProps={{ style: { backgroundColor: 'var(--scheme-accent-medium)', height: 3 } }}
+          TabIndicatorProps={{ style: { display: 'none' } }}
           sx={{ minHeight: 40 }}
         >
           <Tab
             label={t('nav.pantry')}
-            icon={<MdStorefront size={18} />}
+            icon={<MdOutlineInventory2 size={18} />}
             iconPosition="start"
-            sx={{
-              minHeight: 40,
-              fontSize: '0.85rem',
-              color: 'var(--scheme-on-primary-muted)',
-              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
-              py: 0,
-            }}
+            sx={desktopTabSx}
           />
           <Tab
             label={t('nav.recipes')}
-            icon={<MdRestaurantMenu size={18} />}
+            icon={<MdOutlineRestaurantMenu size={18} />}
             iconPosition="start"
-            sx={{
-              minHeight: 40,
-              fontSize: '0.85rem',
-              color: 'var(--scheme-on-primary-muted)',
-              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
-              py: 0,
-            }}
+            sx={desktopTabSx}
           />
           <Tab
             label={t('nav.favorites')}
-            icon={<MdFavorite size={18} />}
+            icon={<MdOutlineFavorite size={18} />}
             iconPosition="start"
-            sx={{
-              minHeight: 40,
-              fontSize: '0.85rem',
-              color: 'var(--scheme-on-primary-muted)',
-              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
-              py: 0,
-            }}
+            sx={desktopTabSx}
           />
           <Tab
             label={t('nav.chat')}
-            icon={<EmojiObjectsIcon sx={{ fontSize: 18 }} />}
+            icon={<MdOutlineLightbulb size={18} />}
             iconPosition="start"
-            sx={{
-              minHeight: 40,
-              fontSize: '0.85rem',
-              color: 'var(--scheme-on-primary-muted)',
-              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
-              py: 0,
-            }}
+            sx={desktopTabSx}
           />
           <Tab
             label={t('nav.shopping')}
-            icon={<MdShoppingCart size={18} />}
+            icon={<MdOutlineShoppingCart size={18} />}
             iconPosition="start"
-            sx={{
-              minHeight: 40,
-              fontSize: '0.85rem',
-              color: 'var(--scheme-on-primary-muted)',
-              '&.Mui-selected': { color: 'var(--scheme-on-primary)' },
-              py: 0,
-            }}
+            sx={desktopTabSx}
           />
         </Tabs>
       </DesktopTabs>

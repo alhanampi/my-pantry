@@ -7,8 +7,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Drawer from '@mui/material/Drawer'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { MdArrowBack, MdAutoAwesome, MdHistory, MdAddComment } from 'react-icons/md'
-import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects'
+import { MdArrowBack, MdAutoAwesome, MdHistory, MdAddComment, MdOutlineLightbulb } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ChatSidebar from './ChatSidebar'
 import NewChatOnboarding from './NewChatOnboarding'
@@ -209,7 +208,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
     return (
       <Wrapper>
         <EmptyState>
-          <EmojiObjectsIcon sx={{ fontSize: 48 }} htmlColor="var(--scheme-accent-medium)" />
+          <MdOutlineLightbulb size={48} color="var(--scheme-accent-medium)" />
           <Typography variant="body1" sx={{ fontWeight: 500 }}>
             {t('chat.signedOutTitle')}
           </Typography>
