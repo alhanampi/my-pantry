@@ -14,7 +14,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
-          'vendor-mui': ['@mui/material', '@mui/icons-material'],
+          'vendor-mui': ['@mui/material'],
           'vendor-i18n': ['i18next', 'react-i18next'],
           'vendor-query': ['@tanstack/react-query', 'axios'],
         },
