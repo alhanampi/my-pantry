@@ -84,11 +84,3 @@ export const BackRow = styled.div`
   gap: 4px;
   margin-bottom: 12px;
 `
-
-export const SectionTitle = styled(Typography).attrs({ variant: 'subtitle1' as const })`
-  && {
-    font-weight: 600;
-    color: var(--scheme-primary-dark);
-    margin: 16px 0 8px;
-  }
-`

@@ -10,7 +10,7 @@ import { ChipsWrapper, AddOtherRow } from './DietaryChipPicker.styles'
 // backend/src/services/chatAssistant.ts's CHIP_TO_SPOONACULAR_DIET map for
 // the subset that maps onto Spoonacular's diet vocabulary; the rest still
 // reach the AI via the conversation's stored dietaryRestrictions.
-export const PREDEFINED_RESTRICTIONS = [
+const PREDEFINED_RESTRICTIONS = [
   'vegetarian',
   'vegan',
   'glutenFree',

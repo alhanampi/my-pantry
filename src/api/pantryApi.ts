@@ -119,6 +119,11 @@ export async function apiCreateShoppingList(token: string, name: string): Promis
   return json.list
 }
 
+// No caller yet — the backend PUT endpoint exists ahead of any rename UI
+// (see ROADMAP.md's Multiple Shopping Lists entry). Kept exported and wired
+// to the endpoint so whenever that UI is built there's nothing left to do
+// on this side; knip's unused-exports check will keep flagging it as dead
+// until then, which is expected.
 export async function apiUpdateShoppingList(token: string, id: string, name: string): Promise<ShoppingList> {
   const res = await fetch(`${API_URL}/api/pantry/shopping-lists/${id}`, {
     method: 'PUT',
