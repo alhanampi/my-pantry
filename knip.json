@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["api/index.ts"],
+      "project": ["src/**/*.{ts,tsx}", "api/**/*.ts"],
+      "ignoreDependencies": [
+        "@clerk/backend",
+        "@prisma/client",
+        "cors",
+        "express",
+        "express-rate-limit",
+        "express-validator",
+        "helmet",
+        "@types/cors",
+        "@types/express"
+      ]
+    },
+    "backend": {
+      "entry": ["scripts/*.ts", "prisma/seed.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "prisma/**/*.ts"]
+    }
+  }
+}

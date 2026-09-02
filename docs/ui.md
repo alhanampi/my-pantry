@@ -57,8 +57,7 @@ Semantic MUI palette slots:
 
 ### Theme file locations
 
-- `src/styles/colorSchemes.ts` — scheme definitions and `applySchemeVars()`
-- `src/styles/theme.ts` — MUI `baseThemeOptions` and `createAppTheme()`
+- `src/styles/colorSchemes.ts` — scheme definitions, `baseThemeOptions`, `createAppTheme()` and `applySchemeVars()` (all MUI theme building now lives here — there is no separate `theme.ts`)
 - `src/contexts/ThemeContext.tsx` — React context that drives scheme switching
 
 ---

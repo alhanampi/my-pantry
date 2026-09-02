@@ -1,7 +1,6 @@
 import styled from 'styled-components'
 import ListItem from '@mui/material/ListItem'
 import Checkbox from '@mui/material/Checkbox'
-import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 
 export const StyledListItem = styled(ListItem)<{ $purchased: boolean }>`
@@ -41,16 +40,6 @@ export const ItemName = styled(Typography).attrs({ variant: 'body2' as const })<
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-`
-
-export const DeleteButton = styled(IconButton)`
-  && {
-    color: var(--scheme-error-light);
-    &:hover {
-      color: var(--scheme-error);
-      background-color: var(--scheme-error-bg);
-    }
   }
 `
 

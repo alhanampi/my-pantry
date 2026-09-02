@@ -13,7 +13,7 @@ import { translateRecipeContent } from './groq.js'
 // shapes the frontend expects, so this lives here instead of being
 // duplicated per route file.
 
-export function nutrientValue(recipe: SpoonacularRecipe, name: string): number {
+function nutrientValue(recipe: SpoonacularRecipe, name: string): number {
   const n = recipe.nutrition?.nutrients.find((x) => x.name === name)
   return n ? Math.round(n.amount) : 0
 }
@@ -27,7 +27,7 @@ export function nutrientPercent(recipe: SpoonacularRecipe, name: string): number
   return n?.percentOfDailyNeeds ? Math.round(n.percentOfDailyNeeds) : 0
 }
 
-export function ingredientNames(recipe: SpoonacularRecipe): string[] {
+function ingredientNames(recipe: SpoonacularRecipe): string[] {
   return (recipe.extendedIngredients ?? []).map((i) => i.name)
 }
 

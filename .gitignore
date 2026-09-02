@@ -6,6 +6,7 @@ node_modules/
 # Build output
 dist/
 build/
+dev-dist/
 
 # Test coverage reports
 coverage/

@@ -73,7 +73,7 @@ export function useFavoriteRecipes() {
   })
 }
 
-export function useToggleFavorite() {
+function useToggleFavorite() {
   const { getToken, isSignedIn, isLoaded } = useAuth()
   const isConfirmedGuest = isLoaded && !isSignedIn
   const qc = useQueryClient()
