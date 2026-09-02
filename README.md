@@ -45,6 +45,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Search recipes by keyword, cuisine, diet, included ingredients, and max calories, via a server-side **Spoonacular** proxy (the API key never reaches the client).
 - Results are always random (`sort=random`, even with filters/a search query active) and reshuffle every time the tab is opened or the page reloads — there's no "default browsing order" to get stale.
 - Infinite-scroll results grid, 4 recipes per page (`IntersectionObserver` sentinel).
+- Search and detail responses are cached client-side (`src/utils/recipeCache.ts`, a TTL+LRU cache over `localStorage`: 1h for search results, 24h for recipe details) to reduce Spoonacular quota usage — a failed live call falls back to a stale cached value instead of erroring. Filter inputs in `RecipesFilterBar` are debounced (400ms) before triggering a new search, so typing doesn't fire a request per keystroke.
 - Detail view with an adjustable servings stepper that scales ingredient amounts and nutrition (calories/protein/carbs/fat) live.
 - "Send to a new shopping list" creates a shopping list titled with the recipe name and seeded with the scaled ingredients, then offers to jump straight to it.
 - Recipe titles, ingredient names, and instructions are translated to Spanish via **Groq** when the UI is in Spanish (Spoonacular itself doesn't support Spanish content) — fixed nutrition labels/units stay on the normal i18n system. Falls back to English on any translation error.
@@ -131,6 +132,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Color theme picker.
 - Mobile-first design with bottom navigation on mobile and tabs on desktop.
 - On mobile, a hamburger drawer groups all header actions clearly.
+- All navigation icons (pantry/recipes/favorites/chat/shopping, on both the desktop tabs and the mobile bottom nav) come from `react-icons/md`'s `MdOutline*` set exclusively — `@mui/icons-material` was removed from the project. The selected tab visually merges into the page background (no separate "floating chip" or underline indicator) on both Header's desktop tabs and BottomNav's mobile tabs, which are icon-only (no text labels, `aria-label` kept for accessibility).
 
 ---
 
@@ -215,10 +217,12 @@ mi-despensa-app/
 ├── api/
 │   └── index.ts              # Vercel Function entry point (re-exports Express app)
 ├── vercel.json               # Rewrites /api/* → api/index; defines daily cron at 09:00 UTC
+├── knip.json                 # Codebase integrity check config (unused files/exports/deps), two workspaces: `.` and `backend`
 │
 ├── backend/                  # Backend source
 │   ├── prisma/
-│   │   └── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe, ChatConversation, ChatMessage
+│   │   ├── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe, ChatConversation, ChatMessage
+│   │   └── seed.ts           # Dev-only: seeds a fixed test user's pantry with products at various expiry distances
 │   ├── scripts/
 │   │   └── backfill-shopping-lists.ts # One-time idempotent backfill: General list per user + listId on old items
 │   └── src/
@@ -314,12 +318,12 @@ mi-despensa-app/
     │   ├── useGuestMigration.ts     # Migrates guest data to server on sign-in
     │   └── useDebounce.ts
     ├── styles/
-    │   ├── colorSchemes.ts      # 6 selectable color schemes + CSS variable injection
-    │   └── theme.ts             # MUI base theme options
+    │   └── colorSchemes.ts      # 6 selectable color schemes + CSS variable injection + MUI base theme (baseThemeOptions/createAppTheme())
     ├── utils/
     │   ├── types.ts             # Shared TypeScript interfaces and types
     │   ├── helpers.ts           # Date formatting and other shared utilities
-    │   └── migrations.ts        # One-time localStorage key migration (ES → EN field names)
+    │   ├── migrations.ts        # One-time localStorage key migration (ES → EN field names)
+    │   └── recipeCache.ts       # TTL+LRU cache over localStorage for Spoonacular search/detail responses
     ├── i18n/
     │   ├── index.ts          # i18next init and language detection
     │   └── locales/
@@ -422,6 +426,7 @@ npm run dev   # starts frontend (Vite) and backend (Express) together via concur
 | `npm run format`        | Formats `src/**/*.{ts,tsx,json}` with Prettier                       |
 | `npm run test`          | Runs frontend tests (Vitest + React Testing Library)                 |
 | `npm run test:coverage` | Runs frontend tests with coverage                                    |
+| `npm run knip`          | Runs `knip` to find unused files, exports, and dependencies (root + `api/` workspace) |
 
 **Backend** (`backend/package.json`):
 
@@ -517,6 +522,7 @@ Related to the v1.4 items above. Multiple shopping lists and the Recipes tab shi
 - [x] Multiple named shopping lists — a "General" list per user plus any created manually or from a recipe; no rename/delete UI yet (endpoints exist)
 - [x] Groq wired up — used both to translate recipe content (title/ingredients/instructions) to Spanish and to power the Chat tab's streaming replies and recipe-suggestion extraction
 - [x] Metric or imperial system settings — a switch in Preferencias and on each recipe's detail view (same persisted account preference either way), auto-converts ingredient amounts instantly (no refetch), and is passed to the AI chat prompt
+- [x] Client-side response caching for recipe search/detail (TTL+LRU over `localStorage`) plus debounced filter inputs, to reduce Spoonacular API quota usage
 
 ### v1.6 — Testing & Environments
 
@@ -525,6 +531,7 @@ See `ROADMAP.md` for the technical design.
 - [x] Unit tests for frontend hooks and business logic (Vitest + React Testing Library)
 - [x] Integration tests for backend routes (Vitest + supertest)
 - [x] CI on GitHub Actions: type-check + tests on every PR
+- [x] Codebase integrity check (`knip`) — finds unused files, exports, and dependencies across the two workspaces (`.` and `backend`), `npm run knip`
 - [ ] Development environment separated from production (DB, Clerk, env vars) — `.env.example` files and the runbook are ready (`docs/environments.md`); creating the actual Neon dev branch / Clerk dev instance / Vercel Preview env vars is a manual step
 
 ### v1.7 — Quality of Life & Reliability
@@ -538,8 +545,8 @@ See `ROADMAP.md` for the technical design.
 - [ ] header and general UI improvements to account for the app's growth
 - [ ] Conflict resolution for edits made on two devices while one was offline
 - [ ] Lightweight, privacy-friendly usage analytics
-- [ ] migrate from MUI icons to react-icons
-- [ ] Revisit the navigation tab icons with a deliberate pass over [react-icons](https://react-icons.github.io/react-icons/) for a fully consistent set
+- [x] Migrate from MUI icons to react-icons — `@mui/icons-material` removed from the project entirely
+- [x] Revisit the navigation tab icons with a deliberate pass over [react-icons](https://react-icons.github.io/react-icons/) for a fully consistent set — all 5 nav tabs now use the `MdOutline*` variant, with the selected tab merging visually into the page background on both desktop tabs and mobile bottom nav
 
 ### v1.8 — Smart Planning
 
@@ -598,6 +605,7 @@ The `.claude/` directory contains agents and slash commands that Claude Code use
 | `data-mutations.md`    | React Query `useMutation` patterns, Express validation, Prisma ownership checks                 |
 | `routing.md`           | View-state navigation (no URL router), auth gating via `isSignedIn`                             |
 | `server-components.md` | Express backend structure, middleware order, `accessibleUserIds()`, error handling              |
+| `environments.md`      | Runbook for separating dev/production environments (Neon branch, Clerk dev instance, Vercel Preview env vars) |
 
 ---
 
