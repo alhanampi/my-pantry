@@ -14,9 +14,16 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
 }
 
+// Default matches the fixed 3km radius already requested from Geoapify in
+// fetchNearbyStores — i.e. "no filter", every fetched result passes. Not
+// part of the query key on purpose: maxDistance only reslices already-fetched
+// data (via `select`), it never needs a refetch on its own.
+export const DEFAULT_MAX_DISTANCE = 3000
+
 export function useNearbyStores(
   coords: Coordinates | null,
-  shopTypes: ShopType[]
+  shopTypes: ShopType[],
+  maxDistance: number = DEFAULT_MAX_DISTANCE
 ): UseQueryResult<NearbyStore[], Error> {
   return useQuery<RawNearbyStore[], Error, NearbyStore[]>({
     queryKey: ['nearbyStores', coords?.lat, coords?.lng, shopTypes],
@@ -29,6 +36,7 @@ export function useNearbyStores(
           ...s,
           distance: haversine(coords!.lat, coords!.lng, s.lat, s.lon),
         }))
+        .filter((s) => s.distance <= maxDistance)
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 25),
   })

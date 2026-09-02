@@ -149,6 +149,13 @@
     "title": "Nearby stores",
     "subtitle": "Find shops near you",
     "storeType": "Store type",
+    "maxDistance": "Max distance",
+    "distanceOptions": {
+      "500": "500 m",
+      "1000": "1 km",
+      "2000": "2 km",
+      "any": "Any distance"
+    },
     "search": "Find nearby stores",
     "searching": "Searching...",
     "noResults": "No stores found nearby.",

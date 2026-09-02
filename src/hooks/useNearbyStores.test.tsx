@@ -35,11 +35,47 @@ describe('useNearbyStores', () => {
     ]
     vi.mocked(fetchNearbyStores).mockResolvedValue(raw)
 
-    const { result } = renderHook(() => useNearbyStores({ lat: 0, lng: 0 }, ['supermarket']), { wrapper })
+    // Passes an unbounded maxDistance since these two points are ~157km
+    // apart on purpose (just to get a stable "near"/"far" ordering) — real
+    // distance filtering is covered by the test below.
+    const { result } = renderHook(
+      () => useNearbyStores({ lat: 0, lng: 0 }, ['supermarket'], Infinity),
+      { wrapper },
+    )
 
     await waitFor(() => expect(result.current.data).toBeDefined())
 
     expect(result.current.data?.map((s) => s.id)).toEqual(['near', 'far'])
     expect(result.current.data?.[0].distance).toBeLessThan(result.current.data?.[1].distance ?? Infinity)
+  })
+
+  it('filters out results beyond maxDistance', async () => {
+    const raw: RawNearbyStore[] = [
+      { id: 'far', name: 'Far store', type: 'supermarket', lat: 1, lon: 1 }, // ~157km away
+      { id: 'near', name: 'Near store', type: 'supermarket', lat: 0.001, lon: 0.001 }, // ~157m away
+    ]
+    vi.mocked(fetchNearbyStores).mockResolvedValue(raw)
+
+    const { result } = renderHook(
+      () => useNearbyStores({ lat: 0, lng: 0 }, ['supermarket'], 1000),
+      { wrapper },
+    )
+
+    await waitFor(() => expect(result.current.data).toBeDefined())
+
+    expect(result.current.data?.map((s) => s.id)).toEqual(['near'])
+  })
+
+  it('defaults maxDistance to DEFAULT_MAX_DISTANCE (the fixed fetch radius), i.e. no filtering', async () => {
+    const raw: RawNearbyStore[] = [
+      { id: 'a', name: 'Store A', type: 'supermarket', lat: 0.001, lon: 0.001 },
+    ]
+    vi.mocked(fetchNearbyStores).mockResolvedValue(raw)
+
+    const { result } = renderHook(() => useNearbyStores({ lat: 0, lng: 0 }, ['supermarket']), { wrapper })
+
+    await waitFor(() => expect(result.current.data).toBeDefined())
+
+    expect(result.current.data?.map((s) => s.id)).toEqual(['a'])
   })
 })

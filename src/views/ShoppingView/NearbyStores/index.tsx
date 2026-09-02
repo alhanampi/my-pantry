@@ -18,7 +18,7 @@ import {
   MdRestaurant, MdFavorite, MdNature,
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
-import { useNearbyStores } from '../../../hooks/useNearbyStores'
+import { useNearbyStores, DEFAULT_MAX_DISTANCE } from '../../../hooks/useNearbyStores'
 import { useGeolocation } from '../../../hooks/useGeolocation'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
 import StoreMapDialog from '../StoreMapDialog'
@@ -68,13 +68,24 @@ function getShopIcon(type: string) {
   return <Icon size={20} color={color} />
 }
 
+// Filter presets, capped at DEFAULT_MAX_DISTANCE — that's also the fixed
+// radius fetchNearbyStores already requests from Geoapify, so "any" is a
+// real "no filter" option rather than a promise of results further out.
+const DISTANCE_OPTIONS: { value: number; labelKey: string }[] = [
+  { value: 500, labelKey: '500' },
+  { value: 1000, labelKey: '1000' },
+  { value: 2000, labelKey: '2000' },
+  { value: DEFAULT_MAX_DISTANCE, labelKey: 'any' },
+]
+
 export default function NearbyStores() {
   const { t } = useTranslation()
   const { coords, error: geoError, requestLocation } = useGeolocation()
   const [shopTypes, setShopTypes] = useState<ShopType[]>(DEFAULT_SHOP_TYPES)
+  const [maxDistance, setMaxDistance] = useState<number>(DEFAULT_MAX_DISTANCE)
   const [selectedStore, setSelectedStore] = useState<NearbyStore | null>(null)
 
-  const { data: stores, isLoading, isError } = useNearbyStores(coords, shopTypes)
+  const { data: stores, isLoading, isError } = useNearbyStores(coords, shopTypes, maxDistance)
 
   const handleSearch = (): void => {
     requestLocation()
@@ -83,6 +94,10 @@ export default function NearbyStores() {
   const handleTypeChange = (e: SelectChangeEvent<ShopType[]>): void => {
     const val = e.target.value
     setShopTypes(typeof val === 'string' ? [val as ShopType] : val)
+  }
+
+  const handleDistanceChange = (e: SelectChangeEvent<number>): void => {
+    setMaxDistance(Number(e.target.value))
   }
 
   return (
@@ -121,6 +136,17 @@ export default function NearbyStores() {
                 <ShopTypeIcon type={type} size={18} />
                 <span>{t(`stores.shopTypes.${type}`)}</span>
               </Box>
+            </MenuItem>
+          ))}
+        </Select>
+      </TypeFormControl>
+
+      <TypeFormControl size="small">
+        <InputLabel>{t('stores.maxDistance')}</InputLabel>
+        <Select<number> value={maxDistance} onChange={handleDistanceChange} label={t('stores.maxDistance')}>
+          {DISTANCE_OPTIONS.map(({ value, labelKey }) => (
+            <MenuItem key={value} value={value}>
+              {t(`stores.distanceOptions.${labelKey}`)}
             </MenuItem>
           ))}
         </Select>

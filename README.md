@@ -82,6 +82,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Place search via **Geoapify Places API**.
 - Filter by store type (supermarket, grocery, bakery, deli, and more) via a multi-select dropdown.
 - Distance calculated with the Haversine formula; results sorted by distance, capped at 25.
+- Filter by maximum distance (500m / 1km / 2km / any) — a client-side filter over the already-fetched results, no extra request.
 - 5-minute cache with React Query.
 - Clicking a store opens an interactive map dialog (MapLibre GL + OpenFreeMap tiles) with a "Open in Google Maps" directions link.
 
@@ -493,7 +494,7 @@ Authentication is fully delegated to Clerk:
 - [x] Nearby supermarkets via Geoapify Places API
 - [x] Filter by store type (supermarket, grocery, bakery, deli, etc.)
 - [x] Interactive map dialog per store (MapLibre GL + OpenFreeMap) with Google Maps directions link
-- [ ] Filter supermarkets by maximum distance
+- [x] Filter supermarkets by maximum distance — a preset dropdown (500m / 1km / 2km / any) next to the store-type filter, applied client-side against the already-fetched, Haversine-sorted results
 - [ ] Save a preferred store per product
 
 ### v1.3 — Expiration Alerts

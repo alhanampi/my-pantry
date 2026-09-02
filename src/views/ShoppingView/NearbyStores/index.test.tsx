@@ -68,4 +68,20 @@ describe('NearbyStores', () => {
     await userEvent.click(screen.getByText('Coto'))
     expect(screen.getByTestId('map-dialog')).toBeInTheDocument()
   })
+
+  it('defaults the distance filter to "any" and re-queries with the picked value on change', async () => {
+    mockResult()
+    render(<NearbyStores />)
+
+    expect(screen.getByText(i18n.t('stores.distanceOptions.any'))).toBeInTheDocument()
+
+    // Two comboboxes render (store type, then max distance) — no explicit
+    // labelId wiring on either, same as the pre-existing store-type select.
+    const [, distanceCombo] = screen.getAllByRole('combobox')
+    await userEvent.click(distanceCombo)
+    await userEvent.click(screen.getByRole('option', { name: i18n.t('stores.distanceOptions.1000') }))
+
+    const lastCall = vi.mocked(useNearbyStores).mock.calls.at(-1)
+    expect(lastCall?.[2]).toBe(1000)
+  })
 })
