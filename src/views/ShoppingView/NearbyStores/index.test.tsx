@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NearbyStores from './index'
 import { useNearbyStores } from '../../../hooks/useNearbyStores'
@@ -69,19 +69,22 @@ describe('NearbyStores', () => {
     expect(screen.getByTestId('map-dialog')).toBeInTheDocument()
   })
 
-  it('defaults the distance filter to "any" and re-queries with the picked value on change', async () => {
+  it('defaults the distance range to [0, 3000] and re-queries on change', async () => {
     mockResult()
     render(<NearbyStores />)
 
-    expect(screen.getByText(i18n.t('stores.distanceOptions.any'))).toBeInTheDocument()
+    const minThumb = screen.getByRole('slider', { name: i18n.t('stores.distanceFilterMin') })
+    const maxThumb = screen.getByRole('slider', { name: i18n.t('stores.distanceFilterMax') })
+    expect(minThumb).toHaveAttribute('aria-valuenow', '0')
+    expect(maxThumb).toHaveAttribute('aria-valuenow', '3000')
 
-    // Two comboboxes render (store type, then max distance) — no explicit
-    // labelId wiring on either, same as the pre-existing store-type select.
-    const [, distanceCombo] = screen.getAllByRole('combobox')
-    await userEvent.click(distanceCombo)
-    await userEvent.click(screen.getByRole('option', { name: i18n.t('stores.distanceOptions.1000') }))
+    // jsdom doesn't implement native <input type="range"> arrow-key
+    // stepping, so drive the hidden range input's change event directly
+    // instead of trying to simulate a real keypress/drag.
+    fireEvent.change(maxThumb, { target: { value: '3500' } })
 
     const lastCall = vi.mocked(useNearbyStores).mock.calls.at(-1)
-    expect(lastCall?.[2]).toBe(1000)
+    expect(lastCall?.[2]).toBe(0) // minDistance unchanged
+    expect(lastCall?.[3]).toBe(3500) // maxDistance moved by one 500m step
   })
 })

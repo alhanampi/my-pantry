@@ -10,6 +10,7 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
+import Slider from '@mui/material/Slider'
 import type { SelectChangeEvent } from '@mui/material/Select'
 import {
   MdStorefront, MdLocalGroceryStore, MdLocationOn,
@@ -18,7 +19,12 @@ import {
   MdRestaurant, MdFavorite, MdNature,
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
-import { useNearbyStores, DEFAULT_MAX_DISTANCE } from '../../../hooks/useNearbyStores'
+import {
+  useNearbyStores,
+  MIN_DISTANCE,
+  MAX_DISTANCE_CAP,
+  DEFAULT_MAX_DISTANCE,
+} from '../../../hooks/useNearbyStores'
 import { useGeolocation } from '../../../hooks/useGeolocation'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
 import StoreMapDialog from '../StoreMapDialog'
@@ -35,6 +41,9 @@ import {
   StoreName,
   TypeFormControl,
   ChipsRow,
+  DistanceFilterBox,
+  DistanceLabel,
+  DistanceValues,
 } from './NearbyStores.styles'
 
 type IconComponent = ComponentType<{ size: number; color?: string }>
@@ -68,24 +77,32 @@ function getShopIcon(type: string) {
   return <Icon size={20} color={color} />
 }
 
-// Filter presets, capped at DEFAULT_MAX_DISTANCE — that's also the fixed
-// radius fetchNearbyStores already requests from Geoapify, so "any" is a
-// real "no filter" option rather than a promise of results further out.
-const DISTANCE_OPTIONS: { value: number; labelKey: string }[] = [
-  { value: 500, labelKey: '500' },
-  { value: 1000, labelKey: '1000' },
-  { value: 2000, labelKey: '2000' },
-  { value: DEFAULT_MAX_DISTANCE, labelKey: 'any' },
-]
+function formatDistance(meters: number): string {
+  if (meters >= 1000) {
+    const km = meters / 1000
+    return `${Number.isInteger(km) ? km : km.toFixed(1)}km`
+  }
+  return `${meters}m`
+}
 
 export default function NearbyStores() {
   const { t } = useTranslation()
   const { coords, error: geoError, requestLocation } = useGeolocation()
   const [shopTypes, setShopTypes] = useState<ShopType[]>(DEFAULT_SHOP_TYPES)
-  const [maxDistance, setMaxDistance] = useState<number>(DEFAULT_MAX_DISTANCE)
+  // `distanceRange` is what actually drives the query (committed on release,
+  // see handleDistanceCommit); `draftRange` tracks the thumbs while dragging
+  // so the slider and its labels stay responsive without firing a new
+  // Geoapify request (queryKey includes the max) on every pixel of drag.
+  const [distanceRange, setDistanceRange] = useState<[number, number]>([MIN_DISTANCE, DEFAULT_MAX_DISTANCE])
+  const [draftRange, setDraftRange] = useState<[number, number]>(distanceRange)
   const [selectedStore, setSelectedStore] = useState<NearbyStore | null>(null)
 
-  const { data: stores, isLoading, isError } = useNearbyStores(coords, shopTypes, maxDistance)
+  const { data: stores, isLoading, isError } = useNearbyStores(
+    coords,
+    shopTypes,
+    distanceRange[0],
+    distanceRange[1],
+  )
 
   const handleSearch = (): void => {
     requestLocation()
@@ -96,8 +113,12 @@ export default function NearbyStores() {
     setShopTypes(typeof val === 'string' ? [val as ShopType] : val)
   }
 
-  const handleDistanceChange = (e: SelectChangeEvent<number>): void => {
-    setMaxDistance(Number(e.target.value))
+  const handleDistanceDrag = (_: Event, value: number | number[]): void => {
+    setDraftRange(value as [number, number])
+  }
+
+  const handleDistanceCommit = (_: Event | React.SyntheticEvent, value: number | number[]): void => {
+    setDistanceRange(value as [number, number])
   }
 
   return (
@@ -141,16 +162,27 @@ export default function NearbyStores() {
         </Select>
       </TypeFormControl>
 
-      <TypeFormControl size="small">
-        <InputLabel>{t('stores.maxDistance')}</InputLabel>
-        <Select<number> value={maxDistance} onChange={handleDistanceChange} label={t('stores.maxDistance')}>
-          {DISTANCE_OPTIONS.map(({ value, labelKey }) => (
-            <MenuItem key={value} value={value}>
-              {t(`stores.distanceOptions.${labelKey}`)}
-            </MenuItem>
-          ))}
-        </Select>
-      </TypeFormControl>
+      <DistanceFilterBox>
+        <DistanceLabel>{t('stores.distanceFilter')}</DistanceLabel>
+        <Slider
+          value={draftRange}
+          onChange={handleDistanceDrag}
+          onChangeCommitted={handleDistanceCommit}
+          min={MIN_DISTANCE}
+          max={MAX_DISTANCE_CAP}
+          step={500}
+          valueLabelDisplay="auto"
+          valueLabelFormat={formatDistance}
+          getAriaLabel={(index) =>
+            index === 0 ? t('stores.distanceFilterMin') : t('stores.distanceFilterMax')
+          }
+          size="small"
+        />
+        <DistanceValues>
+          <span>{formatDistance(draftRange[0])}</span>
+          <span>{formatDistance(draftRange[1])}</span>
+        </DistanceValues>
+      </DistanceFilterBox>
 
       <SearchButton
         variant="outlined"

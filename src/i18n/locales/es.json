@@ -149,13 +149,9 @@
     "title": "Tiendas cercanas",
     "subtitle": "Encontrá comercios cerca tuyo",
     "storeType": "Tipo de comercio",
-    "maxDistance": "Distancia máxima",
-    "distanceOptions": {
-      "500": "500 m",
-      "1000": "1 km",
-      "2000": "2 km",
-      "any": "Cualquier distancia"
-    },
+    "distanceFilter": "Distancia",
+    "distanceFilterMin": "Distancia mínima",
+    "distanceFilterMax": "Distancia máxima",
     "search": "Buscar tiendas cercanas",
     "searching": "Buscando...",
     "noResults": "No se encontraron tiendas cerca.",

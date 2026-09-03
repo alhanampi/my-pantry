@@ -14,20 +14,28 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
 }
 
-// Default matches the fixed 3km radius already requested from Geoapify in
-// fetchNearbyStores — i.e. "no filter", every fetched result passes. Not
-// part of the query key on purpose: maxDistance only reslices already-fetched
-// data (via `select`), it never needs a refetch on its own.
+// The range slider's fixed bounds — min is always "from where you are"
+// (0m), max is hard-capped at 40km.
+export const MIN_DISTANCE = 0
+export const MAX_DISTANCE_CAP = 40_000
+// Sensible default upper bound so the first search doesn't fetch a full
+// 40km radius from Geoapify before the user has touched the slider.
 export const DEFAULT_MAX_DISTANCE = 3000
 
 export function useNearbyStores(
   coords: Coordinates | null,
   shopTypes: ShopType[],
+  minDistance: number = MIN_DISTANCE,
   maxDistance: number = DEFAULT_MAX_DISTANCE
 ): UseQueryResult<NearbyStore[], Error> {
   return useQuery<RawNearbyStore[], Error, NearbyStore[]>({
-    queryKey: ['nearbyStores', coords?.lat, coords?.lng, shopTypes],
-    queryFn: () => fetchNearbyStores(coords!, shopTypes),
+    // maxDistance doubles as the Geoapify request radius (see fetchNearbyStores
+    // below), so — unlike minDistance, which only reslices already-fetched
+    // data in `select` — it has to be part of the query key: a wider max
+    // genuinely needs a new request to reach stores Geoapify didn't return
+    // last time.
+    queryKey: ['nearbyStores', coords?.lat, coords?.lng, shopTypes, maxDistance],
+    queryFn: () => fetchNearbyStores(coords!, shopTypes, maxDistance),
     enabled: !!coords && shopTypes.length > 0,
     staleTime: 5 * 60 * 1000,
     select: (stores: RawNearbyStore[]): NearbyStore[] =>
@@ -36,7 +44,11 @@ export function useNearbyStores(
           ...s,
           distance: haversine(coords!.lat, coords!.lng, s.lat, s.lon),
         }))
-        .filter((s) => s.distance <= maxDistance)
+        // Geoapify's own circle filter already excludes anything past
+        // maxDistance, but its great-circle math can disagree with our
+        // Haversine calc by a meter or two right at the edge — keep this as
+        // a safety net rather than trusting the API's cutoff exactly.
+        .filter((s) => s.distance >= minDistance && s.distance <= maxDistance)
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 25),
   })
