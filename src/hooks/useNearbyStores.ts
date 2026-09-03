@@ -15,14 +15,14 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
 }
 
 // The range slider's fixed bounds — min is always "from where you are"
-// (0m), max is hard-capped at 400km. Both stay in meters regardless of the
+// (0m), max is hard-capped at 40km. Both stay in meters regardless of the
 // account's metric/imperial preference (see useUnitSystem) — that
 // preference only affects how NearbyStores *displays* these numbers, not
 // the values themselves or the Geoapify radius sent over the wire.
 export const MIN_DISTANCE = 0
-export const MAX_DISTANCE_CAP = 400_000
+export const MAX_DISTANCE_CAP = 40_000
 // Sensible default upper bound so the first search doesn't fetch a full
-// 400km radius from Geoapify before the user has touched the slider.
+// 40km radius from Geoapify before the user has touched the slider.
 export const DEFAULT_MAX_DISTANCE = 3000
 
 export function useNearbyStores(

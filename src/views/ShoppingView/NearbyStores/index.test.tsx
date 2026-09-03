@@ -110,11 +110,11 @@ describe('NearbyStores', () => {
     expect(lastCall?.[3]).toBe(3500) // maxDistance moved by one 500m step
   })
 
-  it('the max slider still goes up to 400km', () => {
+  it('the max slider still goes up to 40km', () => {
     mockResult()
     render(<NearbyStores />)
 
     const maxThumb = screen.getByRole('slider', { name: i18n.t('stores.distanceFilterMax') })
-    expect(maxThumb).toHaveAttribute('aria-valuemax', '400000')
+    expect(maxThumb).toHaveAttribute('aria-valuemax', '40000')
   })
 })
