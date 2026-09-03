@@ -6,7 +6,6 @@ This file tracks the technical design of **pending** work only — data model ch
 
 ## v1.2 remaining — Maps & Location
 
-- **Filter supermarkets by maximum distance**: `NearbyStores` already gets results from Geoapify with lat/lng; add a client-side or query-param distance filter (Geoapify Places supports a `bias`/radius param — check if it's already being passed and just needs a user-facing control).
 - **Save a preferred store per product**: needs a new field on `Product` (e.g. `preferredStoreId` or a free-text `preferredStoreName` if we don't want a full `Store` table) plus UI on the product card/form.
 
 ## v1.3 remaining — Expiration Alerts

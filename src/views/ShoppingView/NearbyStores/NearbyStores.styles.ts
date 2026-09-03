@@ -83,3 +83,24 @@ export const ChipsRow = styled.div`
   flex-wrap: wrap;
   gap: 4px;
 `
+
+export const DistanceFilterBox = styled.div`
+  margin-bottom: 16px;
+  padding: 0 6px;
+`
+
+export const DistanceLabel = styled(Typography).attrs({ variant: 'caption' as const })`
+  && {
+    display: block;
+    color: var(--scheme-text-secondary);
+    margin-bottom: 4px;
+  }
+`
+
+export const DistanceValues = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--scheme-text-secondary);
+  margin-top: -4px;
+`

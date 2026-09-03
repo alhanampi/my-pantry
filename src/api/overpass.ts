@@ -50,14 +50,15 @@ interface GeoapifyResponse {
 
 export async function fetchNearbyStores(
   { lat, lng }: Coordinates,
-  shopTypes: ShopType[]
+  shopTypes: ShopType[],
+  radiusMeters: number
 ): Promise<RawNearbyStore[]> {
   const apiKey = import.meta.env.VITE_GEOAPIFY_KEY as string
   const categories = [...new Set(shopTypes.map((t) => CATEGORY_MAP[t]))].join(',')
 
   const params = new URLSearchParams({
     categories,
-    filter:  `circle:${lng},${lat},3000`,
+    filter:  `circle:${lng},${lat},${radiusMeters}`,
     bias:    `proximity:${lng},${lat}`,
     limit:   '100',
     apiKey,

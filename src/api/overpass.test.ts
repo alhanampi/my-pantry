@@ -15,7 +15,7 @@ describe('overpass (fetchNearbyStores)', () => {
     }
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify(geoResponse), { status: 200 }))
 
-    const result = await fetchNearbyStores({ lat: -34.6, lng: -58.4 }, ['supermarket'])
+    const result = await fetchNearbyStores({ lat: -34.6, lng: -58.4 }, ['supermarket'], 3000)
 
     expect(result).toEqual([{ id: '1', name: 'Coto', type: 'supermarket', lat: -34.6, lon: -58.4 }])
     const [url] = vi.mocked(fetch).mock.calls[0]
@@ -26,6 +26,17 @@ describe('overpass (fetchNearbyStores)', () => {
 
   it('throws geoapify_unavailable when the response is not ok', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 503 }))
-    await expect(fetchNearbyStores({ lat: 0, lng: 0 }, ['supermarket'])).rejects.toThrow('geoapify_unavailable')
+    await expect(fetchNearbyStores({ lat: 0, lng: 0 }, ['supermarket'], 3000)).rejects.toThrow(
+      'geoapify_unavailable',
+    )
+  })
+
+  it('passes the given radius through to the circle filter', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ features: [] }), { status: 200 }))
+
+    await fetchNearbyStores({ lat: -34.6, lng: -58.4 }, ['supermarket'], 40000)
+
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    expect(decodeURIComponent(String(url))).toContain('circle:-58.4,-34.6,40000')
   })
 })

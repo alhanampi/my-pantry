@@ -10,6 +10,7 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
+import Slider from '@mui/material/Slider'
 import type { SelectChangeEvent } from '@mui/material/Select'
 import {
   MdStorefront, MdLocalGroceryStore, MdLocationOn,
@@ -18,7 +19,14 @@ import {
   MdRestaurant, MdFavorite, MdNature,
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
-import { useNearbyStores } from '../../../hooks/useNearbyStores'
+import {
+  useNearbyStores,
+  MIN_DISTANCE,
+  MAX_DISTANCE_CAP,
+  DEFAULT_MAX_DISTANCE,
+} from '../../../hooks/useNearbyStores'
+import { useUnitSystem } from '../../../hooks/useUnitSystem'
+import type { UnitSystem } from '../../../hooks/useUnitSystem'
 import { useGeolocation } from '../../../hooks/useGeolocation'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
 import StoreMapDialog from '../StoreMapDialog'
@@ -35,6 +43,9 @@ import {
   StoreName,
   TypeFormControl,
   ChipsRow,
+  DistanceFilterBox,
+  DistanceLabel,
+  DistanceValues,
 } from './NearbyStores.styles'
 
 type IconComponent = ComponentType<{ size: number; color?: string }>
@@ -68,13 +79,43 @@ function getShopIcon(type: string) {
   return <Icon size={20} color={color} />
 }
 
+const METERS_PER_MILE = 1609.34
+
+// The account's metric/imperial preference (Header's Preferencias section —
+// there is deliberately no separate km/mi toggle on this filter itself)
+// only changes how distances are *displayed* here; the slider's own values,
+// the Geoapify radius, and the Haversine distances all stay in meters.
+function formatDistance(meters: number, unitSystem: UnitSystem): string {
+  if (unitSystem === 'imperial') {
+    const miles = meters / METERS_PER_MILE
+    return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)}mi`
+  }
+  if (meters >= 1000) {
+    const km = meters / 1000
+    return `${Number.isInteger(km) ? km : km.toFixed(1)}km`
+  }
+  return `${meters}m`
+}
+
 export default function NearbyStores() {
   const { t } = useTranslation()
+  const { unitSystem } = useUnitSystem()
   const { coords, error: geoError, requestLocation } = useGeolocation()
   const [shopTypes, setShopTypes] = useState<ShopType[]>(DEFAULT_SHOP_TYPES)
+  // `distanceRange` is what actually drives the query (committed on release,
+  // see handleDistanceCommit); `draftRange` tracks the thumbs while dragging
+  // so the slider and its labels stay responsive without firing a new
+  // Geoapify request (queryKey includes the max) on every pixel of drag.
+  const [distanceRange, setDistanceRange] = useState<[number, number]>([MIN_DISTANCE, DEFAULT_MAX_DISTANCE])
+  const [draftRange, setDraftRange] = useState<[number, number]>(distanceRange)
   const [selectedStore, setSelectedStore] = useState<NearbyStore | null>(null)
 
-  const { data: stores, isLoading, isError } = useNearbyStores(coords, shopTypes)
+  const { data: stores, isLoading, isError } = useNearbyStores(
+    coords,
+    shopTypes,
+    distanceRange[0],
+    distanceRange[1],
+  )
 
   const handleSearch = (): void => {
     requestLocation()
@@ -83,6 +124,14 @@ export default function NearbyStores() {
   const handleTypeChange = (e: SelectChangeEvent<ShopType[]>): void => {
     const val = e.target.value
     setShopTypes(typeof val === 'string' ? [val as ShopType] : val)
+  }
+
+  const handleDistanceDrag = (_: Event, value: number | number[]): void => {
+    setDraftRange(value as [number, number])
+  }
+
+  const handleDistanceCommit = (_: Event | React.SyntheticEvent, value: number | number[]): void => {
+    setDistanceRange(value as [number, number])
   }
 
   return (
@@ -126,6 +175,28 @@ export default function NearbyStores() {
         </Select>
       </TypeFormControl>
 
+      <DistanceFilterBox>
+        <DistanceLabel>{t('stores.distanceFilter')}</DistanceLabel>
+        <Slider
+          value={draftRange}
+          onChange={handleDistanceDrag}
+          onChangeCommitted={handleDistanceCommit}
+          min={MIN_DISTANCE}
+          max={MAX_DISTANCE_CAP}
+          step={500}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(value) => formatDistance(value, unitSystem)}
+          getAriaLabel={(index) =>
+            index === 0 ? t('stores.distanceFilterMin') : t('stores.distanceFilterMax')
+          }
+          size="small"
+        />
+        <DistanceValues>
+          <span>{formatDistance(draftRange[0], unitSystem)}</span>
+          <span>{formatDistance(draftRange[1], unitSystem)}</span>
+        </DistanceValues>
+      </DistanceFilterBox>
+
       <SearchButton
         variant="outlined"
         color="primary"
@@ -162,7 +233,7 @@ export default function NearbyStores() {
                   primary={<StoreName>{store.name}</StoreName>}
                   secondary={
                     <Typography variant="caption" color="text.secondary">
-                      {t('stores.distance', { meters: store.distance })}
+                      {t('stores.distanceAway', { value: formatDistance(store.distance, unitSystem) })}
                     </Typography>
                   }
                 />
