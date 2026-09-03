@@ -19,15 +19,24 @@ const item: ShoppingListItem = {
   listId: 'list_1',
 }
 
+const baseProps = {
+  item,
+  onToggle: vi.fn(),
+  onDelete: vi.fn(),
+  onEdit: vi.fn(),
+  onQuantityChange: vi.fn(),
+  onSendToPantry: vi.fn(),
+}
+
 describe('ShoppingItem', () => {
   it('renders the item name', () => {
-    render(<ShoppingItem item={item} onToggle={vi.fn()} onDelete={vi.fn()} onEdit={vi.fn()} onQuantityChange={vi.fn()} />)
+    render(<ShoppingItem {...baseProps} />)
     expect(screen.getByText('Arroz')).toBeInTheDocument()
   })
 
   it('calls onToggle when the checkbox is clicked', async () => {
     const onToggle = vi.fn()
-    render(<ShoppingItem item={item} onToggle={onToggle} onDelete={vi.fn()} onEdit={vi.fn()} onQuantityChange={vi.fn()} />)
+    render(<ShoppingItem {...baseProps} onToggle={onToggle} />)
     await userEvent.click(screen.getByRole('checkbox'))
     expect(onToggle).toHaveBeenCalledWith(1)
   })
@@ -35,7 +44,7 @@ describe('ShoppingItem', () => {
   it('calls onEdit and onDelete from their icon buttons', async () => {
     const onEdit = vi.fn()
     const onDelete = vi.fn()
-    render(<ShoppingItem item={item} onToggle={vi.fn()} onDelete={onDelete} onEdit={onEdit} onQuantityChange={vi.fn()} />)
+    render(<ShoppingItem {...baseProps} onEdit={onEdit} onDelete={onDelete} />)
 
     await userEvent.click(screen.getByLabelText(i18n.t('card.edit')))
     expect(onEdit).toHaveBeenCalledWith(1)
@@ -46,14 +55,30 @@ describe('ShoppingItem', () => {
 
   it('calls onQuantityChange via the stepper', async () => {
     const onQuantityChange = vi.fn()
-    render(<ShoppingItem item={item} onToggle={vi.fn()} onDelete={vi.fn()} onEdit={vi.fn()} onQuantityChange={onQuantityChange} />)
+    render(<ShoppingItem {...baseProps} onQuantityChange={onQuantityChange} />)
     await userEvent.click(screen.getByLabelText('increase quantity'))
     expect(onQuantityChange).toHaveBeenCalledWith(1, 1)
   })
 
   it('expands to show details', async () => {
-    render(<ShoppingItem item={item} onToggle={vi.fn()} onDelete={vi.fn()} onEdit={vi.fn()} onQuantityChange={vi.fn()} />)
+    render(<ShoppingItem {...baseProps} />)
     await userEvent.click(screen.getByLabelText('expand'))
     expect(screen.getByText(i18n.t('card.brand'))).toBeInTheDocument()
+  })
+
+  it('does not show the send-to-pantry button when the item is not purchased', () => {
+    render(<ShoppingItem {...baseProps} item={{ ...item, purchased: false }} />)
+    expect(screen.queryByLabelText(i18n.t('shopping.sendToPantry'))).not.toBeInTheDocument()
+  })
+
+  it('shows the send-to-pantry button when the item is purchased and calls onSendToPantry', async () => {
+    const onSendToPantry = vi.fn()
+    render(
+      <ShoppingItem {...baseProps} item={{ ...item, purchased: true }} onSendToPantry={onSendToPantry} />
+    )
+    const button = screen.getByLabelText(i18n.t('shopping.sendToPantry'))
+    expect(button).toBeInTheDocument()
+    await userEvent.click(button)
+    expect(onSendToPantry).toHaveBeenCalledWith(1)
   })
 })

@@ -1,5 +1,8 @@
 {
   "appName": "My Pantry",
+  "common": {
+    "undo": "Undo"
+  },
   "notifications": {
     "enable": "Enable expiry notifications",
     "disable": "Disable notifications",
@@ -32,7 +35,9 @@
     "emptyTitle": "Your pantry is empty",
     "emptySubtitle": "Tap + to add your first product",
     "count_one": "{{count}} product",
-    "count_other": "{{count}} products"
+    "count_other": "{{count}} products",
+    "exportCsv": "Export CSV",
+    "productDeleted": "Product deleted"
   },
   "card": {
     "brand": "Brand",
@@ -105,6 +110,10 @@
     "deleteList": "Delete list",
     "deleteListConfirmTitle": "Delete this list?",
     "deleteListConfirmBody": "\"{{name}}\" and all its items will be permanently deleted. This can't be undone.",
+    "exportPdf": "Export PDF",
+    "itemDeleted": "Item deleted",
+    "sendToPantry": "Send to pantry",
+    "sentToPantry": "{{name}} was sent to your pantry",
     "lists": {
       "general": "General"
     }

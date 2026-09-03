@@ -291,6 +291,7 @@ export interface ProductTableProps {
   onAddToCart: (product: Product) => void
   onAddClick: () => void
   onQuantityChange: (id: number, delta: number) => void
+  onExportCsv: () => void
   isLoading?: boolean
 }
 
@@ -300,6 +301,7 @@ export interface ShoppingItemProps {
   onDelete: (id: number) => void
   onEdit: (id: number) => void
   onQuantityChange: (id: number, delta: number) => void
+  onSendToPantry: (id: number) => void
 }
 
 export interface ShoppingListProps {
@@ -314,6 +316,8 @@ export interface ShoppingListProps {
   onEdit: (id: number) => void
   onClearPurchased: () => void
   onQuantityChange: (id: number, delta: number) => void
+  onSendToPantry: (id: number) => void
+  onExportPdf: () => void
   isLoading?: boolean
 }
 

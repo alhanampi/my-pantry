@@ -1,5 +1,8 @@
 {
   "appName": "Mi Despensa",
+  "common": {
+    "undo": "Deshacer"
+  },
   "notifications": {
     "enable": "Activar notificaciones de vencimiento",
     "disable": "Desactivar notificaciones",
@@ -32,7 +35,9 @@
     "emptyTitle": "Tu despensa está vacía",
     "emptySubtitle": "Tocá el + para agregar tu primer producto",
     "count_one": "{{count}} producto",
-    "count_other": "{{count}} productos"
+    "count_other": "{{count}} productos",
+    "exportCsv": "Exportar CSV",
+    "productDeleted": "Producto eliminado"
   },
   "card": {
     "brand": "Marca",
@@ -105,6 +110,10 @@
     "deleteList": "Borrar lista",
     "deleteListConfirmTitle": "¿Borrar esta lista?",
     "deleteListConfirmBody": "\"{{name}}\" y todos sus productos se van a borrar de forma permanente. Esta acción no se puede deshacer.",
+    "exportPdf": "Exportar PDF",
+    "itemDeleted": "Ítem eliminado",
+    "sendToPantry": "Enviar a la despensa",
+    "sentToPantry": "{{name}} fue enviado a la despensa",
     "lists": {
       "general": "General"
     }

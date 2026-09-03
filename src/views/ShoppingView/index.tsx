@@ -2,7 +2,7 @@ import List from '@mui/material/List'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import { MdShoppingCart, MdAdd, MdDeleteSweep, MdDeleteOutline } from 'react-icons/md'
+import { MdShoppingCart, MdAdd, MdDeleteSweep, MdDeleteOutline, MdFileDownload } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ShoppingItem from './ShoppingItem'
 import ShoppingListSelector from './ShoppingListSelector'
@@ -31,6 +31,8 @@ export default function ShoppingView({
   onEdit,
   onClearPurchased,
   onQuantityChange,
+  onSendToPantry,
+  onExportPdf,
   isLoading = false,
 }: ShoppingListProps) {
   const { t } = useTranslation()
@@ -70,6 +72,18 @@ export default function ShoppingView({
         )}
 
         {items.length > 0 && (
+          <ClearButton
+            variant="outlined"
+            color="inherit"
+            startIcon={<MdFileDownload size={16} />}
+            onClick={onExportPdf}
+            size="small"
+          >
+            {t('shopping.exportPdf')}
+          </ClearButton>
+        )}
+
+        {items.length > 0 && (
           <CountText color="text.secondary">
             {t('shopping.count', { count: items.length })}
           </CountText>
@@ -104,7 +118,7 @@ export default function ShoppingView({
             {pendingItems.length > 0 && (
               <List disablePadding>
                 {pendingItems.map((item) => (
-                  <ShoppingItem key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onQuantityChange={onQuantityChange} />
+                  <ShoppingItem key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onQuantityChange={onQuantityChange} onSendToPantry={onSendToPantry} />
                 ))}
               </List>
             )}
@@ -117,7 +131,7 @@ export default function ShoppingView({
                 </Divider>
                 <List disablePadding>
                   {purchasedItems.map((item) => (
-                    <ShoppingItem key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onQuantityChange={onQuantityChange} />
+                    <ShoppingItem key={item.id} item={item} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onQuantityChange={onQuantityChange} onSendToPantry={onSendToPantry} />
                   ))}
                 </List>
               </>
