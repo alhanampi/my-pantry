@@ -25,6 +25,8 @@ import {
   MAX_DISTANCE_CAP,
   DEFAULT_MAX_DISTANCE,
 } from '../../../hooks/useNearbyStores'
+import { useUnitSystem } from '../../../hooks/useUnitSystem'
+import type { UnitSystem } from '../../../hooks/useUnitSystem'
 import { useGeolocation } from '../../../hooks/useGeolocation'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
 import StoreMapDialog from '../StoreMapDialog'
@@ -77,7 +79,17 @@ function getShopIcon(type: string) {
   return <Icon size={20} color={color} />
 }
 
-function formatDistance(meters: number): string {
+const METERS_PER_MILE = 1609.34
+
+// The account's metric/imperial preference (Header's Preferencias section —
+// there is deliberately no separate km/mi toggle on this filter itself)
+// only changes how distances are *displayed* here; the slider's own values,
+// the Geoapify radius, and the Haversine distances all stay in meters.
+function formatDistance(meters: number, unitSystem: UnitSystem): string {
+  if (unitSystem === 'imperial') {
+    const miles = meters / METERS_PER_MILE
+    return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)}mi`
+  }
   if (meters >= 1000) {
     const km = meters / 1000
     return `${Number.isInteger(km) ? km : km.toFixed(1)}km`
@@ -87,6 +99,7 @@ function formatDistance(meters: number): string {
 
 export default function NearbyStores() {
   const { t } = useTranslation()
+  const { unitSystem } = useUnitSystem()
   const { coords, error: geoError, requestLocation } = useGeolocation()
   const [shopTypes, setShopTypes] = useState<ShopType[]>(DEFAULT_SHOP_TYPES)
   // `distanceRange` is what actually drives the query (committed on release,
@@ -172,15 +185,15 @@ export default function NearbyStores() {
           max={MAX_DISTANCE_CAP}
           step={500}
           valueLabelDisplay="auto"
-          valueLabelFormat={formatDistance}
+          valueLabelFormat={(value) => formatDistance(value, unitSystem)}
           getAriaLabel={(index) =>
             index === 0 ? t('stores.distanceFilterMin') : t('stores.distanceFilterMax')
           }
           size="small"
         />
         <DistanceValues>
-          <span>{formatDistance(draftRange[0])}</span>
-          <span>{formatDistance(draftRange[1])}</span>
+          <span>{formatDistance(draftRange[0], unitSystem)}</span>
+          <span>{formatDistance(draftRange[1], unitSystem)}</span>
         </DistanceValues>
       </DistanceFilterBox>
 
@@ -220,7 +233,7 @@ export default function NearbyStores() {
                   primary={<StoreName>{store.name}</StoreName>}
                   secondary={
                     <Typography variant="caption" color="text.secondary">
-                      {t('stores.distance', { meters: store.distance })}
+                      {t('stores.distanceAway', { value: formatDistance(store.distance, unitSystem) })}
                     </Typography>
                   }
                 />

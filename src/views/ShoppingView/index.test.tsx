@@ -7,6 +7,13 @@ import '../../i18n'
 import i18n from '../../i18n'
 import type { ShoppingListItem } from '../../utils/types'
 
+// ShoppingView renders NearbyStores, which reads the account's
+// metric/imperial preference — mock it out here too so this file doesn't
+// need a real ClerkProvider just to satisfy useUnitSystem's useAuth() call.
+vi.mock('../../hooks/useUnitSystem', () => ({
+  useUnitSystem: () => ({ unitSystem: 'metric' as const, setUnitSystem: vi.fn(), isPending: false }),
+}))
+
 const item = (overrides: Partial<ShoppingListItem> = {}): ShoppingListItem => ({
   id: 1,
   name: 'Arroz',

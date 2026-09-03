@@ -156,7 +156,7 @@
     "searching": "Buscando...",
     "noResults": "No se encontraron tiendas cerca.",
     "error": "Error al buscar tiendas. Intentá de nuevo.",
-    "distance": "a {{meters}}m",
+    "distanceAway": "a {{value}}",
     "openMaps": "Abrir en Google Maps",
     "yourLocation": "Tu ubicación",
     "locationDenied": "Permiso de ubicación denegado.",

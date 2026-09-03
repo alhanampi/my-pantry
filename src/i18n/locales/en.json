@@ -156,7 +156,7 @@
     "searching": "Searching...",
     "noResults": "No stores found nearby.",
     "error": "Error finding stores. Please try again.",
-    "distance": "{{meters}}m away",
+    "distanceAway": "{{value}} away",
     "openMaps": "Open in Google Maps",
     "yourLocation": "Your location",
     "locationDenied": "Location permission denied.",

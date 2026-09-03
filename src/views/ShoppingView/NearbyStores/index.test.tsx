@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NearbyStores from './index'
 import { useNearbyStores } from '../../../hooks/useNearbyStores'
+import type { UnitSystem } from '../../../hooks/useUnitSystem'
 import '../../../i18n'
 import i18n from '../../../i18n'
 import type { NearbyStore } from '../../../utils/types'
@@ -11,6 +12,17 @@ vi.mock('../../../hooks/useNearbyStores')
 vi.mock('../StoreMapDialog', () => ({
   default: ({ store, onClose }: { store: NearbyStore | null; onClose: () => void }) =>
     store ? <div data-testid="map-dialog"><button onClick={onClose}>close</button>{store.name}</div> : null,
+}))
+
+const mockUseUnitSystem = vi.fn(
+  (): { unitSystem: UnitSystem; setUnitSystem: () => void; isPending: boolean } => ({
+    unitSystem: 'metric',
+    setUnitSystem: vi.fn(),
+    isPending: false,
+  }),
+)
+vi.mock('../../../hooks/useUnitSystem', () => ({
+  useUnitSystem: () => mockUseUnitSystem(),
 }))
 
 function mockResult(overrides: Partial<ReturnType<typeof useNearbyStores>> = {}) {
@@ -59,14 +71,24 @@ describe('NearbyStores', () => {
     expect(screen.getByText(i18n.t('stores.noResults'))).toBeInTheDocument()
   })
 
-  it('lists stores and opens the map dialog when one is selected', async () => {
+  it('lists stores (with metric distance) and opens the map dialog when one is selected', async () => {
     const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 120 }
     mockResult({ data: [store] })
     render(<NearbyStores />)
 
     expect(screen.getByText('Coto')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('stores.distanceAway', { value: '120m' }))).toBeInTheDocument()
     await userEvent.click(screen.getByText('Coto'))
     expect(screen.getByTestId('map-dialog')).toBeInTheDocument()
+  })
+
+  it('formats distances in miles when the account is set to imperial', () => {
+    mockUseUnitSystem.mockReturnValueOnce({ unitSystem: 'imperial', setUnitSystem: vi.fn(), isPending: false })
+    const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 1609 }
+    mockResult({ data: [store] })
+    render(<NearbyStores />)
+
+    expect(screen.getByText(i18n.t('stores.distanceAway', { value: '1.0mi' }))).toBeInTheDocument()
   })
 
   it('defaults the distance range to [0, 3000] and re-queries on change', async () => {
@@ -86,5 +108,13 @@ describe('NearbyStores', () => {
     const lastCall = vi.mocked(useNearbyStores).mock.calls.at(-1)
     expect(lastCall?.[2]).toBe(0) // minDistance unchanged
     expect(lastCall?.[3]).toBe(3500) // maxDistance moved by one 500m step
+  })
+
+  it('the max slider still goes up to 400km', () => {
+    mockResult()
+    render(<NearbyStores />)
+
+    const maxThumb = screen.getByRole('slider', { name: i18n.t('stores.distanceFilterMax') })
+    expect(maxThumb).toHaveAttribute('aria-valuemax', '400000')
   })
 })
