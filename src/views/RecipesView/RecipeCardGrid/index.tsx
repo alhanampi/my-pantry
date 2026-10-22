@@ -6,18 +6,18 @@ import type { RecipeCard as RecipeCardType } from '../../../utils/types'
 
 export interface RecipeCardGridProps {
   recipes: RecipeCardType[]
-  onSelect: (id: number) => void
+  onSelect: (id: string) => void
   // Optional — omitted entirely by FavoriteRecipesView, which renders a
   // bounded list with no pagination, so there's no sentinel/infinite-scroll
   // behavior to wire up there.
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   onLoadMore?: () => void
-  favoriteIds?: Set<number>
-  onToggleFavorite?: (id: number) => void
+  favoriteIds?: Set<string>
+  onToggleFavorite?: (id: string) => void
   // Id of the recipe whose favorite toggle is currently in flight, if any —
   // see RecipeCard's isTogglingFavorite prop.
-  pendingFavoriteId?: number
+  pendingFavoriteId?: string
 }
 
 export default function RecipeCardGrid({

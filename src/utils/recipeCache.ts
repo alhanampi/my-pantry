@@ -109,6 +109,6 @@ export function searchCacheKey(
   return `recipe_cache_search_v1_${offset}_${lang}_${JSON.stringify(sortedEntries)}`
 }
 
-export function detailCacheKey(id: number, lang: string): string {
+export function detailCacheKey(id: string, lang: string): string {
   return `recipe_cache_detail_v1_${id}_${lang}`
 }

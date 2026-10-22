@@ -1,7 +1,16 @@
 import { Router, type Request, type Response } from 'express'
 import { query, validationResult } from 'express-validator'
 import { searchRecipes, getRecipeInformation } from '../services/spoonacular.js'
-import { serializeCard, serializeDetail, handleSpoonacularError } from '../services/recipeSerializers.js'
+import { getEdamamRecipeInformation } from '../services/edamam.js'
+import {
+  serializeCard,
+  serializeDetail,
+  normalizeSpoonacularRecipe,
+  normalizeEdamamRecipe,
+  searchWithEdamamSupplement,
+  parseRecipeId,
+  handleSpoonacularError,
+} from '../services/recipeSerializers.js'
 import favoritesRouter from './recipeFavorites.js'
 
 const router = Router()
@@ -54,13 +63,19 @@ router.get(
         offset: Number(offset),
       })
 
-      const results = await Promise.all(result.results.map((r) => serializeCard(r, lang as string)))
+      const supplemented = await searchWithEdamamSupplement(
+        result,
+        { query: q as string | undefined, includeIngredients: includeIngredients as string | undefined },
+        RESULTS_PER_PAGE,
+      )
+
+      const results = await Promise.all(supplemented.recipes.map((r) => serializeCard(r, lang as string)))
 
       res.json({
         results,
-        totalResults: result.totalResults,
-        offset: result.offset,
-        number: result.number,
+        totalResults: supplemented.totalResults,
+        offset: supplemented.offset,
+        number: supplemented.number,
       })
     } catch (err) {
       handleSpoonacularError(err, res)
@@ -68,18 +83,23 @@ router.get(
   },
 )
 
-// GET /api/recipes/:id
+// GET /api/recipes/:id — :id is the compound "source:externalId" form
+// produced by makeRecipeId (see recipeSerializers.ts), never a bare
+// provider id.
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) {
+  const parsed = parseRecipeId(req.params.id)
+  if (!parsed) {
     res.status(400).json({ error: 'Invalid recipe id' })
     return
   }
   const lang = req.query.lang === 'es' ? 'es' : 'en'
 
   try {
-    const recipe = await getRecipeInformation(id)
-    const detail = await serializeDetail(recipe, lang)
+    const normalized =
+      parsed.source === 'spoonacular'
+        ? normalizeSpoonacularRecipe(await getRecipeInformation(parseInt(parsed.externalId, 10)))
+        : normalizeEdamamRecipe(await getEdamamRecipeInformation(parsed.externalId))
+    const detail = await serializeDetail(normalized, lang)
     res.json({ recipe: detail })
   } catch (err) {
     handleSpoonacularError(err, res)

@@ -3,7 +3,14 @@ import { body, validationResult } from 'express-validator'
 import prisma from '../db/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { getRecipeInformation } from '../services/spoonacular.js'
-import { serializeCard, handleSpoonacularError } from '../services/recipeSerializers.js'
+import { getEdamamRecipeInformation } from '../services/edamam.js'
+import {
+  serializeCard,
+  normalizeSpoonacularRecipe,
+  normalizeEdamamRecipe,
+  parseRecipeId,
+  handleSpoonacularError,
+} from '../services/recipeSerializers.js'
 
 const router = Router()
 
@@ -39,12 +46,17 @@ router.get('/', requireAuth, async (req: Request, res: Response): Promise<void> 
     const results = await Promise.all(
       favorites.map(async (f) => {
         try {
-          const recipe = await getRecipeInformation(f.recipeId)
-          return await serializeCard(recipe, lang as string)
+          const parsed = parseRecipeId(f.recipeId)
+          if (!parsed) return null
+          const normalized =
+            parsed.source === 'spoonacular'
+              ? normalizeSpoonacularRecipe(await getRecipeInformation(parseInt(parsed.externalId, 10)))
+              : normalizeEdamamRecipe(await getEdamamRecipeInformation(parsed.externalId))
+          return await serializeCard(normalized, lang as string)
         } catch {
-          // A favorited recipe can 404 upstream (removed from Spoonacular's
-          // catalog) — skip it rather than failing the whole list over one
-          // stale bookmark.
+          // A favorited recipe can 404 upstream (removed from the
+          // provider's catalog) — skip it rather than failing the whole
+          // list over one stale bookmark.
           return null
         }
       }),
@@ -60,7 +72,7 @@ router.get('/', requireAuth, async (req: Request, res: Response): Promise<void> 
 router.post(
   '/',
   requireAuth,
-  [body('recipeId').isInt({ min: 1 }).toInt()],
+  [body('recipeId').isString().trim().custom((v: string) => parseRecipeId(v) !== null)],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
@@ -74,7 +86,7 @@ router.post(
         res.status(400).json({ error: 'Maximum number of favorites reached' })
         return
       }
-      const { recipeId } = req.body as { recipeId: number }
+      const { recipeId } = req.body as { recipeId: string }
       await prisma.favoriteRecipe.upsert({
         where: { ownerId_recipeId: { ownerId, recipeId } },
         create: { ownerId, recipeId },
@@ -87,10 +99,12 @@ router.post(
   },
 )
 
-// DELETE /api/recipes/favorites/:recipeId — idempotent.
+// DELETE /api/recipes/favorites/:recipeId — idempotent. :recipeId is the
+// compound "source:externalId" form, URL-encoded by the client since it can
+// contain a `:` itself (see makeRecipeId).
 router.delete('/:recipeId', requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const recipeId = parseInt(req.params.recipeId, 10)
-  if (isNaN(recipeId)) {
+  const recipeId = req.params.recipeId
+  if (!parseRecipeId(recipeId)) {
     res.status(400).json({ error: 'Invalid recipe id' })
     return
   }

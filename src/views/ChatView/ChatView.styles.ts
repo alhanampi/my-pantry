@@ -84,3 +84,9 @@ export const BackRow = styled.div`
   gap: 4px;
   margin-bottom: 12px;
 `
+
+export const NewChatStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`

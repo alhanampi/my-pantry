@@ -8,6 +8,7 @@ import {
   apiGetConversation,
   apiDeleteConversation,
   apiSuggestRecipe,
+  apiGetPantrySuggestions,
 } from '../api/chatApi'
 
 // Chat requires sign-in — unlike Recipes/Favorites, conversation history is
@@ -83,6 +84,23 @@ export function useDeleteConversation() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['chat', 'conversations'] })
     },
+  })
+}
+
+// Proactive, pantry-based suggestions shown before any conversation exists
+// (Chat tab landing state) — separate from useSuggestRecipe, which needs an
+// existing conversation's transcript.
+export function usePantryChatSuggestions() {
+  const { getToken, isSignedIn } = useAuth()
+  const { i18n } = useTranslation()
+
+  return useQuery({
+    queryKey: ['chat', 'pantrySuggestions'],
+    queryFn: async (): Promise<RecipeCard[]> => {
+      const token = await requireToken(getToken)
+      return apiGetPantrySuggestions(token, i18n.language)
+    },
+    enabled: !!isSignedIn,
   })
 }
 

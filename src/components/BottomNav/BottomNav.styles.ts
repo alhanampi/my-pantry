@@ -25,6 +25,17 @@ export const StyledBottomNavigation = styled(BottomNavigation)`
 `
 
 export const NavAction = styled(BottomNavigationAction)`
+  && {
+    /* MUI's default min-width (80px) × 6 tabs overflows narrow phone
+       screens (~360px and under), pushing the leftmost tab off-screen
+       instead of shrinking. Letting each tab flex down to 0 keeps all
+       six visible, just narrower, on any viewport width. */
+    min-width: 0;
+    flex: 1 1 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   &&.Mui-selected {
     color: var(--scheme-primary);
     background-color: var(--scheme-bg);

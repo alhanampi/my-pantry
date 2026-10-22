@@ -20,6 +20,7 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Divider from '@mui/material/Divider'
 import Chip from '@mui/material/Chip'
+import Avatar from '@mui/material/Avatar'
 import {
   MdSearch,
   MdInfoOutline,
@@ -28,6 +29,7 @@ import {
   MdOutlineRestaurantMenu,
   MdOutlineFavorite,
   MdOutlineLightbulb,
+  MdOutlineCalendarMonth,
   MdClear,
   MdTranslate,
   MdPersonOutline,
@@ -92,7 +94,7 @@ export default function Header({
     void i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
   }
 
-  const tabOrder = ['pantry', 'recipes', 'favorites', 'chat', 'shopping'] as const
+  const tabOrder = ['pantry', 'recipes', 'favorites', 'chat', 'mealprep', 'shopping'] as const
   const tabValue = tabOrder.includes(currentView as (typeof tabOrder)[number])
     ? tabOrder.indexOf(currentView as (typeof tabOrder)[number])
     : false
@@ -399,6 +401,32 @@ export default function Header({
 
           {/* Hamburguesa mobile */}
           <MobileHamburger>
+            {isSignedIn ? (
+              <IconButton
+                onClick={() => setDrawerOpen(true)}
+                size="small"
+                aria-label={t('auth.greeting', { name: displayName })}
+              >
+                <Avatar
+                  src={user?.imageUrl}
+                  alt={displayName}
+                  sx={{ width: 26, height: 26, fontSize: '0.8rem' }}
+                >
+                  {displayName?.[0]?.toUpperCase()}
+                </Avatar>
+              </IconButton>
+            ) : (
+              <Tooltip title={t('auth.signIn')}>
+                <IconButton
+                  onClick={() => openSignIn()}
+                  size="small"
+                  aria-label={t('auth.signIn')}
+                  sx={{ color: 'var(--scheme-on-primary)' }}
+                >
+                  <MdPersonOutline size={20} />
+                </IconButton>
+              </Tooltip>
+            )}
             <IconButton
               onClick={() => setDrawerOpen(true)}
               size="medium"
@@ -442,6 +470,12 @@ export default function Header({
           <Tab
             label={t('nav.chat')}
             icon={<MdOutlineLightbulb size={18} />}
+            iconPosition="start"
+            sx={desktopTabSx}
+          />
+          <Tab
+            label={t('nav.mealprep')}
+            icon={<MdOutlineCalendarMonth size={18} />}
             iconPosition="start"
             sx={desktopTabSx}
           />

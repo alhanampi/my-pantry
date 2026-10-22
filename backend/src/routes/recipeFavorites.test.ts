@@ -49,32 +49,50 @@ describe('recipe favorites routes', () => {
   })
 
   it('GET /ids returns the caller-scoped favorite recipe ids', async () => {
-    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([{ recipeId: 1 }, { recipeId: 2 }])
+    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([
+      { recipeId: 'spoonacular:1' },
+      { recipeId: 'spoonacular:2' },
+    ])
 
     const res = await request(app).get('/api/recipes/favorites/ids').set('Authorization', 'Bearer good-token')
 
     expect(res.status).toBe(200)
-    expect(res.body.ids).toEqual([1, 2])
+    expect(res.body.ids).toEqual(['spoonacular:1', 'spoonacular:2'])
     expect(mockPrisma.favoriteRecipe.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { ownerId: 'user_1' } }),
     )
   })
 
   it('GET / hydrates favorites into recipe cards', async () => {
-    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([{ recipeId: 1 }])
+    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([{ recipeId: 'spoonacular:1' }])
     mockGetRecipeInformation.mockResolvedValue(sampleRecipe)
 
     const res = await request(app).get('/api/recipes/favorites').set('Authorization', 'Bearer good-token')
 
     expect(res.status).toBe(200)
+    expect(mockGetRecipeInformation).toHaveBeenCalledWith(1)
     expect(res.body.results).toHaveLength(1)
     expect(res.body.results[0].title).toBe('Pasta')
+    expect(res.body.results[0].id).toBe('spoonacular:1')
     expect(mockTranslate).not.toHaveBeenCalled()
   })
 
   it('GET / skips a favorite whose recipe 404s upstream instead of failing the whole list', async () => {
-    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([{ recipeId: 1 }, { recipeId: 2 }])
+    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([
+      { recipeId: 'spoonacular:1' },
+      { recipeId: 'spoonacular:2' },
+    ])
     mockGetRecipeInformation.mockResolvedValueOnce(sampleRecipe).mockRejectedValueOnce(new Error('not found'))
+
+    const res = await request(app).get('/api/recipes/favorites').set('Authorization', 'Bearer good-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.results).toHaveLength(1)
+  })
+
+  it('GET / skips a favorite row with an unrecognized recipeId shape without failing the whole list', async () => {
+    mockPrisma.favoriteRecipe.findMany.mockResolvedValue([{ recipeId: 'garbage' }, { recipeId: 'spoonacular:1' }])
+    mockGetRecipeInformation.mockResolvedValue(sampleRecipe)
 
     const res = await request(app).get('/api/recipes/favorites').set('Authorization', 'Bearer good-token')
 
@@ -97,18 +115,32 @@ describe('recipe favorites routes', () => {
     const res = await request(app)
       .post('/api/recipes/favorites')
       .set('Authorization', 'Bearer good-token')
-      .send({ recipeId: 42 })
+      .send({ recipeId: 'spoonacular:42' })
 
     expect(res.status).toBe(201)
     expect(mockPrisma.favoriteRecipe.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { ownerId_recipeId: { ownerId: 'user_1', recipeId: 42 } },
-        create: { ownerId: 'user_1', recipeId: 42 },
+        where: { ownerId_recipeId: { ownerId: 'user_1', recipeId: 'spoonacular:42' } },
+        create: { ownerId: 'user_1', recipeId: 'spoonacular:42' },
       }),
     )
   })
 
-  it('POST / returns 400 for a non-numeric recipeId', async () => {
+  it('POST / upserts an Edamam-sourced favorite the same way', async () => {
+    mockPrisma.favoriteRecipe.count.mockResolvedValue(1)
+
+    const res = await request(app)
+      .post('/api/recipes/favorites')
+      .set('Authorization', 'Bearer good-token')
+      .send({ recipeId: 'edamam:recipe_abc123' })
+
+    expect(res.status).toBe(201)
+    expect(mockPrisma.favoriteRecipe.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: { ownerId: 'user_1', recipeId: 'edamam:recipe_abc123' } }),
+    )
+  })
+
+  it('POST / returns 400 for a recipeId with no recognized "source:externalId" shape', async () => {
     const res = await request(app)
       .post('/api/recipes/favorites')
       .set('Authorization', 'Bearer good-token')
@@ -124,22 +156,24 @@ describe('recipe favorites routes', () => {
     const res = await request(app)
       .post('/api/recipes/favorites')
       .set('Authorization', 'Bearer good-token')
-      .send({ recipeId: 42 })
+      .send({ recipeId: 'spoonacular:42' })
 
     expect(res.status).toBe(400)
     expect(mockPrisma.favoriteRecipe.upsert).not.toHaveBeenCalled()
   })
 
   it('DELETE /:recipeId removes a favorite, scoped to the caller', async () => {
-    const res = await request(app).delete('/api/recipes/favorites/42').set('Authorization', 'Bearer good-token')
+    const res = await request(app)
+      .delete('/api/recipes/favorites/spoonacular:42')
+      .set('Authorization', 'Bearer good-token')
 
     expect(res.status).toBe(200)
     expect(mockPrisma.favoriteRecipe.deleteMany).toHaveBeenCalledWith({
-      where: { ownerId: 'user_1', recipeId: 42 },
+      where: { ownerId: 'user_1', recipeId: 'spoonacular:42' },
     })
   })
 
-  it('DELETE /:recipeId returns 400 for a non-numeric id', async () => {
+  it('DELETE /:recipeId returns 400 for an id with no recognized "source:externalId" shape', async () => {
     const res = await request(app).delete('/api/recipes/favorites/nope').set('Authorization', 'Bearer good-token')
     expect(res.status).toBe(400)
     expect(mockPrisma.favoriteRecipe.deleteMany).not.toHaveBeenCalled()

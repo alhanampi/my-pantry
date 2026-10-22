@@ -17,7 +17,9 @@ const MODEL = 'openai/gpt-oss-120b'
 const cache = new Map<string, TranslatedRecipeContent>()
 
 export interface RecipeContentToTranslate {
-  id: number
+  // string since the Edamam integration — a compound "source:externalId" id
+  // (see recipeSerializers.ts's makeRecipeId) rather than a bare number.
+  id: string
   title: string
   ingredientNames: string[]
   instructionSteps: string[]
@@ -29,7 +31,7 @@ export interface TranslatedRecipeContent {
   instructionSteps: string[]
 }
 
-function cacheKey(id: number, lang: string): string {
+function cacheKey(id: string, lang: string): string {
   return `${id}:${lang}`
 }
 

@@ -11,14 +11,15 @@ import {
   CardTitle,
   ChipsRow,
   MetaRow,
+  AttributionBadge,
 } from './RecipeCard.styles'
 import type { RecipeCard as RecipeCardType } from '../../../utils/types'
 
 export interface RecipeCardProps {
   recipe: RecipeCardType
-  onClick: (id: number) => void
+  onClick: (id: string) => void
   isFavorite?: boolean
-  onToggleFavorite?: (id: number) => void
+  onToggleFavorite?: (id: string) => void
   // True while this specific recipe's favorite toggle is in flight — shows a
   // spinner instead of the heart and blocks a second click during a slow API
   // call, rather than leaving no feedback at all.
@@ -79,6 +80,7 @@ export default function RecipeCard({
             {t('recipes.kcal')}
           </span>
         </MetaRow>
+        {recipe.source === 'edamam' && <AttributionBadge>{t('recipes.poweredByEdamam')}</AttributionBadge>}
       </CardBody>
     </CardWrapper>
   )

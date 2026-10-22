@@ -18,7 +18,8 @@ vi.mock('../../../hooks/useUnitSystem', () => ({
 }))
 
 const recipe: RecipeDetail = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta al pomodoro',
   image: 'img.jpg',
   servings: 2,
@@ -136,7 +137,7 @@ describe('RecipeDetailPanel', () => {
       />,
     )
     await userEvent.click(screen.getByRole('button', { pressed: false }))
-    expect(onToggleFavorite).toHaveBeenCalledWith(1)
+    expect(onToggleFavorite).toHaveBeenCalledWith('spoonacular:1')
   })
 
   it('shows a spinner and disables the favorite button while isTogglingFavorite is true', () => {

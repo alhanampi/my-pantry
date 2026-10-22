@@ -4,10 +4,10 @@ import type { RecipeCard as RecipeCardType } from '../../../utils/types'
 
 export interface ChatSuggestionCardsProps {
   recipes: RecipeCardType[]
-  onSelect: (id: number) => void
-  favoriteIds?: Set<number>
-  onToggleFavorite?: (id: number) => void
-  pendingFavoriteId?: number
+  onSelect: (id: string) => void
+  favoriteIds?: Set<string>
+  onToggleFavorite?: (id: string) => void
+  pendingFavoriteId?: string
 }
 
 // Thin wrapper around the Recipes tab's own RecipeCard/Grid — chat

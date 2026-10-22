@@ -68,7 +68,7 @@ describe('recipeCache', () => {
   })
 
   it('detailCacheKey produces distinct keys per id/lang', () => {
-    expect(detailCacheKey(1, 'en')).not.toBe(detailCacheKey(2, 'en'))
-    expect(detailCacheKey(1, 'en')).not.toBe(detailCacheKey(1, 'es'))
+    expect(detailCacheKey('spoonacular:1', 'en')).not.toBe(detailCacheKey('spoonacular:2', 'en'))
+    expect(detailCacheKey('spoonacular:1', 'en')).not.toBe(detailCacheKey('spoonacular:1', 'es'))
   })
 })

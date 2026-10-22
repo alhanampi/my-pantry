@@ -14,7 +14,8 @@ vi.mock('../../hooks/useUnitSystem', () => ({
 }))
 
 const recipe: RecipeCard = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta al pomodoro',
   image: 'img.jpg',
   servings: 2,
@@ -24,7 +25,8 @@ const recipe: RecipeCard = {
 }
 
 const detail: RecipeDetail = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta al pomodoro',
   image: 'img.jpg',
   servings: 2,
@@ -58,7 +60,7 @@ function mutationSpy() {
 
 describe('FavoriteRecipesView', () => {
   beforeEach(() => {
-    vi.mocked(useFavoriteIds).mockReturnValue({ data: [1] } as never)
+    vi.mocked(useFavoriteIds).mockReturnValue({ data: ['spoonacular:1'] } as never)
     vi.mocked(useFavoriteToggle).mockReturnValue({
       requestToggle: vi.fn(),
       confirmRemove: vi.fn(),

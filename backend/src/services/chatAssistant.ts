@@ -57,6 +57,7 @@ function buildSystemPrompt(
   servings: number,
   unitSystem: UnitSystem,
   nearbyStoresSummary?: string,
+  pantrySummary?: string,
 ): string {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
   const restrictionsText =
@@ -75,6 +76,12 @@ function buildSystemPrompt(
     'ASSUME the user already has basic pantry staples on hand — cooking oil, salt, pepper, common dried ' +
       'spices/herbs, sugar, flour, water — unless they say otherwise. Never ask about these; only ask ' +
       'about the actual main ingredients/proteins/produce they have or need.',
+    pantrySummary
+      ? `The user's actual pantry right now (from the app's own inventory, not something they typed) ` +
+        `contains: ${pantrySummary}. Ground your suggestions and questions in this — prefer proposing ` +
+        'dishes that use these items, and never ask whether they have something that is already listed ' +
+        'here. Treat it as a helpful hint, not a hard constraint: the user can still want something else.'
+      : '',
     'BE BRIEF. Every reply should be 2-4 short sentences of plain prose, no bullet lists, no numbered ' +
       'lists, no markdown formatting of any kind, no long explanations. Ask EXACTLY ONE question per ' +
       'reply — never two, never a numbered "1. ... 2. ..." pair of questions in the same message. If ' +
@@ -123,6 +130,7 @@ export interface StreamChatReplyParams {
   servings: number
   unitSystem: UnitSystem
   nearbyStoresSummary?: string
+  pantrySummary?: string
   onToken: (token: string) => void
 }
 
@@ -141,6 +149,7 @@ export async function streamChatReply(params: StreamChatReplyParams): Promise<st
     params.servings,
     params.unitSystem,
     params.nearbyStoresSummary,
+    params.pantrySummary,
   )
 
   try {
@@ -237,6 +246,49 @@ export async function extractSearchCriteria(
     }
 
     return criteria
+  } catch (err) {
+    throw mapGroqError(err)
+  }
+}
+
+/**
+ * Translates a list of pantry ingredient names into English so they can be
+ * used as Spoonacular `includeIngredients` — Spoonacular only indexes
+ * English text, same constraint as extractSearchCriteria above. Unlike
+ * groq.ts's translateRecipeContent (which fails soft to English on any
+ * error, fine for display copy), this throws on failure: silently returning
+ * the original (possibly Spanish) names would make the caller's Spoonacular
+ * query quietly return nothing, which is worse than a visible error.
+ */
+export async function translateIngredientNames(names: string[]): Promise<string[]> {
+  if (!groq) throw new ChatConfigError()
+  if (names.length === 0) return []
+
+  try {
+    const completion = await groq.chat.completions.create({
+      model: MODEL,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Translate the following list of grocery/pantry ingredient names into English, preserving ' +
+            'their order. If a name is already in English, keep it as-is. Respond ONLY with a JSON ' +
+            'object of the shape { "names": string[] }, with exactly as many entries as the input, in ' +
+            'the same order.',
+        },
+        { role: 'user', content: JSON.stringify(names) },
+      ],
+    })
+
+    const raw = completion.choices[0]?.message?.content
+    if (!raw) throw new Error('Empty translation response')
+
+    const parsed = JSON.parse(raw) as { names?: unknown }
+    if (!Array.isArray(parsed.names)) throw new Error('Malformed translation response')
+
+    return parsed.names.map((n, i) => (typeof n === 'string' && n.trim() ? n.trim() : names[i]))
   } catch (err) {
     throw mapGroqError(err)
   }

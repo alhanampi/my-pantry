@@ -35,7 +35,7 @@ export interface RecipesViewProps {
 export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: RecipesViewProps) {
   const { t } = useTranslation()
   const [filters, setFilters] = useState<RecipeSearchFilters>(EMPTY_FILTERS)
-  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
 
   // Filters drive the TextFields directly (no typing lag), but the query
   // itself is debounced — otherwise every keystroke would fire a fresh
@@ -55,7 +55,7 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
     })
   }
 
-  const handleToggleFavorite = (id: number): void => {
+  const handleToggleFavorite = (id: string): void => {
     favoriteToggle.requestToggle(id, favoriteIdSet.has(id))
   }
 

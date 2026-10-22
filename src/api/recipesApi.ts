@@ -65,13 +65,17 @@ export async function apiSearchRecipes(
   }
 }
 
-export async function apiGetRecipeDetail(id: number, lang: string): Promise<RecipeDetail> {
+export async function apiGetRecipeDetail(id: string, lang: string): Promise<RecipeDetail> {
   const cacheKey = detailCacheKey(id, lang)
   const cached = getCached<RecipeDetail>(cacheKey, DETAIL_CACHE_TTL_MS)
   if (cached && !cached.stale) return cached.value
 
   try {
-    const res = await fetch(`${API_URL}/api/recipes/${id}?lang=${lang}`)
+    // id is a compound "source:externalId" string (see backend's
+    // recipeSerializers.ts) that can contain characters like `:`/`#` —
+    // encodeURIComponent so it survives as a single path segment. The
+    // backend decodes it exactly once via Express's own param parsing.
+    const res = await fetch(`${API_URL}/api/recipes/${encodeURIComponent(id)}?lang=${lang}`)
     const json = await handleResponse<{ recipe: RecipeDetail }>(res)
     setCached(cacheKey, json.recipe)
     return json.recipe
@@ -87,9 +91,9 @@ export async function apiGetRecipeDetail(id: number, lang: string): Promise<Reci
 // ── Favorites — per-user data, so these DO take a token (unlike the two
 // public calls above). ─────────────────────────────────────────────────────
 
-export async function apiGetFavoriteIds(token: string): Promise<number[]> {
+export async function apiGetFavoriteIds(token: string): Promise<string[]> {
   const res = await fetch(`${API_URL}/api/recipes/favorites/ids`, { headers: headers(token) })
-  const json = await handleResponse<{ ids: number[] }>(res)
+  const json = await handleResponse<{ ids: string[] }>(res)
   return json.ids
 }
 
@@ -98,17 +102,19 @@ export async function apiGetFavoriteRecipes(token: string, lang: string): Promis
   return handleResponse<FavoriteRecipesResponse>(res)
 }
 
-export async function apiAddFavorite(token: string, recipeId: number): Promise<void> {
+export async function apiAddFavorite(token: string, recipeId: string): Promise<void> {
   const res = await fetch(`${API_URL}/api/recipes/favorites`, {
     method: 'POST',
     headers: headers(token),
+    // recipeId travels raw in the JSON body — unlike a URL path segment, a
+    // body value is never percent-decoded, so it must NOT be encoded here.
     body: JSON.stringify({ recipeId }),
   })
   await handleResponse<{ success: boolean }>(res)
 }
 
-export async function apiRemoveFavorite(token: string, recipeId: number): Promise<void> {
-  const res = await fetch(`${API_URL}/api/recipes/favorites/${recipeId}`, {
+export async function apiRemoveFavorite(token: string, recipeId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/recipes/favorites/${encodeURIComponent(recipeId)}`, {
     method: 'DELETE',
     headers: headers(token),
   })

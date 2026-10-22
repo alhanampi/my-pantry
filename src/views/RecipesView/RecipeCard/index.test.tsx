@@ -6,7 +6,8 @@ import '../../../i18n'
 import type { RecipeCard as RecipeCardType } from '../../../utils/types'
 
 const recipe: RecipeCardType = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta al pomodoro',
   image: 'img.jpg',
   servings: 2,
@@ -21,7 +22,7 @@ describe('RecipeCard', () => {
     render(<RecipeCard recipe={recipe} onClick={onClick} />)
     expect(screen.getByText('Pasta al pomodoro')).toBeInTheDocument()
     await userEvent.click(screen.getByText('Pasta al pomodoro'))
-    expect(onClick).toHaveBeenCalledWith(1)
+    expect(onClick).toHaveBeenCalledWith('spoonacular:1')
   })
 
   it('does not render a favorite button when onToggleFavorite is omitted', () => {
@@ -36,7 +37,7 @@ describe('RecipeCard', () => {
 
     await userEvent.click(screen.getByRole('button', { pressed: false }))
 
-    expect(onToggleFavorite).toHaveBeenCalledWith(1)
+    expect(onToggleFavorite).toHaveBeenCalledWith('spoonacular:1')
     expect(onClick).not.toHaveBeenCalled()
   })
 

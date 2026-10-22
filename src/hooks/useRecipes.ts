@@ -22,7 +22,7 @@ export function useRecipeSearch(filters: RecipeSearchFilters) {
   })
 }
 
-export function useRecipeDetail(id: number | null) {
+export function useRecipeDetail(id: string | null) {
   const { i18n } = useTranslation()
 
   return useQuery({

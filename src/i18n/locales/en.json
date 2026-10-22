@@ -14,6 +14,7 @@
     "recipes": "Recipes",
     "favorites": "Favorites",
     "chat": "Chat",
+    "mealprep": "Mealprep",
     "about": "About"
   },
   "header": {
@@ -137,6 +138,7 @@
     "fat": "Fat",
     "minutes": "min",
     "kcal": "kcal",
+    "poweredByEdamam": "Powered by Edamam",
     "ingredients": "Ingredients",
     "instructions": "Instructions",
     "noInstructions": "This recipe doesn't include step-by-step instructions — it likely combines other already-prepared recipes.",
@@ -199,6 +201,24 @@
     "emptySidebar": "No conversations yet. Start a new one!",
     "placeholder": "Tell me what you have on hand...",
     "send": "Send",
+    "onboardingGoal": {
+      "title": "What do you feel like doing?",
+      "quick": "A quick recipe idea",
+      "quickHint": "Tell me what you have and I'll suggest something now",
+      "weekly": "Plan meals for the week",
+      "weeklyHint": "Get a full week of recipes and a shopping list in one go",
+      "specific": "A specific goal",
+      "specificHint": "Something more particular — I'll ask a few questions"
+    },
+    "pantrySuggestions": {
+      "heading": "From what's in your pantry",
+      "emptyHint": "Add a few products to your pantry and I'll suggest recipes based on them.",
+      "loading": "Looking at your pantry..."
+    },
+    "quickPresets": {
+      "heading": "Or start straight from your pantry"
+    },
+    "backToGoals": "Back",
     "onboardingTitle": "Before we start",
     "onboardingQuery": "What do you want to cook?",
     "onboardingQueryPlaceholder": "A recipe or an ingredient you have, e.g. chicken, pasta, apple pie...",
@@ -246,6 +266,27 @@
       "quotaExceeded": "The chat assistant is temporarily unavailable. Try again later.",
       "configError": "The chat assistant is not configured on this server.",
       "generic": "Something went wrong. Try again."
+    }
+  },
+  "mealprep": {
+    "title": "Meal plan",
+    "signedOutTitle": "Sign in to plan your week",
+    "signedOutBody": "Meal plans are saved to your account, so you can pick them back up.",
+    "generate": "Generate meal plan",
+    "generating": "Building your week...",
+    "consolidating": "Working out what you need...",
+    "deletePlan": "Delete plan",
+    "deletePlanConfirmTitle": "Delete this meal plan?",
+    "deletePlanConfirmBody": "This week's plan will be permanently deleted. This can't be undone.",
+    "backToCalendar": "Back to calendar",
+    "shoppingListName": "Meal plan — {{date}}",
+    "pantryNoteDetail": "You may already have some of this — check your pantry",
+    "consolidatedList": {
+      "heading": "Shopping list for the week",
+      "allCovered": "Looks like your pantry already covers everything!",
+      "pantryNote": "You may already have some — check your pantry",
+      "cancel": "Cancel",
+      "pushToShoppingList": "Send to shopping list"
     }
   },
   "auth": {

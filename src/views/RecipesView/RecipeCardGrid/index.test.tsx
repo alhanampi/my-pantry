@@ -6,8 +6,26 @@ import '../../../i18n'
 import type { RecipeCard } from '../../../utils/types'
 
 const recipes: RecipeCard[] = [
-  { id: 1, title: 'Pasta', image: 'a.jpg', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
-  { id: 2, title: 'Salad', image: 'b.jpg', servings: 1, readyInMinutes: 10, ingredientNames: [], calories: 150 },
+  {
+    id: 'spoonacular:1',
+    source: 'spoonacular',
+    title: 'Pasta',
+    image: 'a.jpg',
+    servings: 2,
+    readyInMinutes: 20,
+    ingredientNames: [],
+    calories: 300,
+  },
+  {
+    id: 'spoonacular:2',
+    source: 'spoonacular',
+    title: 'Salad',
+    image: 'b.jpg',
+    servings: 1,
+    readyInMinutes: 10,
+    ingredientNames: [],
+    calories: 150,
+  },
 ]
 
 let observe: ReturnType<typeof vi.fn>
@@ -42,7 +60,7 @@ describe('RecipeCardGrid', () => {
     expect(screen.getByText('Salad')).toBeInTheDocument()
 
     await userEvent.click(screen.getByText('Pasta'))
-    expect(onSelect).toHaveBeenCalledWith(1)
+    expect(onSelect).toHaveBeenCalledWith('spoonacular:1')
   })
 
   it('observes the sentinel only when there is a next page, and disconnects on unmount', () => {
@@ -85,13 +103,13 @@ describe('RecipeCardGrid', () => {
       <RecipeCardGrid
         recipes={recipes}
         onSelect={vi.fn()}
-        favoriteIds={new Set([1])}
+        favoriteIds={new Set(['spoonacular:1'])}
         onToggleFavorite={onToggleFavorite}
       />,
     )
     const buttons = screen.getAllByRole('button', { pressed: false })
     expect(screen.getByRole('button', { pressed: true })).toBeInTheDocument()
     await userEvent.click(buttons[0])
-    expect(onToggleFavorite).toHaveBeenCalledWith(2)
+    expect(onToggleFavorite).toHaveBeenCalledWith('spoonacular:2')
   })
 })

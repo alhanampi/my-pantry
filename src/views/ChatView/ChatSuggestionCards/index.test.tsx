@@ -7,7 +7,8 @@ import i18n from '../../../i18n'
 import type { RecipeCard } from '../../../utils/types'
 
 const recipe: RecipeCard = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Arroz con pollo',
   image: 'img.jpg',
   servings: 2,
@@ -23,7 +24,7 @@ describe('ChatSuggestionCards', () => {
 
     expect(screen.getByText('Arroz con pollo')).toBeInTheDocument()
     await userEvent.click(screen.getByText('Arroz con pollo'))
-    expect(onSelect).toHaveBeenCalledWith(1)
+    expect(onSelect).toHaveBeenCalledWith('spoonacular:1')
   })
 
   it('passes favorite state through to the card and calls onToggleFavorite', async () => {
@@ -32,7 +33,7 @@ describe('ChatSuggestionCards', () => {
       <ChatSuggestionCards
         recipes={[recipe]}
         onSelect={vi.fn()}
-        favoriteIds={new Set([1])}
+        favoriteIds={new Set(['spoonacular:1'])}
         onToggleFavorite={onToggleFavorite}
       />,
     )
@@ -41,6 +42,6 @@ describe('ChatSuggestionCards', () => {
     expect(favoriteButton).toHaveAttribute('aria-pressed', 'true')
 
     await userEvent.click(favoriteButton)
-    expect(onToggleFavorite).toHaveBeenCalledWith(1)
+    expect(onToggleFavorite).toHaveBeenCalledWith('spoonacular:1')
   })
 })

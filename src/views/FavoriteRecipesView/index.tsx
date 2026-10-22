@@ -28,7 +28,7 @@ export interface FavoriteRecipesViewProps {
 // shared abstraction wasn't worth the indirection.
 export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentToList }: FavoriteRecipesViewProps) {
   const { t } = useTranslation()
-  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
 
   const favorites = useFavoriteRecipes()
   const detail = useRecipeDetail(selectedRecipeId)
@@ -43,7 +43,7 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
     })
   }
 
-  const handleToggleFavorite = (id: number): void => {
+  const handleToggleFavorite = (id: string): void => {
     favoriteToggle.requestToggle(id, favoriteIdSet.has(id))
   }
 
