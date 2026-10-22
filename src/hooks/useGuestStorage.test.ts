@@ -95,18 +95,18 @@ describe('guestStorage', () => {
   it('starts with no favorite recipes, then adds/removes ids idempotently', () => {
     expect(guestStorage.getFavoriteIds()).toEqual([])
 
-    expect(guestStorage.addFavorite(1)).toEqual([1])
-    expect(guestStorage.addFavorite(2)).toEqual([1, 2])
-    expect(guestStorage.addFavorite(1)).toEqual([1, 2]) // no duplicate
-    expect(guestStorage.getFavoriteIds()).toEqual([1, 2])
+    expect(guestStorage.addFavorite('spoonacular:1')).toEqual(['spoonacular:1'])
+    expect(guestStorage.addFavorite('spoonacular:2')).toEqual(['spoonacular:1', 'spoonacular:2'])
+    expect(guestStorage.addFavorite('spoonacular:1')).toEqual(['spoonacular:1', 'spoonacular:2']) // no duplicate
+    expect(guestStorage.getFavoriteIds()).toEqual(['spoonacular:1', 'spoonacular:2'])
 
-    expect(guestStorage.removeFavorite(1)).toEqual([2])
-    expect(guestStorage.removeFavorite(1)).toEqual([2]) // no-op, already gone
-    expect(guestStorage.getFavoriteIds()).toEqual([2])
+    expect(guestStorage.removeFavorite('spoonacular:1')).toEqual(['spoonacular:2'])
+    expect(guestStorage.removeFavorite('spoonacular:1')).toEqual(['spoonacular:2']) // no-op, already gone
+    expect(guestStorage.getFavoriteIds()).toEqual(['spoonacular:2'])
   })
 
   it('clearAll also wipes favorite recipes', () => {
-    guestStorage.addFavorite(1)
+    guestStorage.addFavorite('spoonacular:1')
     guestStorage.clearAll()
     expect(guestStorage.getFavoriteIds()).toEqual([])
   })

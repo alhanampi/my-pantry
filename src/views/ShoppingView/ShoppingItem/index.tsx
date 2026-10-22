@@ -3,7 +3,7 @@ import Collapse from '@mui/material/Collapse'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { MdExpandMore, MdExpandLess, MdDeleteOutline, MdModeEditOutline } from 'react-icons/md'
+import { MdExpandMore, MdExpandLess, MdDeleteOutline, MdModeEditOutline, MdOutlineMoveToInbox } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { formatDate } from '../../../utils/helpers'
 import QuantityStepper from '../../../components/QuantityStepper'
@@ -19,7 +19,7 @@ import {
 } from './ShoppingItem.styles'
 import type { ShoppingItemProps } from '../../../utils/types'
 
-export default function ShoppingItem({ item, onToggle, onDelete, onEdit, onQuantityChange }: ShoppingItemProps) {
+export default function ShoppingItem({ item, onToggle, onDelete, onEdit, onQuantityChange, onSendToPantry }: ShoppingItemProps) {
   const [expanded, setExpanded] = useState(false)
   const { t } = useTranslation()
 
@@ -57,6 +57,18 @@ export default function ShoppingItem({ item, onToggle, onDelete, onEdit, onQuant
           onIncrement={() => onQuantityChange(item.id, 1)}
           onDecrement={() => onQuantityChange(item.id, -1)}
         />
+
+        {item.purchased && (
+          <Tooltip title={t('shopping.sendToPantry')}>
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onSendToPantry(item.id) }}
+              sx={{ color: 'var(--scheme-primary-light)', '&:hover': { color: 'var(--scheme-primary)', bgcolor: 'var(--scheme-accent-light)' } }}
+            >
+              <MdOutlineMoveToInbox size={20} />
+            </IconButton>
+          </Tooltip>
+        )}
 
         <Tooltip title={t('card.edit')}>
           <IconButton

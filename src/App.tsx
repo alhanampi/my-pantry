@@ -3,7 +3,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { useTranslation } from 'react-i18next'
 import { useColorScheme } from './contexts/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
-import { useAppState } from './hooks/useAppState'
+import { useAppState, UNDO_WINDOW_MS } from './hooks/useAppState'
 import { AppWrapper, MainContent, AppSnackbar, AppAlert } from './App.styles'
 
 import Button from '@mui/material/Button'
@@ -19,6 +19,7 @@ import ShoppingView from './views/ShoppingView'
 import RecipesView from './views/RecipesView'
 import FavoriteRecipesView from './views/FavoriteRecipesView'
 import ChatView from './views/ChatView'
+import MealprepView from './views/MealprepView'
 import AboutView from './views/AboutView'
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
                   onAddToCart={app.handleAddToCart}
                   onAddClick={app.openAddModal}
                   onQuantityChange={app.handleQuantityChange}
+                  onExportCsv={app.handleExportPantryCsv}
                   isLoading={app.isLoading}
                 />
               )}
@@ -70,6 +72,8 @@ export default function App() {
                   onEdit={app.openEditModal}
                   onClearPurchased={app.handleClearPurchased}
                   onQuantityChange={app.handleShoppingQuantityChange}
+                  onSendToPantry={app.handleSendToPantry}
+                  onExportPdf={app.handleExportShoppingPdf}
                   isLoading={app.isLoading}
                 />
               )}
@@ -87,6 +91,13 @@ export default function App() {
               )}
               {app.currentView === 'chat' && (
                 <ChatView
+                  sendRecipeToShoppingList={app.sendRecipeToShoppingList}
+                  onSentToList={app.handleRecipeSentToList}
+                  onNavigateToMealprep={() => app.handleViewChange('mealprep')}
+                />
+              )}
+              {app.currentView === 'mealprep' && (
+                <MealprepView
                   sendRecipeToShoppingList={app.sendRecipeToShoppingList}
                   onSentToList={app.handleRecipeSentToList}
                 />
@@ -151,7 +162,7 @@ export default function App() {
 
             <AppSnackbar
               open={app.snackbar.open}
-              autoHideDuration={2500}
+              autoHideDuration={UNDO_WINDOW_MS}
               onClose={app.closeSnackbar}
               anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             >

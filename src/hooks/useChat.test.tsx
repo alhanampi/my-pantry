@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { useConversations, useCreateConversation, useSuggestRecipe } from './useChat'
+import { useConversations, useCreateConversation, useSuggestRecipe, usePantryChatSuggestions } from './useChat'
 import * as chatApi from '../api/chatApi'
 import '../i18n'
 
@@ -59,5 +59,30 @@ describe('useChat hooks', () => {
     result.current.mutate('c1')
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(chatApi.apiSuggestRecipe).toHaveBeenCalledWith('token-123', 'c1', expect.any(String))
+  })
+
+  it('usePantryChatSuggestions is disabled when signed out', () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: false, getToken: vi.fn() })
+    const { result } = renderHook(() => usePantryChatSuggestions(), { wrapper })
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(chatApi.apiGetPantrySuggestions).not.toHaveBeenCalled()
+  })
+
+  it('usePantryChatSuggestions fetches pantry-based recipe suggestions when signed in', async () => {
+    vi.mocked(chatApi.apiGetPantrySuggestions).mockResolvedValue([
+      {
+        id: 'spoonacular:1',
+        source: 'spoonacular',
+        title: 'Arroz con pollo',
+        image: '',
+        servings: 2,
+        readyInMinutes: 20,
+        ingredientNames: [],
+        calories: 300,
+      },
+    ])
+    const { result } = renderHook(() => usePantryChatSuggestions(), { wrapper })
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    expect(chatApi.apiGetPantrySuggestions).toHaveBeenCalledWith('token-123', expect.any(String))
   })
 })

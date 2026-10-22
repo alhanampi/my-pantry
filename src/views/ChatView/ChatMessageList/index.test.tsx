@@ -15,7 +15,8 @@ const msg = (overrides: Partial<ChatMessageItem> = {}): ChatMessageItem => ({
 })
 
 const recipe = (overrides: Partial<RecipeCard> = {}): RecipeCard => ({
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Arroz con pollo',
   image: 'img.jpg',
   servings: 2,
@@ -116,12 +117,12 @@ describe('ChatMessageList', () => {
         messages={[]}
         suggestionEvents={[{ id: 's1', afterIndex: 0, recipes: [recipe()] }]}
         onSelectRecipe={vi.fn()}
-        favoriteIds={new Set([1])}
+        favoriteIds={new Set(['spoonacular:1'])}
         onToggleFavorite={onToggleFavorite}
       />,
     )
     const favoriteButton = screen.getByLabelText(i18n.t('recipes.removeFavorite'))
     await userEvent.click(favoriteButton)
-    expect(onToggleFavorite).toHaveBeenCalledWith(1)
+    expect(onToggleFavorite).toHaveBeenCalledWith('spoonacular:1')
   })
 })

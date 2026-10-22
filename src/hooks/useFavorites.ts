@@ -20,6 +20,7 @@ import {
 function recipeDetailToCard(detail: RecipeDetail): RecipeCard {
   return {
     id: detail.id,
+    source: detail.source,
     title: detail.title,
     image: detail.image,
     servings: detail.servings,
@@ -35,13 +36,13 @@ export function useFavoriteIds() {
 
   return useQuery({
     queryKey: ['recipes', 'favorites', 'ids'],
-    queryFn: async (): Promise<number[]> => {
+    queryFn: async (): Promise<string[]> => {
       const token = await getToken()
       if (!token) return []
       return apiGetFavoriteIds(token)
     },
     enabled: !!isSignedIn,
-    initialData: isConfirmedGuest ? (): number[] => guestStorage.getFavoriteIds() : undefined,
+    initialData: isConfirmedGuest ? (): string[] => guestStorage.getFavoriteIds() : undefined,
     initialDataUpdatedAt: isConfirmedGuest ? 0 : undefined,
   })
 }
@@ -79,7 +80,7 @@ function useToggleFavorite() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ recipeId, isFavorite }: { recipeId: number; isFavorite: boolean }): Promise<void> => {
+    mutationFn: async ({ recipeId, isFavorite }: { recipeId: string; isFavorite: boolean }): Promise<void> => {
       if (isConfirmedGuest) {
         if (isFavorite) guestStorage.removeFavorite(recipeId)
         else guestStorage.addFavorite(recipeId)
@@ -104,9 +105,9 @@ function useToggleFavorite() {
 // driven by `pendingRemoveId`.
 export function useFavoriteToggle() {
   const toggle = useToggleFavorite()
-  const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null)
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null)
 
-  const requestToggle = (recipeId: number, isFavorite: boolean): void => {
+  const requestToggle = (recipeId: string, isFavorite: boolean): void => {
     if (isFavorite) {
       setPendingRemoveId(recipeId)
     } else {

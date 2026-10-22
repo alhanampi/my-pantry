@@ -46,7 +46,7 @@ export interface RecipeDetailPanelProps {
   onSendToShoppingList: (payload: { recipeTitle: string; ingredients: RecipeIngredient[] }) => void
   isSending?: boolean
   isFavorite?: boolean
-  onToggleFavorite?: (id: number) => void
+  onToggleFavorite?: (id: string) => void
   // True while this recipe's favorite toggle is in flight — see RecipeCard's
   // identical prop for why (spinner + click-guard during a slow API call).
   isTogglingFavorite?: boolean
@@ -143,6 +143,11 @@ export default function RecipeDetailPanel({
         )}
       </HeroImageWrapper>
       <Title>{recipe.title}</Title>
+      {recipe.source === 'edamam' && (
+        <Typography variant="caption" color="text.secondary">
+          {t('recipes.poweredByEdamam')}
+        </Typography>
+      )}
 
       <ServingsRow>
         <span>{t('recipes.servings')}</span>

@@ -88,6 +88,7 @@ export const MobileHamburger = styled.div`
   @media (max-width: 599px) {
     display: flex;
     align-items: center;
+    gap: 2px;
   }
 `
 

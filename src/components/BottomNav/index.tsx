@@ -4,6 +4,7 @@ import {
   MdOutlineRestaurantMenu,
   MdOutlineFavorite,
   MdOutlineLightbulb,
+  MdOutlineCalendarMonth,
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { NavPaper, StyledBottomNavigation, NavAction } from './BottomNav.styles'
@@ -23,6 +24,7 @@ export default function BottomNav({ value, onChange }: BottomNavProps) {
         <NavAction aria-label={t('nav.recipes')} icon={<MdOutlineRestaurantMenu size={24} />} />
         <NavAction aria-label={t('nav.favorites')} icon={<MdOutlineFavorite size={24} />} />
         <NavAction aria-label={t('nav.chat')} icon={<MdOutlineLightbulb size={24} />} />
+        <NavAction aria-label={t('nav.mealprep')} icon={<MdOutlineCalendarMonth size={24} />} />
         <NavAction aria-label={t('nav.shopping')} icon={<MdOutlineShoppingCart size={24} />} />
       </StyledBottomNavigation>
     </NavPaper>

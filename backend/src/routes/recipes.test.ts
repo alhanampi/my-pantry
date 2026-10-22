@@ -30,6 +30,17 @@ vi.mock('../services/spoonacular.js', async () => {
 const mockTranslate = vi.hoisted(() => vi.fn())
 vi.mock('../services/groq.js', () => ({ translateRecipeContent: mockTranslate }))
 
+const mockSearchEdamamRecipes = vi.hoisted(() => vi.fn())
+const mockGetEdamamRecipeInformation = vi.hoisted(() => vi.fn())
+vi.mock('../services/edamam.js', async () => {
+  const actual = await vi.importActual<typeof import('../services/edamam.js')>('../services/edamam.js')
+  return {
+    ...actual,
+    searchEdamamRecipes: mockSearchEdamamRecipes,
+    getEdamamRecipeInformation: mockGetEdamamRecipeInformation,
+  }
+})
+
 const sampleRecipe = {
   id: 1,
   title: 'Pasta',
@@ -44,6 +55,7 @@ const sampleRecipe = {
 describe('recipes routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchEdamamRecipes.mockResolvedValue([])
   })
 
   it('GET /api/recipes/search returns normalized cards, capped at 4 server-side', async () => {
@@ -96,17 +108,63 @@ describe('recipes routes', () => {
   it('GET /api/recipes/:id returns a full detail with nutrition and instructions', async () => {
     mockGetRecipeInformation.mockResolvedValue(sampleRecipe)
 
-    const res = await request(app).get('/api/recipes/1')
+    const res = await request(app).get('/api/recipes/spoonacular:1')
 
     expect(res.status).toBe(200)
+    expect(mockGetRecipeInformation).toHaveBeenCalledWith(1)
     expect(res.body.recipe.servings).toBe(2)
     expect(res.body.recipe.instructions).toEqual(['Boil water.'])
     expect(res.body.recipe.nutrition.calories).toBe(350)
   })
 
-  it('GET /api/recipes/:id returns 400 for a non-numeric id', async () => {
+  it('GET /api/recipes/:id returns 400 for an id with no recognized "source:externalId" shape', async () => {
     const res = await request(app).get('/api/recipes/not-a-number')
     expect(res.status).toBe(400)
     expect(mockGetRecipeInformation).not.toHaveBeenCalled()
+  })
+
+  const edamamRecipe = {
+    uri: 'http://www.edamam.com/ontologies/edamam.owl#recipe_abc',
+    label: 'Salad',
+    image: 'salad.jpg',
+    source: 'Example',
+    url: 'https://example.com/salad',
+    yield: 2,
+    totalTime: 10,
+    ingredientLines: ['lettuce'],
+    ingredients: [{ text: 'lettuce', quantity: 1, measure: null, food: 'lettuce', weight: 50 }],
+    totalNutrients: {},
+    totalDaily: {},
+  }
+
+  it('GET /api/recipes/search supplements with Edamam when Spoonacular returns fewer than requested', async () => {
+    mockSearchRecipes.mockResolvedValue({ results: [sampleRecipe], offset: 0, number: 4, totalResults: 1 })
+    mockSearchEdamamRecipes.mockResolvedValue([edamamRecipe, edamamRecipe, edamamRecipe])
+
+    const res = await request(app).get('/api/recipes/search').query({ query: 'pasta' })
+
+    expect(res.status).toBe(200)
+    expect(mockSearchEdamamRecipes).toHaveBeenCalledWith(expect.objectContaining({ number: 3 }))
+    expect(res.body.results).toHaveLength(4)
+    expect(res.body.results[1].source).toBe('edamam')
+  })
+
+  it('GET /api/recipes/search still returns 200 with Spoonacular-only results when Edamam fails', async () => {
+    mockSearchRecipes.mockResolvedValue({ results: [sampleRecipe], offset: 0, number: 4, totalResults: 1 })
+    mockSearchEdamamRecipes.mockRejectedValue(new Error('boom'))
+
+    const res = await request(app).get('/api/recipes/search').query({ query: 'pasta' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.results).toHaveLength(1)
+  })
+
+  it('GET /api/recipes/search never calls Edamam for a page past the first', async () => {
+    mockSearchRecipes.mockResolvedValue({ results: [sampleRecipe], offset: 4, number: 4, totalResults: 5 })
+
+    const res = await request(app).get('/api/recipes/search').query({ query: 'pasta', offset: 4 })
+
+    expect(res.status).toBe(200)
+    expect(mockSearchEdamamRecipes).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePantry } from './usePantry'
+import { productsToCsv, downloadCsv } from '../utils/exportCsv'
+import { shoppingListToPdf } from '../utils/exportPdf'
 import type {
   Product,
   ShoppingListItem,
@@ -18,6 +20,11 @@ import type {
 import type { ZeroQuantityAction } from '../components/ZeroQuantityDialog'
 import type { ZeroShoppingAction } from '../components/ZeroShoppingQtyDialog'
 
+// How long the "Deshacer"/"Undo" window stays open before a deleted
+// product/shopping item is actually sent to the DELETE endpoint. Keep in
+// sync with the snackbar's autoHideDuration in App.tsx.
+export const UNDO_WINDOW_MS = 5000
+
 function sortProducts(products: Product[], sortConfig: SortConfig): Product[] {
   const { key, direction } = sortConfig
   if (!key) return products
@@ -30,7 +37,7 @@ function sortProducts(products: Product[], sortConfig: SortConfig): Product[] {
   })
 }
 
-const viewOrder: AppView[] = ['pantry', 'recipes', 'favorites', 'chat', 'shopping']
+const viewOrder: AppView[] = ['pantry', 'recipes', 'favorites', 'chat', 'mealprep', 'shopping']
 
 export function useAppState() {
   const { t } = useTranslation()
@@ -65,6 +72,22 @@ export function useAppState() {
     open: false,
     list: null,
   })
+
+  // Undo-on-delete: ids in these sets are hidden from the UI immediately but
+  // not actually deleted server/localStorage-side until their timeout fires
+  // (see handleDeleteProduct/handleDeleteShoppingItem). Two separate sets/
+  // timer maps because product ids and shopping item ids are independent
+  // numeric spaces (different DB tables) and could collide.
+  const [pendingDeleteProductIds, setPendingDeleteProductIds] = useState<Set<number>>(new Set())
+  const [pendingDeleteShoppingIds, setPendingDeleteShoppingIds] = useState<Set<number>>(new Set())
+  const productDeleteTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const shoppingDeleteTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+
+  // Products/shopping items currently mid undo-window are excluded from
+  // every derived list (display, search, sort, export) — they only come
+  // back if "Deshacer" is clicked before the real delete fires.
+  const visibleProducts = pantry.products.filter((p) => !pendingDeleteProductIds.has(p.id))
+  const visibleShoppingList = pantry.shoppingList.filter((i) => !pendingDeleteShoppingIds.has(i.id))
 
   const showError = () =>
     setSnackbar({ open: true, message: t('errors.saveFailed', 'Error saving. Try again.') })
@@ -147,8 +170,44 @@ export function useAppState() {
     setEditModal({ open: false, context: 'pantry', id: null, initialData: null })
   }
 
+  // Undo-on-delete: hides the product immediately, but only fires the real
+  // DELETE after UNDO_WINDOW_MS unless the snackbar's "Deshacer" action
+  // cancels the pending timeout first.
   const handleDeleteProduct = (id: number): void => {
-    pantry.deleteProduct.mutate(id, { onError: showError })
+    setPendingDeleteProductIds((prev) => new Set(prev).add(id))
+
+    const timer = setTimeout(() => {
+      productDeleteTimers.current.delete(id)
+      pantry.deleteProduct.mutate(id, {
+        onError: showError,
+        onSettled: () => {
+          setPendingDeleteProductIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        },
+      })
+    }, UNDO_WINDOW_MS)
+    productDeleteTimers.current.set(id, timer)
+
+    setSnackbar({
+      open: true,
+      message: t('table.productDeleted'),
+      action: {
+        label: t('common.undo'),
+        onClick: () => {
+          const pending = productDeleteTimers.current.get(id)
+          if (pending) clearTimeout(pending)
+          productDeleteTimers.current.delete(id)
+          setPendingDeleteProductIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        },
+      },
+    })
   }
 
   const handleAddToCart = (product: Product): void => {
@@ -186,8 +245,59 @@ export function useAppState() {
     )
   }
 
+  // Undo-on-delete for shopping items — same mechanism as handleDeleteProduct.
   const handleDeleteShoppingItem = (id: number): void => {
-    pantry.deleteShoppingItem.mutate(id, { onError: showError })
+    setPendingDeleteShoppingIds((prev) => new Set(prev).add(id))
+
+    const timer = setTimeout(() => {
+      shoppingDeleteTimers.current.delete(id)
+      pantry.deleteShoppingItem.mutate(id, {
+        onError: showError,
+        onSettled: () => {
+          setPendingDeleteShoppingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        },
+      })
+    }, UNDO_WINDOW_MS)
+    shoppingDeleteTimers.current.set(id, timer)
+
+    setSnackbar({
+      open: true,
+      message: t('shopping.itemDeleted'),
+      action: {
+        label: t('common.undo'),
+        onClick: () => {
+          const pending = shoppingDeleteTimers.current.get(id)
+          if (pending) clearTimeout(pending)
+          shoppingDeleteTimers.current.delete(id)
+          setPendingDeleteShoppingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        },
+      },
+    })
+  }
+
+  // Moves a purchased shopping item into the pantry: creates the equivalent
+  // Product (dropping purchased/listId), then removes it from the shopping
+  // list once created. Mirrors handleAddToCart but in the opposite direction.
+  const handleSendToPantry = (id: number): void => {
+    const item = visibleShoppingList.find((i) => i.id === id)
+    if (!item) return
+    const { purchased: _purchased, listId: _listId, id: _id, ...data } = item
+    const productData: ProductFormData = data
+    pantry.createProduct.mutate(productData, {
+      onSuccess: () => {
+        pantry.deleteShoppingItem.mutate(id, { onError: showError })
+        setSnackbar({ open: true, message: t('shopping.sentToPantry', { name: item.name }) })
+      },
+      onError: showError,
+    })
   }
 
   const handleClearPurchased = (): void => {
@@ -281,6 +391,18 @@ export function useAppState() {
     })
   }
 
+  // Client-side exports — no network, just serialize what's already in the
+  // hook's state.
+  const handleExportPantryCsv = (): void => {
+    downloadCsv('mi-despensa.csv', productsToCsv(visibleProducts))
+  }
+
+  const handleExportShoppingPdf = (): void => {
+    const listName =
+      pantry.shoppingLists.find((l) => l.id === pantry.activeListId)?.name ?? t('nav.shopping')
+    shoppingListToPdf(visibleShoppingList, listName)
+  }
+
   const closeSnackbar = (): void => setSnackbar({ open: false, message: '' })
 
   const closeConfirmDialog = (): void => setConfirmDialog({ open: false, type: null, data: null })
@@ -289,7 +411,7 @@ export function useAppState() {
     setAddModal({ open: true, context: currentView === 'shopping' ? 'shopping' : 'pantry' })
   }
 
-  const filteredProducts = pantry.products.filter((p) => {
+  const filteredProducts = visibleProducts.filter((p) => {
     const q = searchQuery.toLowerCase()
     return (
       (p.name ?? '').toLowerCase().includes(q) ||
@@ -311,7 +433,7 @@ export function useAppState() {
       pantry.updateProduct.isPending ||
       pantry.updateShoppingItem.isPending,
     products: displayedProducts,
-    shoppingList: pantry.shoppingList,
+    shoppingList: visibleShoppingList,
     shoppingLists: pantry.shoppingLists,
     selectedShoppingListId: pantry.activeListId,
     createShoppingList: pantry.createShoppingList,
@@ -334,7 +456,10 @@ export function useAppState() {
     handleAddToCart,
     handleTogglePurchased,
     handleDeleteShoppingItem,
+    handleSendToPantry,
     handleClearPurchased,
+    handleExportPantryCsv,
+    handleExportShoppingPdf,
     handleShoppingQuantityChange,
     handleQuantityChange,
     handleViewChange,

@@ -2,7 +2,7 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { MdInventory2, MdAddCircle } from 'react-icons/md'
+import { MdInventory2, MdAddCircle, MdFileDownload } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import SortableHeader from './SortableHeader'
 import ProductRow from './ProductRow'
@@ -33,6 +33,7 @@ export default function PantryView({
   onAddToCart,
   onAddClick,
   onQuantityChange,
+  onExportCsv,
   isLoading = false,
 }: ProductTableProps) {
   const { t } = useTranslation()
@@ -63,6 +64,14 @@ export default function PantryView({
     </Tooltip>
   )
 
+  const exportButton = (
+    <Tooltip title={t('table.exportCsv')}>
+      <IconButton onClick={onExportCsv} size="small" aria-label={t('table.exportCsv')}>
+        <MdFileDownload size={24} color="var(--scheme-text-secondary)" />
+      </IconButton>
+    </Tooltip>
+  )
+
   if (isMobile) {
     return (
       <div>
@@ -70,7 +79,10 @@ export default function PantryView({
           <CountText>
             {!isLoading && (products.length > 0 ? t('table.count', { count: products.length }) : t('table.emptyTitle'))}
           </CountText>
-          {addButton}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {exportButton}
+            {addButton}
+          </div>
         </MobileActionBar>
         {isLoading ? (
           Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonCard key={i} />)
@@ -98,7 +110,10 @@ export default function PantryView({
         <CountText>
           {!isLoading && products.length > 0 ? t('table.count', { count: products.length }) : ''}
         </CountText>
-        {addButton}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {exportButton}
+          {addButton}
+        </div>
       </ActionBar>
       <ScrollContainer>
         <HeaderRow role="row">

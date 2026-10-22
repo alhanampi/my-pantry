@@ -46,7 +46,7 @@ function writeShoppingLists(lists: ShoppingList[]): void {
   localStorage.setItem(SHOPPING_LISTS_KEY, JSON.stringify(lists))
 }
 
-function readFavoriteIds(): number[] {
+function readFavoriteIds(): string[] {
   try {
     const raw = localStorage.getItem(FAVORITE_RECIPES_KEY)
     if (!raw) return []
@@ -56,7 +56,7 @@ function readFavoriteIds(): number[] {
   }
 }
 
-function writeFavoriteIds(ids: number[]): void {
+function writeFavoriteIds(ids: string[]): void {
   localStorage.setItem(FAVORITE_RECIPES_KEY, JSON.stringify(ids))
 }
 
@@ -125,7 +125,7 @@ export const guestStorage = {
     localStorage.setItem(UNIT_SYSTEM_KEY, value)
   },
 
-  addFavorite(recipeId: number): number[] {
+  addFavorite(recipeId: string): string[] {
     const ids = readFavoriteIds()
     if (ids.includes(recipeId)) return ids
     const next = [...ids, recipeId]
@@ -133,7 +133,7 @@ export const guestStorage = {
     return next
   },
 
-  removeFavorite(recipeId: number): number[] {
+  removeFavorite(recipeId: string): string[] {
     const next = readFavoriteIds().filter((id) => id !== recipeId)
     writeFavoriteIds(next)
     return next

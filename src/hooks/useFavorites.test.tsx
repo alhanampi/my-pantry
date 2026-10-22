@@ -34,19 +34,19 @@ describe('useFavoriteToggle', () => {
     vi.mocked(recipesApi.apiAddFavorite).mockResolvedValue(undefined)
     const { result } = renderHook(() => useFavoriteToggle(), { wrapper })
 
-    act(() => result.current.requestToggle(42, false))
+    act(() => result.current.requestToggle('spoonacular:42', false))
 
     expect(result.current.pendingRemoveId).toBeNull()
-    await waitFor(() => expect(recipesApi.apiAddFavorite).toHaveBeenCalledWith('token-123', 42))
+    await waitFor(() => expect(recipesApi.apiAddFavorite).toHaveBeenCalledWith('token-123', 'spoonacular:42'))
     expect(recipesApi.apiRemoveFavorite).not.toHaveBeenCalled()
   })
 
   it('does not remove a favorite until confirmRemove is called', () => {
     const { result } = renderHook(() => useFavoriteToggle(), { wrapper })
 
-    act(() => result.current.requestToggle(42, true))
+    act(() => result.current.requestToggle('spoonacular:42', true))
 
-    expect(result.current.pendingRemoveId).toBe(42)
+    expect(result.current.pendingRemoveId).toBe('spoonacular:42')
     expect(recipesApi.apiRemoveFavorite).not.toHaveBeenCalled()
   })
 
@@ -54,17 +54,17 @@ describe('useFavoriteToggle', () => {
     vi.mocked(recipesApi.apiRemoveFavorite).mockResolvedValue(undefined)
     const { result } = renderHook(() => useFavoriteToggle(), { wrapper })
 
-    act(() => result.current.requestToggle(42, true))
+    act(() => result.current.requestToggle('spoonacular:42', true))
     act(() => result.current.confirmRemove())
 
     expect(result.current.pendingRemoveId).toBeNull()
-    await waitFor(() => expect(recipesApi.apiRemoveFavorite).toHaveBeenCalledWith('token-123', 42))
+    await waitFor(() => expect(recipesApi.apiRemoveFavorite).toHaveBeenCalledWith('token-123', 'spoonacular:42'))
   })
 
   it('cancelRemove clears pendingRemoveId without removing anything', () => {
     const { result } = renderHook(() => useFavoriteToggle(), { wrapper })
 
-    act(() => result.current.requestToggle(42, true))
+    act(() => result.current.requestToggle('spoonacular:42', true))
     act(() => result.current.cancelRemove())
 
     expect(result.current.pendingRemoveId).toBeNull()

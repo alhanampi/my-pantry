@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ChatView from './index'
-import { useConversations, useConversation, useCreateConversation, useDeleteConversation, useSuggestRecipe } from '../../hooks/useChat'
+import {
+  useConversations,
+  useConversation,
+  useCreateConversation,
+  useDeleteConversation,
+  useSuggestRecipe,
+  usePantryChatSuggestions,
+} from '../../hooks/useChat'
 import { useChatSession } from '../../hooks/useChatSession'
 import { useRecipeDetail } from '../../hooks/useRecipes'
 import { useFavoriteIds, useFavoriteToggle } from '../../hooks/useFavorites'
@@ -50,6 +57,23 @@ function defaultSessionMock() {
   }
 }
 
+function renderChatView(props: Partial<Parameters<typeof ChatView>[0]> = {}) {
+  return render(
+    <ChatView
+      sendRecipeToShoppingList={mutationSpy() as never}
+      onSentToList={vi.fn()}
+      onNavigateToMealprep={vi.fn()}
+      {...props}
+    />,
+  )
+}
+
+// Onboarding now opens on a goal-choice step before the dietary/servings/
+// query form — tests that need the form click past it first.
+async function goToOnboardingDetails() {
+  await userEvent.click(screen.getByText(i18n.t('chat.onboardingGoal.quick')))
+}
+
 const existingConversation = {
   id: 'c1',
   title: 'My conversation',
@@ -67,6 +91,7 @@ describe('ChatView', () => {
     vi.mocked(useCreateConversation).mockReturnValue(mutationSpy() as never)
     vi.mocked(useDeleteConversation).mockReturnValue(mutationSpy() as never)
     vi.mocked(useSuggestRecipe).mockReturnValue(mutationSpy({ data: undefined }) as never)
+    vi.mocked(usePantryChatSuggestions).mockReturnValue({ data: [], isLoading: false } as never)
     vi.mocked(useChatSession).mockReturnValue(defaultSessionMock() as never)
     vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
     vi.mocked(useGeolocation).mockReturnValue({ coords: null, error: null, requestLocation: vi.fn() })
@@ -78,20 +103,29 @@ describe('ChatView', () => {
 
   it('shows a signed-out prompt instead of the chat when not signed in', () => {
     mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true })
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
     expect(screen.getByText(i18n.t('chat.signedOutTitle'))).toBeInTheDocument()
   })
 
-  it('shows onboarding automatically (no button click needed) when there are no conversations yet', () => {
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
-    expect(screen.getByText(i18n.t('chat.onboardingTitle'))).toBeInTheDocument()
+  it('shows the goal-choice step automatically (no button click needed) when there are no conversations yet', () => {
+    renderChatView()
+    expect(screen.getByText(i18n.t('chat.onboardingGoal.title'))).toBeInTheDocument()
+  })
+
+  it('navigates to the Mealprep tab when "plan meals for the week" is chosen', async () => {
+    const onNavigateToMealprep = vi.fn()
+    renderChatView({ onNavigateToMealprep })
+
+    await userEvent.click(screen.getByText(i18n.t('chat.onboardingGoal.weekly')))
+    expect(onNavigateToMealprep).toHaveBeenCalled()
   })
 
   it('creates a conversation from the onboarding form (dietaryRestrictions/servings only, no initialQuery)', async () => {
     const createConversation = mutationSpy()
     vi.mocked(useCreateConversation).mockReturnValue(createConversation as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
+    await goToOnboardingDetails()
     await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
 
     expect(createConversation.mutate).toHaveBeenCalledWith(
@@ -112,7 +146,8 @@ describe('ChatView', () => {
     const suggestRecipe = mutationSpy({ data: undefined })
     vi.mocked(useSuggestRecipe).mockReturnValue(suggestRecipe as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
+    await goToOnboardingDetails()
     await userEvent.type(screen.getByPlaceholderText(i18n.t('chat.onboardingQueryPlaceholder')), 'pollo')
     await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
 
@@ -132,19 +167,20 @@ describe('ChatView', () => {
     const suggestRecipe = mutationSpy({ data: undefined })
     vi.mocked(useSuggestRecipe).mockReturnValue(suggestRecipe as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
+    await goToOnboardingDetails()
     await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
 
     await waitFor(() => expect(suggestRecipe.mutate).toHaveBeenCalledWith('new2', expect.anything()))
     expect(sendMessage).not.toHaveBeenCalled()
   })
 
-  it('always shows the new-chat onboarding on entering the tab, even with existing conversations', () => {
+  it('always shows the new-chat goal step on entering the tab, even with existing conversations', () => {
     vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
 
-    expect(screen.getByText(i18n.t('chat.onboardingTitle'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('chat.onboardingGoal.title'))).toBeInTheDocument()
     expect(screen.queryByPlaceholderText(i18n.t('chat.placeholder'))).not.toBeInTheDocument()
   })
 
@@ -169,7 +205,7 @@ describe('ChatView', () => {
       ]) as never,
     )
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
     await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
     await userEvent.click(screen.getByText(existingConversation.title))
 
@@ -197,7 +233,7 @@ describe('ChatView', () => {
     const favoriteToggle = favoriteToggleSpy()
     vi.mocked(useFavoriteToggle).mockReturnValue(favoriteToggle as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
     await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
     await userEvent.click(screen.getByText(existingConversation.title))
     await userEvent.click(screen.getByText(i18n.t('chat.suggestRecipe')))
@@ -221,7 +257,7 @@ describe('ChatView', () => {
       ]) as never,
     )
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
     await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
     await userEvent.click(screen.getByText(existingConversation.title))
 
@@ -242,7 +278,7 @@ describe('ChatView', () => {
       products: [{ id: 1, name: 'Queso fresco' }, { id: 2, name: 'Lentejas' }],
     } as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
     await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
     await userEvent.click(screen.getByText(existingConversation.title))
 
@@ -255,7 +291,7 @@ describe('ChatView', () => {
     const deleteConversation = mutationSpy()
     vi.mocked(useDeleteConversation).mockReturnValue(deleteConversation as never)
 
-    render(<ChatView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} />)
+    renderChatView()
 
     await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
     await userEvent.click(screen.getByLabelText(i18n.t('chat.deleteChat')))

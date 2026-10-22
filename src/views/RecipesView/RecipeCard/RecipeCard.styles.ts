@@ -82,3 +82,11 @@ export const MetaRow = styled.div`
   color: var(--scheme-text-muted);
   font-size: 0.75rem;
 `
+
+export const AttributionBadge = styled.span`
+  display: block;
+  margin-top: 6px;
+  color: var(--scheme-text-muted);
+  font-size: 0.6875rem;
+  font-style: italic;
+`

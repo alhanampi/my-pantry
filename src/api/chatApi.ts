@@ -64,6 +64,15 @@ export async function apiSuggestRecipe(
   return handleResponse<{ recipes: RecipeCard[]; notEnoughInfo: boolean }>(res)
 }
 
+export async function apiGetPantrySuggestions(token: string, lang: string): Promise<RecipeCard[]> {
+  const res = await fetch(`${API_URL}/api/chat/pantry-suggestions?lang=${lang}`, {
+    method: 'POST',
+    headers: headers(token),
+  })
+  const json = await handleResponse<{ recipes: RecipeCard[] }>(res)
+  return json.recipes
+}
+
 export interface StreamChatMessageCallbacks {
   onToken: (token: string) => void
   onDone: (payload: { messageId: string; title?: string }) => void

@@ -36,6 +36,8 @@ const baseProps = {
   onEdit: vi.fn(),
   onClearPurchased: vi.fn(),
   onQuantityChange: vi.fn(),
+  onSendToPantry: vi.fn(),
+  onExportPdf: vi.fn(),
 }
 
 describe('ShoppingView', () => {
@@ -94,5 +96,12 @@ describe('ShoppingView', () => {
     )
     await userEvent.click(screen.getByText(i18n.t('shopping.deleteList')))
     expect(onDeleteListClick).toHaveBeenCalledOnce()
+  })
+
+  it('shows the export-PDF button only when there are items, and calls the handler', async () => {
+    const onExportPdf = vi.fn()
+    renderWithProviders(<ShoppingView {...baseProps} items={[item()]} onExportPdf={onExportPdf} />)
+    await userEvent.click(screen.getByText(i18n.t('shopping.exportPdf')))
+    expect(onExportPdf).toHaveBeenCalledOnce()
   })
 })

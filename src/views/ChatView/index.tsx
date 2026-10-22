@@ -11,6 +11,7 @@ import { MdArrowBack, MdAutoAwesome, MdHistory, MdAddComment, MdOutlineLightbulb
 import { useTranslation } from 'react-i18next'
 import ChatSidebar from './ChatSidebar'
 import NewChatOnboarding from './NewChatOnboarding'
+import PantrySuggestions from './PantrySuggestions'
 import ChatMessageList, { type SuggestionEvent } from './ChatMessageList'
 import ChatComposer, { type ChatComposerHandle } from './ChatComposer'
 import QuickReplies from './QuickReplies'
@@ -29,6 +30,7 @@ import {
   EmptyState,
   ErrorState,
   BackRow,
+  NewChatStack,
 } from './ChatView.styles'
 import { useConversations, useConversation, useCreateConversation, useDeleteConversation, useSuggestRecipe } from '../../hooks/useChat'
 import { useChatSession } from '../../hooks/useChatSession'
@@ -61,11 +63,12 @@ export interface ChatViewProps {
     { recipeTitle: string; ingredients: RecipeIngredient[] }
   >
   onSentToList: (listId: string) => void
+  onNavigateToMealprep: () => void
 }
 
 const MIN_MESSAGES_FOR_SUGGESTION = 2
 
-export default function ChatView({ sendRecipeToShoppingList, onSentToList }: ChatViewProps) {
+export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNavigateToMealprep }: ChatViewProps) {
   const { t } = useTranslation()
   const { isSignedIn, isLoaded } = useAuth()
 
@@ -73,7 +76,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
   const [creatingNew, setCreatingNew] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ChatConversation | null>(null)
-  const [suggestedRecipeId, setSuggestedRecipeId] = useState<number | null>(null)
+  const [suggestedRecipeId, setSuggestedRecipeId] = useState<string | null>(null)
   // Set right after creating a conversation from onboarding, so an effect
   // (below) can send the typed recipe/ingredient as the first message and
   // immediately ask for suggestions once that conversation is actually
@@ -243,7 +246,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
     )
   }
 
-  const handleToggleFavorite = (id: number): void => {
+  const handleToggleFavorite = (id: string): void => {
     favoriteToggle.requestToggle(id, favoriteIdSet.has(id))
   }
 
@@ -363,7 +366,14 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList }: Cha
       </TopBar>
 
       {creatingNew && (
-        <NewChatOnboarding onStart={handleStartConversation} isPending={createConversation.isPending} />
+        <NewChatStack>
+          <PantrySuggestions onSelectRecipe={setSuggestedRecipeId} />
+          <NewChatOnboarding
+            onStart={handleStartConversation}
+            onGoToMealprep={onNavigateToMealprep}
+            isPending={createConversation.isPending}
+          />
+        </NewChatStack>
       )}
 
       {!creatingNew && activeConversationId !== null && (

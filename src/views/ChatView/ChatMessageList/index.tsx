@@ -24,10 +24,10 @@ export interface SuggestionEvent {
 export interface ChatMessageListProps {
   messages: ChatMessageItem[]
   suggestionEvents: SuggestionEvent[]
-  onSelectRecipe: (id: number) => void
-  favoriteIds?: Set<number>
-  onToggleFavorite?: (id: number) => void
-  pendingFavoriteId?: number
+  onSelectRecipe: (id: string) => void
+  favoriteIds?: Set<string>
+  onToggleFavorite?: (id: string) => void
+  pendingFavoriteId?: string
 }
 
 // User text renders as plain text (white-space: pre-wrap in the Bubble

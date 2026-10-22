@@ -18,14 +18,14 @@ describe('translateRecipeContent', () => {
   })
 
   it('returns the original content unchanged for English', async () => {
-    const recipe = { id: 1, title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] }
+    const recipe = { id: '1', title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] }
     const result = await translateRecipeContent(recipe, 'en')
     expect(result).toEqual({ title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] })
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
   it('translates via Groq and caches the result for the same recipe id/language', async () => {
-    const recipe = { id: 2, title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] }
+    const recipe = { id: '2', title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] }
     mockCreate.mockResolvedValue(
       completion({ title: 'Pasta ES', ingredientNames: ['harina'], instructionSteps: ['Hervir agua.'] }),
     )
@@ -47,7 +47,7 @@ describe('translateRecipeContent', () => {
   // hit this cache at all (serializeDetail only calls this for 'es'), which
   // is why only Spanish stayed broken.
   it('does not reuse a cached translation whose array lengths no longer match the current input', async () => {
-    const id = 3
+    const id = '3'
     const staleRecipe = { id, title: 'Combo', ingredientNames: [], instructionSteps: [] }
     mockCreate.mockResolvedValueOnce(completion({ title: 'Combo', ingredientNames: [], instructionSteps: [] }))
     const stale = await translateRecipeContent(staleRecipe, 'es')
@@ -76,7 +76,7 @@ describe('translateRecipeContent', () => {
   })
 
   it('falls back to the original English content when the JSON response is malformed', async () => {
-    const recipe = { id: 4, title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] }
+    const recipe = { id: '4', title: 'Pasta', ingredientNames: ['flour'], instructionSteps: ['Boil water.'] }
     mockCreate.mockResolvedValue({ choices: [{ message: { content: 'not json' } }] })
 
     const result = await translateRecipeContent(recipe, 'es')
@@ -84,7 +84,7 @@ describe('translateRecipeContent', () => {
   })
 
   it('falls back to the original English content when the translated arrays have a different length', async () => {
-    const recipe = { id: 5, title: 'Pasta', ingredientNames: ['flour', 'salt'], instructionSteps: ['Boil water.'] }
+    const recipe = { id: '5', title: 'Pasta', ingredientNames: ['flour', 'salt'], instructionSteps: ['Boil water.'] }
     mockCreate.mockResolvedValue(
       completion({ title: 'Pasta ES', ingredientNames: ['harina'], instructionSteps: ['Hervir agua.'] }),
     )

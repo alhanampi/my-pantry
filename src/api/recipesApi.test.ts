@@ -5,14 +5,26 @@ import type { RecipeSearchFilters, RecipeSearchResponse, RecipeDetail } from '..
 const filters: RecipeSearchFilters = { query: 'pasta', cuisine: '', diet: '', includeIngredients: '', maxCalories: '' }
 
 const searchResponse: RecipeSearchResponse = {
-  results: [{ id: 1, title: 'Pasta', image: 'img', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 }],
+  results: [
+    {
+      id: 'spoonacular:1',
+      source: 'spoonacular',
+      title: 'Pasta',
+      image: 'img',
+      servings: 2,
+      readyInMinutes: 20,
+      ingredientNames: [],
+      calories: 300,
+    },
+  ],
   totalResults: 1,
   offset: 0,
   number: 4,
 }
 
 const detail: RecipeDetail = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta',
   image: 'img',
   servings: 2,
@@ -61,11 +73,11 @@ describe('recipesApi caching', () => {
   it('apiGetRecipeDetail caches a successful response and serves it without a second fetch', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ recipe: detail }), { status: 200 }))
 
-    const first = await apiGetRecipeDetail(1, 'en')
+    const first = await apiGetRecipeDetail('spoonacular:1', 'en')
     expect(first).toEqual(detail)
     expect(fetch).toHaveBeenCalledTimes(1)
 
-    const second = await apiGetRecipeDetail(1, 'en')
+    const second = await apiGetRecipeDetail('spoonacular:1', 'en')
     expect(second).toEqual(detail)
     expect(fetch).toHaveBeenCalledTimes(1)
   })

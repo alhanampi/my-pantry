@@ -42,6 +42,7 @@ const baseProps = {
   onAddToCart: vi.fn(),
   onAddClick: vi.fn(),
   onQuantityChange: vi.fn(),
+  onExportCsv: vi.fn(),
 }
 
 describe('PantryView', () => {
@@ -84,5 +85,13 @@ describe('PantryView', () => {
     render(<PantryView {...baseProps} onAddClick={onAddClick} />)
     await userEvent.click(screen.getByLabelText(i18n.t('header.addProduct')))
     expect(onAddClick).toHaveBeenCalledOnce()
+  })
+
+  it('calls onExportCsv from the export button', async () => {
+    stubMatchMedia(false)
+    const onExportCsv = vi.fn()
+    render(<PantryView {...baseProps} onExportCsv={onExportCsv} />)
+    await userEvent.click(screen.getByLabelText(i18n.t('table.exportCsv')))
+    expect(onExportCsv).toHaveBeenCalledOnce()
   })
 })

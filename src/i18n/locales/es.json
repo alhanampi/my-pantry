@@ -1,5 +1,8 @@
 {
   "appName": "Mi Despensa",
+  "common": {
+    "undo": "Deshacer"
+  },
   "notifications": {
     "enable": "Activar notificaciones de vencimiento",
     "disable": "Desactivar notificaciones",
@@ -11,6 +14,7 @@
     "recipes": "Recetas",
     "favorites": "Favoritas",
     "chat": "Chat",
+    "mealprep": "Mealprep",
     "about": "Acerca de"
   },
   "header": {
@@ -32,7 +36,9 @@
     "emptyTitle": "Tu despensa está vacía",
     "emptySubtitle": "Tocá el + para agregar tu primer producto",
     "count_one": "{{count}} producto",
-    "count_other": "{{count}} productos"
+    "count_other": "{{count}} productos",
+    "exportCsv": "Exportar CSV",
+    "productDeleted": "Producto eliminado"
   },
   "card": {
     "brand": "Marca",
@@ -105,6 +111,10 @@
     "deleteList": "Borrar lista",
     "deleteListConfirmTitle": "¿Borrar esta lista?",
     "deleteListConfirmBody": "\"{{name}}\" y todos sus productos se van a borrar de forma permanente. Esta acción no se puede deshacer.",
+    "exportPdf": "Exportar PDF",
+    "itemDeleted": "Ítem eliminado",
+    "sendToPantry": "Enviar a la despensa",
+    "sentToPantry": "{{name}} fue enviado a la despensa",
     "lists": {
       "general": "General"
     }
@@ -128,6 +138,7 @@
     "fat": "Grasas",
     "minutes": "min",
     "kcal": "kcal",
+    "poweredByEdamam": "Con datos de Edamam",
     "ingredients": "Ingredientes",
     "instructions": "Instrucciones",
     "noInstructions": "Esta receta no trae instrucciones paso a paso — probablemente combina otras recetas ya preparadas.",
@@ -190,6 +201,24 @@
     "emptySidebar": "Todavía no hay conversaciones. ¡Empezá una nueva!",
     "placeholder": "Contame qué tenés a mano...",
     "send": "Enviar",
+    "onboardingGoal": {
+      "title": "¿Qué tenés ganas de hacer?",
+      "quick": "Una receta rápida",
+      "quickHint": "Contame qué tenés y te sugiero algo ahora",
+      "weekly": "Planificar comidas de la semana",
+      "weeklyHint": "Recetas para toda la semana y la lista de compras, todo junto",
+      "specific": "Un objetivo particular",
+      "specificHint": "Algo más específico — te hago un par de preguntas"
+    },
+    "pantrySuggestions": {
+      "heading": "A partir de lo que tenés en la despensa",
+      "emptyHint": "Agregá algunos productos a tu despensa y te sugiero recetas con ellos.",
+      "loading": "Mirando tu despensa..."
+    },
+    "quickPresets": {
+      "heading": "O arrancá directo desde tu despensa"
+    },
+    "backToGoals": "Volver",
     "onboardingTitle": "Antes de empezar",
     "onboardingQuery": "¿Qué querés cocinar?",
     "onboardingQueryPlaceholder": "Una receta o un ingrediente que tengas, ej: pollo, pasta, tarta de manzana...",
@@ -237,6 +266,27 @@
       "quotaExceeded": "El chat asistente no está disponible por el momento. Probá de nuevo más tarde.",
       "configError": "El chat asistente no está configurado en este servidor.",
       "generic": "Algo salió mal. Probá de nuevo."
+    }
+  },
+  "mealprep": {
+    "title": "Plan de comidas",
+    "signedOutTitle": "Iniciá sesión para planificar tu semana",
+    "signedOutBody": "Los planes de comida se guardan en tu cuenta, para que puedas retomarlos.",
+    "generate": "Generar plan de comidas",
+    "generating": "Armando tu semana...",
+    "consolidating": "Viendo qué te falta...",
+    "deletePlan": "Borrar plan",
+    "deletePlanConfirmTitle": "¿Borrar este plan de comidas?",
+    "deletePlanConfirmBody": "El plan de esta semana se va a borrar de forma permanente. Esta acción no se puede deshacer.",
+    "backToCalendar": "Volver al calendario",
+    "shoppingListName": "Plan semanal — {{date}}",
+    "pantryNoteDetail": "Puede que ya tengas algo de esto — revisá tu despensa",
+    "consolidatedList": {
+      "heading": "Lista de compras de la semana",
+      "allCovered": "¡Parece que tu despensa ya cubre todo!",
+      "pantryNote": "Puede que ya tengas algo — revisá tu despensa",
+      "cancel": "Cancelar",
+      "pushToShoppingList": "Enviar a la lista de compras"
     }
   },
   "auth": {

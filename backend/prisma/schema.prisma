@@ -30,6 +30,7 @@ model User {
   shoppingLists       ShoppingList[]
   favoriteRecipes     FavoriteRecipe[]
   chatConversations   ChatConversation[]
+  mealPlans           MealPlan[]
 }
 
 // Personal AI cooking-assistant conversations (Groq-backed "Chat" tab).
@@ -65,24 +66,62 @@ model ChatMessage {
   @@index([conversationId])
 }
 
-// A bookmark onto a Spoonacular recipe id — deliberately not a cached
-// snapshot of the recipe's content (title/image/etc.). Spoonacular stays the
-// single source of truth; the favorites list is re-hydrated via
-// getRecipeInformation (same as the detail endpoint) each time it's read, so
-// translations/edits on Spoonacular's side are always reflected. Personal
-// per-user (not shared with a linked partner via accessibleUserIds), unlike
-// pantry/shopping — favoriting a recipe is closer to a personal bookmark
-// than shared household data.
+// A bookmark onto a recipe id — deliberately not a cached snapshot of the
+// recipe's content (title/image/etc.). The provider (Spoonacular or Edamam)
+// stays the single source of truth; the favorites list is re-hydrated via
+// getRecipeInformation/getEdamamRecipeInformation (same as the detail
+// endpoint) each time it's read, so translations/edits on the provider's
+// side are always reflected. `recipeId` is the compound "source:externalId"
+// form produced by makeRecipeId (recipeSerializers.ts), not a bare provider
+// id — this is what lets a Spoonacular numeric id and an Edamam uri coexist
+// without colliding. Personal per-user (not shared with a linked partner via
+// accessibleUserIds), unlike pantry/shopping — favoriting a recipe is closer
+// to a personal bookmark than shared household data.
 model FavoriteRecipe {
   id        String   @id @default(cuid())
   ownerId   String
-  recipeId  Int
+  recipeId  String
   createdAt DateTime @default(now())
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, recipeId])
   @@index([ownerId])
+}
+
+// A weekly meal plan — one MealPlanEntry per day, each just a bookmark onto
+// a compound recipe id (see FavoriteRecipe's own comment on the
+// "source:externalId" form, title/image cached here purely so the calendar
+// UI doesn't need N recipe-detail lookups just to render a grid of cards;
+// the full recipe still comes from its provider on drill-down, same as
+// FavoriteRecipe's "don't cache recipe content" philosophy). Personal, not
+// shared via accessibleUserIds — same reasoning as ChatConversation.
+model MealPlan {
+  id        String   @id @default(cuid())
+  ownerId   String
+  weekStart DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  days  MealPlanEntry[]
+
+  @@index([ownerId])
+}
+
+model MealPlanEntry {
+  id         String @id @default(cuid())
+  mealPlanId String
+  dayOfWeek  Int // 0-6
+  // Compound "source:externalId" form (see FavoriteRecipe's own comment) —
+  // not a bare provider id.
+  recipeId   String
+  title      String
+  image      String @default("")
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([mealPlanId, dayOfWeek])
 }
 
 model ShoppingList {

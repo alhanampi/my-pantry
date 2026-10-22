@@ -31,7 +31,7 @@ export interface SortConfig {
 
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
-export type AppView = 'pantry' | 'shopping' | 'recipes' | 'favorites' | 'chat' | 'about'
+export type AppView = 'pantry' | 'shopping' | 'recipes' | 'favorites' | 'chat' | 'mealprep' | 'about'
 
 export type ModalContext = 'pantry' | 'shopping'
 
@@ -138,8 +138,14 @@ export interface RecipeIngredient {
   measures: { metric: RecipeMeasure; us: RecipeMeasure }
 }
 
+// Compound "source:externalId" id (see backend's recipeSerializers.ts
+// makeRecipeId) — never a bare provider id. Opaque to the frontend: never
+// parsed or constructed here, only round-tripped back to the backend.
+export type RecipeSource = 'spoonacular' | 'edamam'
+
 export interface RecipeCard {
-  id: number
+  id: string
+  source: RecipeSource
   title: string
   image: string
   servings: number
@@ -163,7 +169,8 @@ export interface RecipeNutrition {
 }
 
 export interface RecipeDetail {
-  id: number
+  id: string
+  source: RecipeSource
   title: string
   image: string
   servings: number
@@ -223,6 +230,31 @@ export interface ChatMessageItem {
 export interface DeleteConversationDialogState {
   open: boolean
   conversation: ChatConversation | null
+}
+
+// ─── Meal plan (Mealprep tab) ──────────────────────────────────────────────
+
+export interface MealPlanEntry {
+  id: string
+  dayOfWeek: number
+  recipeId: string
+  title: string
+  image: string
+}
+
+export interface MealPlan {
+  id: string
+  weekStart: string
+  days: MealPlanEntry[]
+}
+
+export interface ConsolidatedShoppingItem {
+  name: string
+  quantity: string
+  // True when a pantry item matched by name but its quantity couldn't be
+  // parsed — shown with a "you may already have some" hint instead of being
+  // silently dropped or silently trusted.
+  pantryNote: boolean
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -291,6 +323,7 @@ export interface ProductTableProps {
   onAddToCart: (product: Product) => void
   onAddClick: () => void
   onQuantityChange: (id: number, delta: number) => void
+  onExportCsv: () => void
   isLoading?: boolean
 }
 
@@ -300,6 +333,7 @@ export interface ShoppingItemProps {
   onDelete: (id: number) => void
   onEdit: (id: number) => void
   onQuantityChange: (id: number, delta: number) => void
+  onSendToPantry: (id: number) => void
 }
 
 export interface ShoppingListProps {
@@ -314,6 +348,8 @@ export interface ShoppingListProps {
   onEdit: (id: number) => void
   onClearPurchased: () => void
   onQuantityChange: (id: number, delta: number) => void
+  onSendToPantry: (id: number) => void
+  onExportPdf: () => void
   isLoading?: boolean
 }
 

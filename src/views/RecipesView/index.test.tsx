@@ -16,7 +16,7 @@ vi.mock('../../hooks/useUnitSystem', () => ({
 vi.mock('./RecipeCardGrid', () => ({
   // Stubbed out — RecipeCardGrid's own IntersectionObserver behavior is
   // covered by its own test; here we just need a clickable card.
-  default: ({ recipes, onSelect }: { recipes: RecipeCard[]; onSelect: (id: number) => void }) => (
+  default: ({ recipes, onSelect }: { recipes: RecipeCard[]; onSelect: (id: string) => void }) => (
     <div>
       {recipes.map((r) => (
         <button key={r.id} onClick={() => onSelect(r.id)}>
@@ -28,7 +28,8 @@ vi.mock('./RecipeCardGrid', () => ({
 }))
 
 const recipe: RecipeCard = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta al pomodoro',
   image: 'img.jpg',
   servings: 2,
@@ -38,7 +39,8 @@ const recipe: RecipeCard = {
 }
 
 const detail: RecipeDetail = {
-  id: 1,
+  id: 'spoonacular:1',
+  source: 'spoonacular',
   title: 'Pasta al pomodoro',
   image: 'img.jpg',
   servings: 2,
@@ -136,7 +138,7 @@ describe('RecipesView', () => {
       requestToggle: vi.fn(),
       confirmRemove: vi.fn(),
       cancelRemove: vi.fn(),
-      pendingRemoveId: 1,
+      pendingRemoveId: 'spoonacular:1',
       isPending: false,
       pendingRecipeId: undefined,
     })
