@@ -121,6 +121,24 @@ export async function searchRecipes(params: SearchRecipesParams): Promise<Comple
   return (await handle(res)) as ComplexSearchResponse
 }
 
+// Looks up a single recipe by (near-exact) title — deliberately NOT built on
+// searchRecipes(), whose `sort: 'random'` is right for discovery browsing
+// but wrong here: this is used to find a photo that actually matches a
+// specific AI-generated title (mealPlanAi.ts's resolveMealImage), so it
+// needs complexSearch's own relevance ordering instead of a random pick
+// among every loosely-matching result.
+export async function searchRecipeByTitle(title: string): Promise<SpoonacularRecipe | null> {
+  const usp = new URLSearchParams({
+    apiKey: apiKey(),
+    query: title,
+    number: '1',
+    offset: '0',
+  })
+  const res = await fetch(`${BASE}/recipes/complexSearch?${usp.toString()}`)
+  const data = (await handle(res)) as ComplexSearchResponse
+  return data.results[0] ?? null
+}
+
 // Progressive relaxation for a criteria-driven search that must not come
 // back empty in practice. Combining every extracted field at once (query +
 // includeIngredients + cuisine + diet + maxReadyTime, all ANDed by

@@ -5,18 +5,20 @@ import MealprepView from './index'
 import {
   useCurrentMealPlan,
   useGenerateMealPlan,
+  useRefineMealPlan,
+  useSwapMeal,
   useDeleteMealPlan,
   useConsolidateMealPlan,
   useCreateShoppingListFromMealPlan,
 } from '../../hooks/useMealPlan'
-import { useRecipeDetail } from '../../hooks/useRecipes'
-import { useFavoriteIds, useFavoriteToggle } from '../../hooks/useFavorites'
+import { usePantry } from '../../hooks/usePantry'
+import { useGeolocation } from '../../hooks/useGeolocation'
 import '../../i18n'
 import i18n from '../../i18n'
 
 vi.mock('../../hooks/useMealPlan')
-vi.mock('../../hooks/useRecipes')
-vi.mock('../../hooks/useFavorites')
+vi.mock('../../hooks/usePantry')
+vi.mock('../../hooks/useGeolocation')
 
 const mockUseAuth = vi.fn()
 vi.mock('@clerk/clerk-react', () => ({
@@ -27,27 +29,36 @@ function mutationSpy(overrides: Record<string, unknown> = {}) {
   return { mutate: vi.fn(), isPending: false, ...overrides }
 }
 
-function favoriteToggleSpy(overrides: Record<string, unknown> = {}) {
-  return {
-    requestToggle: vi.fn(),
-    confirmRemove: vi.fn(),
-    cancelRemove: vi.fn(),
-    pendingRemoveId: null,
-    isPending: false,
-    ...overrides,
-  }
-}
-
 function renderMealprepView(props: Partial<Parameters<typeof MealprepView>[0]> = {}) {
   return render(
     <MealprepView sendRecipeToShoppingList={mutationSpy() as never} onSentToList={vi.fn()} {...props} />,
   )
 }
 
+function mealPlanMeal(title: string) {
+  return {
+    title,
+    description: `${title} description`,
+    image: '',
+    ingredients: [{ name: 'rice', amount: 200, unit: 'g' }],
+    steps: [`Cook ${title}`],
+    notes: '',
+    prepTimeMinutes: 10,
+    totalTimeMinutes: 20,
+  }
+}
+
 const mealPlan = {
   id: 'plan1',
   weekStart: new Date().toISOString(),
-  days: [{ id: 'e1', dayOfWeek: 0, recipeId: 101, title: 'Arroz con pollo', image: 'img.jpg' }],
+  includeBreakfast: false,
+  servings: 2,
+  dietaryRestrictions: [],
+  batchPrepPlan: null,
+  days: [
+    { id: 'e1', dayOfWeek: 0, mealType: 'lunch' as const, ...mealPlanMeal('Arroz con pollo') },
+    { id: 'e2', dayOfWeek: 0, mealType: 'dinner' as const, ...mealPlanMeal('Sopa de verduras') },
+  ],
 }
 
 describe('MealprepView', () => {
@@ -56,12 +67,13 @@ describe('MealprepView', () => {
     mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true })
     vi.mocked(useCurrentMealPlan).mockReturnValue({ data: null, isLoading: false } as never)
     vi.mocked(useGenerateMealPlan).mockReturnValue(mutationSpy() as never)
+    vi.mocked(useRefineMealPlan).mockReturnValue(mutationSpy() as never)
+    vi.mocked(useSwapMeal).mockReturnValue(mutationSpy() as never)
     vi.mocked(useDeleteMealPlan).mockReturnValue(mutationSpy() as never)
     vi.mocked(useConsolidateMealPlan).mockReturnValue(mutationSpy({ data: undefined }) as never)
     vi.mocked(useCreateShoppingListFromMealPlan).mockReturnValue(mutationSpy() as never)
-    vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
-    vi.mocked(useFavoriteIds).mockReturnValue({ data: [] } as never)
-    vi.mocked(useFavoriteToggle).mockReturnValue(favoriteToggleSpy() as never)
+    vi.mocked(usePantry).mockReturnValue({ products: [] } as never)
+    vi.mocked(useGeolocation).mockReturnValue({ coords: null, error: null, requestLocation: vi.fn() } as never)
   })
 
   it('shows a signed-out prompt when not signed in', () => {
@@ -82,13 +94,45 @@ describe('MealprepView', () => {
     renderMealprepView()
     await userEvent.click(screen.getByText(i18n.t('mealprep.generate')))
 
-    expect(generateMealPlan.mutate).toHaveBeenCalledWith({ dietaryRestrictions: [], servings: 2 })
+    expect(generateMealPlan.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ dietaryRestrictions: [], servings: 2, includeBreakfast: false }),
+    )
   })
 
-  it('renders the weekly calendar from the current plan', () => {
+  it('renders the weekly calendar from the current plan, grouped by meal', () => {
     vi.mocked(useCurrentMealPlan).mockReturnValue({ data: mealPlan, isLoading: false } as never)
     renderMealprepView()
     expect(screen.getByText('Arroz con pollo')).toBeInTheDocument()
+    expect(screen.getByText('Sopa de verduras')).toBeInTheDocument()
+  })
+
+  it('opens a meal\'s detail on click, with no extra fetch', async () => {
+    vi.mocked(useCurrentMealPlan).mockReturnValue({ data: mealPlan, isLoading: false } as never)
+    renderMealprepView()
+
+    await userEvent.click(screen.getByText('Arroz con pollo'))
+
+    expect(screen.getByText('Arroz con pollo description')).toBeInTheDocument()
+    expect(screen.getByText('Cook Arroz con pollo')).toBeInTheDocument()
+    await userEvent.click(screen.getByText(i18n.t('mealprep.backToCalendar')))
+    expect(screen.getByText('Arroz con pollo')).toBeInTheDocument()
+  })
+
+  it('swaps a meal with the typed reason', async () => {
+    vi.mocked(useCurrentMealPlan).mockReturnValue({ data: mealPlan, isLoading: false } as never)
+    const swapMeal = mutationSpy()
+    vi.mocked(useSwapMeal).mockReturnValue(swapMeal as never)
+
+    renderMealprepView()
+    await userEvent.click(screen.getByText('Arroz con pollo'))
+    await userEvent.click(screen.getByText(i18n.t('mealprep.swap.button')))
+    await userEvent.type(screen.getByPlaceholderText(i18n.t('mealprep.swap.reasonPlaceholder')), 'no pescado')
+    const confirmButtons = screen.getAllByText(i18n.t('mealprep.swap.confirm'))
+    await userEvent.click(confirmButtons[confirmButtons.length - 1])
+
+    expect(swapMeal.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'plan1', dayOfWeek: 0, mealType: 'lunch', reason: 'no pescado' }),
+    )
   })
 
   it('previews the consolidated list, then confirms and reports the new list id', async () => {
@@ -130,5 +174,39 @@ describe('MealprepView', () => {
 
     await userEvent.click(screen.getAllByText(i18n.t('mealprep.deletePlan'))[1])
     expect(deleteMealPlan.mutate).toHaveBeenCalledWith('plan1')
+  })
+
+  it('sends a free-text refinement for the current plan', async () => {
+    vi.mocked(useCurrentMealPlan).mockReturnValue({ data: mealPlan, isLoading: false } as never)
+    const refineMealPlan = mutationSpy()
+    vi.mocked(useRefineMealPlan).mockReturnValue(refineMealPlan as never)
+
+    renderMealprepView()
+    await userEvent.type(screen.getByPlaceholderText(i18n.t('mealprep.refine.placeholder')), 'less spicy{enter}')
+
+    expect(refineMealPlan.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'plan1', message: 'less spicy' }),
+    )
+  })
+
+  it('shows the batch prep plan view when available', async () => {
+    vi.mocked(useCurrentMealPlan).mockReturnValue({
+      data: {
+        ...mealPlan,
+        batchPrepPlan: {
+          menu: ['Arroz con pollo'],
+          totalQuantities: [{ name: 'rice', amount: 200, unit: 'g' }],
+          sharedComponents: [],
+          cookingOrder: ['Preheat the oven.'],
+          storageNotes: 'Store in the fridge.',
+          estimatedTotalMinutes: 45,
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    renderMealprepView()
+    await userEvent.click(screen.getByText(i18n.t('mealprep.batchPrepPlan.viewButton')))
+    expect(screen.getByText('Preheat the oven.')).toBeInTheDocument()
   })
 })

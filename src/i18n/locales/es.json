@@ -154,6 +154,49 @@
       "quotaExceeded": "La búsqueda de recetas no está disponible por el momento. Probá de nuevo más tarde.",
       "configError": "La búsqueda de recetas no está configurada en este servidor.",
       "generic": "Ocurrió un error al cargar las recetas."
+    },
+    "pantrySuggestions": {
+      "title": "En base a lo que tenés en tu despensa...",
+      "empty": "Agregá productos a tu despensa para ver sugerencias."
+    },
+    "randomSuggestions": {
+      "title": "...o probá estas opciones",
+      "moreSuggestions": "Más sugerencias"
+    },
+    "filters": {
+      "cuisineOptions": {
+        "african": "Africana",
+        "american": "Americana",
+        "british": "Británica",
+        "cajun": "Cajún",
+        "caribbean": "Caribeña",
+        "chinese": "China",
+        "easternEuropean": "Europea del este",
+        "european": "Europea",
+        "french": "Francesa",
+        "german": "Alemana",
+        "greek": "Griega",
+        "indian": "India",
+        "irish": "Irlandesa",
+        "italian": "Italiana",
+        "japanese": "Japonesa",
+        "jewish": "Judía",
+        "korean": "Coreana",
+        "latinAmerican": "Latinoamericana",
+        "mediterranean": "Mediterránea",
+        "mexican": "Mexicana",
+        "middleEastern": "Medio oriental",
+        "nordic": "Nórdica",
+        "southern": "Sureña (EE.UU.)",
+        "spanish": "Española",
+        "thai": "Tailandesa",
+        "vietnamese": "Vietnamita"
+      },
+      "dietOptions": {
+        "primal": "Primal",
+        "lowFodmap": "Bajo en FODMAP",
+        "whole30": "Whole30"
+      }
     }
   },
   "stores": {
@@ -205,8 +248,6 @@
       "title": "¿Qué tenés ganas de hacer?",
       "quick": "Una receta rápida",
       "quickHint": "Contame qué tenés y te sugiero algo ahora",
-      "weekly": "Planificar comidas de la semana",
-      "weeklyHint": "Recetas para toda la semana y la lista de compras, todo junto",
       "specific": "Un objetivo particular",
       "specificHint": "Algo más específico — te hago un par de preguntas"
     },
@@ -260,6 +301,7 @@
     "suggesting": "Buscando recetas...",
     "suggestionsIntro": "¡Acá van algunas ideas ricas para vos! 🍳😋",
     "noSuggestions": "Mmm, no encontré una receta esta vez 😅 — probá de nuevo o seguí contándome un poco más.",
+    "continueChat": "Seguir charlando",
     "backToChat": "Volver al chat",
     "conversationTooLong": "Esta conversación ya es muy larga — empezá una nueva para seguir.",
     "errors": {
@@ -281,6 +323,63 @@
     "backToCalendar": "Volver al calendario",
     "shoppingListName": "Plan semanal — {{date}}",
     "pantryNoteDetail": "Puede que ya tengas algo de esto — revisá tu despensa",
+    "notes": "Notas",
+    "totalTimeMinutes": "{{count}} min",
+    "swap": {
+      "button": "Cambiar",
+      "dialogTitle": "¿Por qué querés cambiarla?",
+      "reasonPlaceholder": "Motivo (opcional)",
+      "confirm": "Cambiar"
+    },
+    "mealType": {
+      "breakfast": "Desayuno",
+      "lunch": "Almuerzo",
+      "dinner": "Cena"
+    },
+    "generator": {
+      "weekStart": "¿Desde qué día?",
+      "daysCount": "¿Para cuántos días?",
+      "timeAvailable": "¿Cuánto tiempo tenés para cocinar?",
+      "timeMinutes": "{{count}} min",
+      "timeHours": "{{count}} h",
+      "ingredientsOnHand": "Ingredientes que ya tenés",
+      "includeBreakfast": "Incluir desayuno"
+    },
+    "ingredientPicker": {
+      "fromPantry": "De tu despensa",
+      "common": "Ingredientes comunes",
+      "addOtherPlaceholder": "Agregar otro ingrediente",
+      "addOther": "Agregar ingrediente",
+      "items": {
+        "rice": "Arroz",
+        "pasta": "Fideos",
+        "chicken": "Pollo",
+        "beef": "Carne vacuna",
+        "eggs": "Huevos",
+        "potatoes": "Papas",
+        "onion": "Cebolla",
+        "tomato": "Tomate",
+        "cheese": "Queso",
+        "beans": "Legumbres",
+        "flour": "Harina",
+        "milk": "Leche"
+      }
+    },
+    "refine": {
+      "placeholder": "Pedí un ajuste a tu plan...",
+      "send": "Enviar ajuste"
+    },
+    "batchPrepPlan": {
+      "viewButton": "Ver plan de preparación",
+      "title": "Plan de preparación",
+      "estimatedTime": "Alrededor de {{count}} minutos en total",
+      "menu": "Menú de este día de preparación",
+      "quantities": "Cantidades totales",
+      "sharedComponents": "Preparaciones base compartidas",
+      "usedIn": "Se usa en:",
+      "cookingOrder": "Orden de cocción",
+      "storageNotes": "Cómo guardar y recalentar"
+    },
     "consolidatedList": {
       "heading": "Lista de compras de la semana",
       "allCovered": "¡Parece que tu despensa ya cubre todo!",

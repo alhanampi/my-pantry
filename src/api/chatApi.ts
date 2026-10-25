@@ -1,4 +1,4 @@
-import type { ChatConversation, ChatMessageItem, RecipeCard } from '../utils/types'
+import type { ChatConversation, ChatMessageItem, Coordinates, RecipeCard } from '../utils/types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -56,10 +56,15 @@ export async function apiSuggestRecipe(
   token: string,
   conversationId: string,
   lang: string,
+  location?: Coordinates,
 ): Promise<{ recipes: RecipeCard[] }> {
   const res = await fetch(
     `${API_URL}/api/chat/conversations/${conversationId}/suggest-recipe?lang=${lang}`,
-    { method: 'POST', headers: headers(token) },
+    {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify({ location }),
+    },
   )
   return handleResponse<{ recipes: RecipeCard[]; notEnoughInfo: boolean }>(res)
 }

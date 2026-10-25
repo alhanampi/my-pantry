@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import { body, validationResult } from 'express-validator'
+import { Prisma } from '@prisma/client'
 import prisma from '../db/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import {
@@ -12,17 +13,23 @@ import {
   ChatQuotaError,
   type ChatHistoryMessage,
 } from '../services/chatAssistant.js'
-import { searchRecipesWithFallback, getRecipeInformation } from '../services/spoonacular.js'
-import { getEdamamRecipeInformation } from '../services/edamam.js'
+import { buildGeoHint, type GeoLocation } from '../services/geoContext.js'
+import { searchRecipesWithFallback } from '../services/spoonacular.js'
 import {
   serializeCard,
-  normalizeSpoonacularRecipe,
-  normalizeEdamamRecipe,
   searchWithEdamamSupplement,
-  parseRecipeId,
   handleSpoonacularError,
-  type NormalizedRecipe,
 } from '../services/recipeSerializers.js'
+import {
+  generateMealPlan,
+  refineMealPlan,
+  swapMeal,
+  resolveMealImage,
+  type GeneratedMealPlan,
+  type GeneratedDay,
+  type GeneratedMeal,
+  type MealIngredient,
+} from '../services/mealPlanAi.js'
 
 const router = Router()
 
@@ -30,6 +37,11 @@ const MAX_CONVERSATIONS_PER_USER = 20
 const MAX_MESSAGES_PER_CONVERSATION = 60
 const MAX_MESSAGE_LENGTH = 2000
 const SUGGESTION_COUNT = 3
+// The Recetas tab's "based on your pantry" section always shows exactly 4
+// cards (product decision, see RecipesView's PantryAndRandomSuggestions) —
+// kept separate from SUGGESTION_COUNT so the in-chat "suggest a recipe"
+// flow isn't affected by that choice.
+const PANTRY_SECTION_SUGGESTION_COUNT = 4
 const MAX_PANTRY_ITEMS_IN_PROMPT = 15
 const PANTRY_SUGGESTION_INGREDIENT_COUNT = 5
 const MEAL_PLAN_DEFAULT_DAYS = 7
@@ -78,22 +90,19 @@ interface ConsolidatedLine {
   pantryNote: boolean
 }
 
-// Unions ingredients across every recipe in the plan (grouped by normalized
+// Unions ingredients across every meal in the plan (grouped by normalized
 // name + unit — mismatched units for the same ingredient are kept as
 // separate lines rather than unit-converted, to avoid an incorrect
 // conversion table), then subtracts what's already in the pantry by exact
 // normalized-name match. Runs backend-side because only the backend has
-// live Product rows via Prisma. Takes NormalizedRecipe (not a raw provider
-// shape) so it works the same regardless of which provider a given day's
-// recipe came from — each ingredient's amount/unit is already resolved to
-// a single system by normalizeSpoonacularRecipe/normalizeEdamamRecipe.
+// live Product rows via Prisma.
 function consolidateIngredients(
-  recipes: NormalizedRecipe[],
+  meals: { ingredients: MealIngredient[] }[],
   pantryProducts: { name: string; quantity: string }[],
 ): ConsolidatedLine[] {
   const unionMap = new Map<string, ConsolidatedLine>()
-  for (const recipe of recipes) {
-    for (const ing of recipe.ingredients) {
+  for (const meal of meals) {
+    for (const ing of meal.ingredients) {
       const unit = ing.unit.trim()
       const key = `${normalizeIngredientName(ing.name)}|${unit.toLowerCase()}`
       const existing = unionMap.get(key)
@@ -138,6 +147,104 @@ function consolidateIngredients(
   }
 
   return result
+}
+
+// Flattens a generated week into one row per (day, mealType), resolving a
+// best-effort real photo per meal by title (see mealPlanAi.ts's
+// resolveMealImage) before persisting. Run in parallel — up to 21 lookups
+// for a full week with breakfast, each independently fail-soft.
+async function buildMealPlanEntryRows(days: GeneratedDay[]) {
+  const flat: { dayOfWeek: number; mealType: 'breakfast' | 'lunch' | 'dinner'; meal: GeneratedMeal }[] = []
+  for (const day of days) {
+    if (day.breakfast) flat.push({ dayOfWeek: day.dayOfWeek, mealType: 'breakfast', meal: day.breakfast })
+    flat.push({ dayOfWeek: day.dayOfWeek, mealType: 'lunch', meal: day.lunch })
+    flat.push({ dayOfWeek: day.dayOfWeek, mealType: 'dinner', meal: day.dinner })
+  }
+
+  return Promise.all(
+    flat.map(async ({ dayOfWeek, mealType, meal }) => ({
+      dayOfWeek,
+      mealType,
+      title: meal.title,
+      description: meal.description,
+      image: await resolveMealImage(meal.title),
+      ingredients: meal.ingredients as unknown as Prisma.InputJsonValue,
+      steps: meal.steps,
+      notes: meal.notes,
+      prepTimeMinutes: meal.prepTimeMinutes,
+      totalTimeMinutes: meal.totalTimeMinutes,
+    })),
+  )
+}
+
+// Inverse of buildMealPlanEntryRows — rebuilds the GeneratedMealPlan shape
+// mealPlanAi.ts's refineMealPlan expects from what's already stored, so a
+// refine request has the same "current plan" context the user is looking
+// at, not just their new free-text message in isolation.
+function entriesToGeneratedPlan(
+  entries: {
+    dayOfWeek: number
+    mealType: string
+    title: string
+    description: string
+    ingredients: Prisma.JsonValue
+    steps: string[]
+    notes: string
+    prepTimeMinutes: number | null
+    totalTimeMinutes: number | null
+  }[],
+  batchPrepPlan: Prisma.JsonValue,
+): GeneratedMealPlan {
+  const dayMap = new Map<number, Partial<GeneratedDay> & { dayOfWeek: number }>()
+  for (const e of entries) {
+    const meal: GeneratedMeal = {
+      title: e.title,
+      description: e.description,
+      ingredients: (e.ingredients as unknown as MealIngredient[]) ?? [],
+      steps: e.steps,
+      notes: e.notes,
+      prepTimeMinutes: e.prepTimeMinutes ?? 15,
+      totalTimeMinutes: e.totalTimeMinutes ?? 30,
+    }
+    const day = dayMap.get(e.dayOfWeek) ?? { dayOfWeek: e.dayOfWeek }
+    if (e.mealType === 'breakfast') day.breakfast = meal
+    else if (e.mealType === 'dinner') day.dinner = meal
+    else day.lunch = meal
+    dayMap.set(e.dayOfWeek, day)
+  }
+
+  const days = Array.from(dayMap.values())
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+    .map((d) => ({ dayOfWeek: d.dayOfWeek, breakfast: d.breakfast, lunch: d.lunch!, dinner: d.dinner! }))
+
+  return {
+    days,
+    batchPrepPlan: (batchPrepPlan as unknown as GeneratedMealPlan['batchPrepPlan']) ?? {
+      menu: [],
+      totalQuantities: [],
+      sharedComponents: [],
+      cookingOrder: [],
+      storageNotes: '',
+      estimatedTotalMinutes: 60,
+    },
+  }
+}
+
+// ChatConfigError/ChatQuotaError come from the same Groq client the chat
+// assistant uses (mealPlanAi.ts re-exports the same error classes) — mapped
+// the same way the streaming chat route maps them, since a meal-plan
+// generation/refinement failure needs the same distinction surfaced to the
+// user (missing API key vs. quota exceeded vs. a generic failure).
+function respondMealPlanAiError(err: unknown, res: Response): boolean {
+  if (err instanceof ChatConfigError) {
+    res.status(500).json({ error: 'configError' })
+    return true
+  }
+  if (err instanceof ChatQuotaError) {
+    res.status(503).json({ error: 'quotaExceeded' })
+    return true
+  }
+  return false
 }
 
 function titleFromFirstMessage(content: string): string {
@@ -215,13 +322,13 @@ router.post(
 
       const result = await searchRecipesWithFallback(
         { includeIngredients: englishNames.join(',') },
-        SUGGESTION_COUNT,
+        PANTRY_SECTION_SUGGESTION_COUNT,
       )
 
       const supplemented = await searchWithEdamamSupplement(
         result,
         { includeIngredients: englishNames.join(',') },
-        SUGGESTION_COUNT,
+        PANTRY_SECTION_SUGGESTION_COUNT,
       )
 
       const recipes = await Promise.all(supplemented.recipes.map((r) => serializeCard(r, lang)))
@@ -389,7 +496,17 @@ router.post(
 router.post(
   '/conversations/:id/suggest-recipe',
   requireAuth,
+  [
+    body('location.lat').optional().isFloat({ min: -90, max: 90 }),
+    body('location.lng').optional().isFloat({ min: -180, max: 180 }),
+  ],
   async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ error: errors.array()[0].msg })
+      return
+    }
+
     try {
       const conversation = await prisma.chatConversation.findFirst({
         where: { id: req.params.id, ownerId: req.clerkUserId! },
@@ -405,13 +522,16 @@ router.post(
         content: m.content,
       }))
 
+      const { location } = req.body as { location?: GeoLocation }
+      const geoHint = buildGeoHint(location)
+
       // Always attempts a search, however little the conversation has
       // covered — "suggest a recipe" is a "give me options now" action, not
       // gated on an information threshold. extractSearchCriteria may return
       // an empty object; searchRecipesWithFallback still returns real
       // (randomly-sorted) results in that case, and progressively relaxes
       // the extracted criteria if the fuller combination comes back empty.
-      const criteria = await extractSearchCriteria(history)
+      const criteria = await extractSearchCriteria(history, geoHint)
 
       const diet = mapDietaryRestrictionsToSpoonacularDiet(conversation.dietaryRestrictions)
       const lang = req.query.lang === 'es' ? 'es' : 'en'
@@ -450,9 +570,10 @@ router.post(
 )
 
 // ── Weekly meal plan (Mealprep tab) ─────────────────────────────────────────
-// A MealPlan is a separate entity from ChatConversation — a week of day
-// slots, each just a bookmark onto a Spoonacular recipe id, not an
-// append-only transcript. See backend/prisma/schema.prisma's own comment.
+// A MealPlan is a week of day slots, each holding a full AI-generated
+// recipe (title/ingredients/steps/notes/times) rather than a bookmark onto
+// an external provider id — see mealPlanAi.ts and the MealPlanEntry comment
+// in schema.prisma for why.
 
 router.post(
   '/meal-plan',
@@ -462,6 +583,13 @@ router.post(
     body('dietaryRestrictions.*').isString().trim().isLength({ min: 1, max: 40 }),
     body('servings').isInt({ min: 1, max: 20 }).withMessage('servings must be between 1 and 20').toInt(),
     body('daysCount').optional().isInt({ min: 1, max: 7 }).toInt(),
+    body('includeBreakfast').optional().isBoolean().toBoolean(),
+    body('timeAvailableMinutes').optional().isInt({ min: 5, max: 240 }).toInt(),
+    body('ingredientsOnHand').optional().isArray({ max: 30 }),
+    body('ingredientsOnHand.*').isString().trim().isLength({ min: 1, max: 60 }),
+    body('weekStart').optional().isISO8601().withMessage('weekStart must be a valid date'),
+    body('location.lat').optional().isFloat({ min: -90, max: 90 }),
+    body('location.lng').optional().isFloat({ min: -180, max: 180 }),
   ],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req)
@@ -479,39 +607,59 @@ router.post(
 
       const {
         dietaryRestrictions,
+        servings,
         daysCount = MEAL_PLAN_DEFAULT_DAYS,
-      } = req.body as { dietaryRestrictions: string[]; servings: number; daysCount?: number }
-      const diet = mapDietaryRestrictionsToSpoonacularDiet(dietaryRestrictions)
-      const lang = req.query.lang === 'es' ? 'es' : 'en'
-
-      // One search per day (rather than a single number=daysCount call) so
-      // each day gets Spoonacular's own random sort independently, instead
-      // of one shared draw that could repeat a recipe across days when the
-      // matching pool is small.
-      const usedRecipeIds = new Set<string>()
-      const days: { dayOfWeek: number; recipeId: string; title: string; image: string }[] = []
-      for (let dayOfWeek = 0; dayOfWeek < daysCount; dayOfWeek++) {
-        const result = await searchRecipesWithFallback({ diet }, 3)
-        const supplemented = await searchWithEdamamSupplement(result, {}, 3)
-        const pick = supplemented.recipes.find((r) => !usedRecipeIds.has(r.id)) ?? supplemented.recipes[0]
-        if (!pick) continue
-        usedRecipeIds.add(pick.id)
-        const card = await serializeCard(pick, lang)
-        days.push({ dayOfWeek, recipeId: card.id, title: card.title, image: card.image })
+        includeBreakfast = false,
+        timeAvailableMinutes,
+        ingredientsOnHand = [],
+        weekStart,
+        location,
+      } = req.body as {
+        dietaryRestrictions: string[]
+        servings: number
+        daysCount?: number
+        includeBreakfast?: boolean
+        timeAvailableMinutes?: number
+        ingredientsOnHand?: string[]
+        weekStart?: string
+        location?: GeoLocation
       }
+
+      const lang = req.query.lang === 'es' ? 'es' : 'en'
+      const user = await prisma.user.findUnique({ where: { id: ownerId }, select: { unitSystem: true } })
+      const unitSystem = resolveUnitSystem(user?.unitSystem, lang)
+      const geoHint = buildGeoHint(location)
+
+      const generated = await generateMealPlan({
+        dietaryRestrictions,
+        servings,
+        includeBreakfast,
+        timeAvailableMinutes,
+        ingredientsOnHand,
+        geoHint,
+        unitSystem,
+        language: lang,
+        daysCount,
+      })
+      const entryRows = await buildMealPlanEntryRows(generated.days)
 
       const mealPlan = await prisma.mealPlan.create({
         data: {
           ownerId,
-          weekStart: new Date(),
-          days: { create: days },
+          weekStart: weekStart ? new Date(weekStart) : new Date(),
+          dietaryRestrictions,
+          servings,
+          includeBreakfast,
+          batchPrepPlan: generated.batchPrepPlan as unknown as Prisma.InputJsonValue,
+          days: { create: entryRows },
         },
         include: { days: { orderBy: { dayOfWeek: 'asc' } } },
       })
 
       res.status(201).json({ mealPlan })
     } catch (err) {
-      handleSpoonacularError(err, res)
+      if (respondMealPlanAiError(err, res)) return
+      res.status(500).json({ error: 'Server error' })
     }
   },
 )
@@ -528,6 +676,167 @@ router.get('/meal-plan/current', requireAuth, async (req: Request, res: Response
     res.status(500).json({ error: 'Server error' })
   }
 })
+
+// Free-text adjustment to an existing plan — re-generates the full week
+// (not a partial diff) so the model can keep the whole plan coherent, then
+// swaps out all of that MealPlan's entries for the new ones.
+router.post(
+  '/meal-plan/:id/refine',
+  requireAuth,
+  [
+    body('message').trim().isLength({ min: 1, max: 500 }).withMessage('Invalid message'),
+    body('location.lat').optional().isFloat({ min: -90, max: 90 }),
+    body('location.lng').optional().isFloat({ min: -180, max: 180 }),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ error: errors.array()[0].msg })
+      return
+    }
+    try {
+      const existing = await prisma.mealPlan.findFirst({
+        where: { id: req.params.id, ownerId: req.clerkUserId! },
+        include: { days: { orderBy: { dayOfWeek: 'asc' } } },
+      })
+      if (!existing) {
+        res.status(404).json({ error: 'Meal plan not found' })
+        return
+      }
+
+      const { message, location } = req.body as { message: string; location?: GeoLocation }
+      const lang = req.query.lang === 'es' ? 'es' : 'en'
+      const user = await prisma.user.findUnique({
+        where: { id: req.clerkUserId! },
+        select: { unitSystem: true },
+      })
+      const unitSystem = resolveUnitSystem(user?.unitSystem, lang)
+      const geoHint = buildGeoHint(location)
+
+      const currentPlan = entriesToGeneratedPlan(existing.days, existing.batchPrepPlan)
+      const daysCount = new Set(existing.days.map((d) => d.dayOfWeek)).size || MEAL_PLAN_DEFAULT_DAYS
+
+      const refined = await refineMealPlan(currentPlan, message, {
+        dietaryRestrictions: existing.dietaryRestrictions,
+        servings: existing.servings,
+        includeBreakfast: existing.includeBreakfast,
+        geoHint,
+        unitSystem,
+        language: lang,
+        daysCount,
+      })
+      const entryRows = await buildMealPlanEntryRows(refined.days)
+
+      const mealPlan = await prisma.$transaction(async (tx) => {
+        await tx.mealPlanEntry.deleteMany({ where: { mealPlanId: existing.id } })
+        return tx.mealPlan.update({
+          where: { id: existing.id },
+          data: {
+            batchPrepPlan: refined.batchPrepPlan as unknown as Prisma.InputJsonValue,
+            days: { create: entryRows },
+          },
+          include: { days: { orderBy: { dayOfWeek: 'asc' } } },
+        })
+      })
+
+      res.json({ mealPlan })
+    } catch (err) {
+      if (respondMealPlanAiError(err, res)) return
+      res.status(500).json({ error: 'Server error' })
+    }
+  },
+)
+
+// Replaces a single meal (e.g. the user doesn't want the suggested Tuesday
+// lunch) without touching the rest of the week — cheaper than /refine and
+// keeps the other days' content exactly as-is. Doesn't update
+// batchPrepPlan: it may reference the swapped-out dish afterward, a known
+// trade-off (see mealPlanAi.ts's swapMeal comment) rather than regenerating
+// the whole week's prep plan for one swap.
+router.post(
+  '/meal-plan/:id/swap-meal',
+  requireAuth,
+  [
+    body('dayOfWeek').isInt({ min: 0, max: 6 }).withMessage('Invalid dayOfWeek').toInt(),
+    body('mealType').isIn(['breakfast', 'lunch', 'dinner']).withMessage('Invalid mealType'),
+    body('reason').optional().isString().trim().isLength({ max: 300 }),
+    body('location.lat').optional().isFloat({ min: -90, max: 90 }),
+    body('location.lng').optional().isFloat({ min: -180, max: 180 }),
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ error: errors.array()[0].msg })
+      return
+    }
+    try {
+      const existing = await prisma.mealPlan.findFirst({
+        where: { id: req.params.id, ownerId: req.clerkUserId! },
+        include: { days: { orderBy: { dayOfWeek: 'asc' } } },
+      })
+      if (!existing) {
+        res.status(404).json({ error: 'Meal plan not found' })
+        return
+      }
+
+      const { dayOfWeek, mealType, reason, location } = req.body as {
+        dayOfWeek: number
+        mealType: 'breakfast' | 'lunch' | 'dinner'
+        reason?: string
+        location?: GeoLocation
+      }
+
+      const target = existing.days.find((d) => d.dayOfWeek === dayOfWeek && d.mealType === mealType)
+      if (!target) {
+        res.status(404).json({ error: 'Meal not found in this plan' })
+        return
+      }
+
+      const lang = req.query.lang === 'es' ? 'es' : 'en'
+      const user = await prisma.user.findUnique({
+        where: { id: req.clerkUserId! },
+        select: { unitSystem: true },
+      })
+      const unitSystem = resolveUnitSystem(user?.unitSystem, lang)
+      const geoHint = buildGeoHint(location)
+      const otherTitlesInPlan = existing.days.filter((d) => d.id !== target.id).map((d) => d.title)
+
+      const replacement = await swapMeal({
+        dietaryRestrictions: existing.dietaryRestrictions,
+        servings: existing.servings,
+        includeBreakfast: existing.includeBreakfast,
+        geoHint,
+        unitSystem,
+        language: lang,
+        dayOfWeek,
+        mealType,
+        excludeTitle: target.title,
+        otherTitlesInPlan,
+        reason,
+      })
+      const image = await resolveMealImage(replacement.title)
+
+      const updated = await prisma.mealPlanEntry.update({
+        where: { id: target.id },
+        data: {
+          title: replacement.title,
+          description: replacement.description,
+          image,
+          ingredients: replacement.ingredients as unknown as Prisma.InputJsonValue,
+          steps: replacement.steps,
+          notes: replacement.notes,
+          prepTimeMinutes: replacement.prepTimeMinutes,
+          totalTimeMinutes: replacement.totalTimeMinutes,
+        },
+      })
+
+      res.json({ entry: updated })
+    } catch (err) {
+      if (respondMealPlanAiError(err, res)) return
+      res.status(500).json({ error: 'Server error' })
+    }
+  },
+)
 
 router.delete('/meal-plan/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -565,21 +874,15 @@ router.post(
         return
       }
 
-      const recipes: NormalizedRecipe[] = await Promise.all(
-        mealPlan.days.map(async (d) => {
-          const parsed = parseRecipeId(d.recipeId)
-          if (!parsed) throw new Error(`Malformed stored recipeId: ${d.recipeId}`)
-          return parsed.source === 'spoonacular'
-            ? normalizeSpoonacularRecipe(await getRecipeInformation(parseInt(parsed.externalId, 10)))
-            : normalizeEdamamRecipe(await getEdamamRecipeInformation(parsed.externalId))
-        }),
-      )
+      const meals = mealPlan.days.map((d) => ({
+        ingredients: (d.ingredients as unknown as MealIngredient[]) ?? [],
+      }))
       const pantryProducts = await prisma.product.findMany({
         where: { ownerId: req.clerkUserId! },
         select: { name: true, quantity: true },
       })
 
-      const consolidated = consolidateIngredients(recipes, pantryProducts)
+      const consolidated = consolidateIngredients(meals, pantryProducts)
       res.json({
         items: consolidated.map((line) => ({
           name: line.name,
@@ -587,8 +890,8 @@ router.post(
           pantryNote: line.pantryNote,
         })),
       })
-    } catch (err) {
-      handleSpoonacularError(err, res)
+    } catch {
+      res.status(500).json({ error: 'Server error' })
     }
   },
 )

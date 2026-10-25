@@ -2,11 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NewChatOnboarding from './index'
-import { usePantryChatSuggestions } from '../../../hooks/useChat'
 import '../../../i18n'
 import i18n from '../../../i18n'
-
-vi.mock('../../../hooks/useChat')
 
 const mockUseAuth = vi.fn()
 vi.mock('@clerk/clerk-react', () => ({
@@ -14,7 +11,7 @@ vi.mock('@clerk/clerk-react', () => ({
 }))
 
 function renderOnboarding(props: Partial<Parameters<typeof NewChatOnboarding>[0]> = {}) {
-  return render(<NewChatOnboarding onStart={vi.fn()} onGoToMealprep={vi.fn()} {...props} />)
+  return render(<NewChatOnboarding onStart={vi.fn()} {...props} />)
 }
 
 async function goToDetails() {
@@ -25,7 +22,6 @@ describe('NewChatOnboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true })
-    vi.mocked(usePantryChatSuggestions).mockReturnValue({ data: [], isLoading: false } as never)
   })
 
   it('opens on a goal-choice step', () => {
@@ -34,15 +30,9 @@ describe('NewChatOnboarding', () => {
     expect(screen.queryByText(i18n.t('chat.onboardingTitle'))).not.toBeInTheDocument()
   })
 
-  it('calls onGoToMealprep when "plan the week" is chosen, without touching onStart', async () => {
-    const onStart = vi.fn()
-    const onGoToMealprep = vi.fn()
-    renderOnboarding({ onStart, onGoToMealprep })
-
-    await userEvent.click(screen.getByText(i18n.t('chat.onboardingGoal.weekly')))
-
-    expect(onGoToMealprep).toHaveBeenCalled()
-    expect(onStart).not.toHaveBeenCalled()
+  it('offers no "plan the week" goal — Mealprep is the only entry point for that', () => {
+    renderOnboarding()
+    expect(screen.queryByText(i18n.t('chat.onboardingGoal.weekly'))).not.toBeInTheDocument()
   })
 
   it('starts a chat with the default servings, no restrictions, and an empty query', async () => {
@@ -80,17 +70,4 @@ describe('NewChatOnboarding', () => {
     expect(screen.getByText(i18n.t('chat.onboardingStart'))).toBeDisabled()
   })
 
-  it('offers pantry-suggestion preset chips that skip straight to onStart', async () => {
-    vi.mocked(usePantryChatSuggestions).mockReturnValue({
-      data: [{ id: 1, title: 'Arroz con pollo', image: '', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 }],
-      isLoading: false,
-    } as never)
-    const onStart = vi.fn()
-    renderOnboarding({ onStart })
-    await goToDetails()
-
-    await userEvent.click(screen.getByText('Arroz con pollo'))
-
-    expect(onStart).toHaveBeenCalledWith({ dietaryRestrictions: [], servings: 2, initialQuery: 'Arroz con pollo' })
-  })
 })

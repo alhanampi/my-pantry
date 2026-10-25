@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { apiSearchRecipes, apiGetRecipeDetail } from './recipesApi'
 import type { RecipeSearchFilters, RecipeSearchResponse, RecipeDetail } from '../utils/types'
 
-const filters: RecipeSearchFilters = { query: 'pasta', cuisine: '', diet: '', includeIngredients: '', maxCalories: '' }
+const filters: RecipeSearchFilters = { query: 'pasta', cuisine: [], diet: [], includeIngredients: '', maxCalories: '' }
 
 const searchResponse: RecipeSearchResponse = {
   results: [
@@ -68,6 +68,15 @@ describe('recipesApi caching', () => {
   it('apiSearchRecipes throws when the live call fails and nothing is cached', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'quotaExceeded' }), { status: 503 }))
     await expect(apiSearchRecipes(filters, 0, 'en')).rejects.toThrow('quotaExceeded')
+  })
+
+  it('joins multi-select cuisine/diet filters into comma-separated query params', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify(searchResponse), { status: 200 }))
+    await apiSearchRecipes({ ...filters, cuisine: ['italian', 'mexican'], diet: ['vegan'] }, 0, 'en')
+
+    const calledUrl = vi.mocked(fetch).mock.calls[0][0] as string
+    expect(calledUrl).toContain('cuisine=italian%2Cmexican')
+    expect(calledUrl).toContain('diet=vegan')
   })
 
   it('apiGetRecipeDetail caches a successful response and serves it without a second fetch', async () => {

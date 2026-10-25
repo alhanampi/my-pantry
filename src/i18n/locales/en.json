@@ -154,6 +154,49 @@
       "quotaExceeded": "Recipe search is temporarily unavailable. Try again later.",
       "configError": "Recipe search is not configured on this server.",
       "generic": "Something went wrong loading recipes."
+    },
+    "pantrySuggestions": {
+      "title": "Based on what's in your pantry...",
+      "empty": "Add items to your pantry to see suggestions."
+    },
+    "randomSuggestions": {
+      "title": "...or try these options",
+      "moreSuggestions": "More suggestions"
+    },
+    "filters": {
+      "cuisineOptions": {
+        "african": "African",
+        "american": "American",
+        "british": "British",
+        "cajun": "Cajun",
+        "caribbean": "Caribbean",
+        "chinese": "Chinese",
+        "easternEuropean": "Eastern European",
+        "european": "European",
+        "french": "French",
+        "german": "German",
+        "greek": "Greek",
+        "indian": "Indian",
+        "irish": "Irish",
+        "italian": "Italian",
+        "japanese": "Japanese",
+        "jewish": "Jewish",
+        "korean": "Korean",
+        "latinAmerican": "Latin American",
+        "mediterranean": "Mediterranean",
+        "mexican": "Mexican",
+        "middleEastern": "Middle Eastern",
+        "nordic": "Nordic",
+        "southern": "Southern (US)",
+        "spanish": "Spanish",
+        "thai": "Thai",
+        "vietnamese": "Vietnamese"
+      },
+      "dietOptions": {
+        "primal": "Primal",
+        "lowFodmap": "Low FODMAP",
+        "whole30": "Whole30"
+      }
     }
   },
   "stores": {
@@ -205,8 +248,6 @@
       "title": "What do you feel like doing?",
       "quick": "A quick recipe idea",
       "quickHint": "Tell me what you have and I'll suggest something now",
-      "weekly": "Plan meals for the week",
-      "weeklyHint": "Get a full week of recipes and a shopping list in one go",
       "specific": "A specific goal",
       "specificHint": "Something more particular — I'll ask a few questions"
     },
@@ -260,6 +301,7 @@
     "suggesting": "Looking for recipes...",
     "suggestionsIntro": "Here are a few tasty ideas for you! 🍳😋",
     "noSuggestions": "Hmm, couldn't find a matching recipe this time 😅 — try again or keep chatting for a bit.",
+    "continueChat": "Keep chatting",
     "backToChat": "Back to chat",
     "conversationTooLong": "This conversation has gotten long — start a new one to keep going.",
     "errors": {
@@ -281,6 +323,63 @@
     "backToCalendar": "Back to calendar",
     "shoppingListName": "Meal plan — {{date}}",
     "pantryNoteDetail": "You may already have some of this — check your pantry",
+    "notes": "Notes",
+    "totalTimeMinutes": "{{count}} min",
+    "swap": {
+      "button": "Swap",
+      "dialogTitle": "Why do you want to swap it?",
+      "reasonPlaceholder": "Reason (optional)",
+      "confirm": "Swap"
+    },
+    "mealType": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner"
+    },
+    "generator": {
+      "weekStart": "Starting from?",
+      "daysCount": "How many days?",
+      "timeAvailable": "How much time do you have to cook?",
+      "timeMinutes": "{{count}} min",
+      "timeHours": "{{count}} h",
+      "ingredientsOnHand": "Ingredients you already have",
+      "includeBreakfast": "Include breakfast"
+    },
+    "ingredientPicker": {
+      "fromPantry": "From your pantry",
+      "common": "Common ingredients",
+      "addOtherPlaceholder": "Add another ingredient",
+      "addOther": "Add ingredient",
+      "items": {
+        "rice": "Rice",
+        "pasta": "Pasta",
+        "chicken": "Chicken",
+        "beef": "Beef",
+        "eggs": "Eggs",
+        "potatoes": "Potatoes",
+        "onion": "Onion",
+        "tomato": "Tomato",
+        "cheese": "Cheese",
+        "beans": "Beans",
+        "flour": "Flour",
+        "milk": "Milk"
+      }
+    },
+    "refine": {
+      "placeholder": "Ask for an adjustment to your plan...",
+      "send": "Send adjustment"
+    },
+    "batchPrepPlan": {
+      "viewButton": "View prep plan",
+      "title": "Prep plan",
+      "estimatedTime": "About {{count}} minutes total",
+      "menu": "This prep day's menu",
+      "quantities": "Total quantities",
+      "sharedComponents": "Shared base preparations",
+      "usedIn": "Used in:",
+      "cookingOrder": "Cooking order",
+      "storageNotes": "How to store and reheat"
+    },
     "consolidatedList": {
       "heading": "Shopping list for the week",
       "allCovered": "Looks like your pantry already covers everything!",

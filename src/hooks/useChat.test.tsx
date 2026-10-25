@@ -53,12 +53,17 @@ describe('useChat hooks', () => {
     expect(chatApi.apiCreateConversation).toHaveBeenCalledWith('token-123', ['vegan'], 3)
   })
 
-  it('useSuggestRecipe calls apiSuggestRecipe with the conversation id', async () => {
+  it('useSuggestRecipe calls apiSuggestRecipe with the conversation id and location', async () => {
     vi.mocked(chatApi.apiSuggestRecipe).mockResolvedValue({ recipes: [] })
     const { result } = renderHook(() => useSuggestRecipe(), { wrapper })
-    result.current.mutate('c1')
+    result.current.mutate({ conversationId: 'c1', location: { lat: 1, lng: 2 } })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(chatApi.apiSuggestRecipe).toHaveBeenCalledWith('token-123', 'c1', expect.any(String))
+    expect(chatApi.apiSuggestRecipe).toHaveBeenCalledWith(
+      'token-123',
+      'c1',
+      expect.any(String),
+      { lat: 1, lng: 2 },
+    )
   })
 
   it('usePantryChatSuggestions is disabled when signed out', () => {

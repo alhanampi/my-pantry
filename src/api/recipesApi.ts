@@ -40,14 +40,20 @@ export async function apiSearchRecipes(
   offset: number,
   lang: string,
 ): Promise<RecipeSearchResponse> {
-  const cacheKey = searchCacheKey(filters as unknown as Record<string, string | undefined>, offset, lang)
+  const cuisine = filters.cuisine.join(',')
+  const diet = filters.diet.join(',')
+  const cacheKey = searchCacheKey(
+    { ...filters, cuisine, diet } as unknown as Record<string, string | undefined>,
+    offset,
+    lang,
+  )
   const cached = getCached<RecipeSearchResponse>(cacheKey, SEARCH_CACHE_TTL_MS)
   if (cached && !cached.stale) return cached.value
 
   const params = new URLSearchParams({ offset: String(offset), lang })
   if (filters.query) params.set('query', filters.query)
-  if (filters.cuisine) params.set('cuisine', filters.cuisine)
-  if (filters.diet) params.set('diet', filters.diet)
+  if (cuisine) params.set('cuisine', cuisine)
+  if (diet) params.set('diet', diet)
   if (filters.includeIngredients) params.set('includeIngredients', filters.includeIngredients)
   if (filters.maxCalories) params.set('maxCalories', filters.maxCalories)
 
@@ -63,6 +69,18 @@ export async function apiSearchRecipes(
     }
     throw err
   }
+}
+
+// "...o probá estas opciones" (RecipesView's PantryAndRandomSuggestions) —
+// deliberately NOT routed through the search cache above: every "Más
+// sugerencias" tap needs a genuinely fresh random batch (the backend's
+// `sort: 'random'` already reshuffles per call), and serving a cached
+// identical-filters response would make the button look like it does
+// nothing.
+export async function apiGetRandomRecipes(offset: number, lang: string): Promise<RecipeSearchResponse> {
+  const params = new URLSearchParams({ offset: String(offset), lang })
+  const res = await fetch(`${API_URL}/api/recipes/search?${params.toString()}`)
+  return handleResponse<RecipeSearchResponse>(res)
 }
 
 export async function apiGetRecipeDetail(id: string, lang: string): Promise<RecipeDetail> {

@@ -93,7 +93,6 @@ export default function App() {
                 <ChatView
                   sendRecipeToShoppingList={app.sendRecipeToShoppingList}
                   onSentToList={app.handleRecipeSentToList}
-                  onNavigateToMealprep={() => app.handleViewChange('mealprep')}
                 />
               )}
               {app.currentView === 'mealprep' && (

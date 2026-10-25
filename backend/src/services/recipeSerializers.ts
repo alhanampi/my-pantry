@@ -238,12 +238,14 @@ export async function searchWithEdamamSupplement(
 export async function serializeCard(recipe: NormalizedRecipe, lang: string) {
   const names = recipe.ingredients.map((i) => i.name)
   let title = recipe.title
+  let ingredientNames = names
   if (lang === 'es') {
     const translated = await translateRecipeContent(
       { id: recipe.id, title: recipe.title, ingredientNames: names, instructionSteps: [] },
       lang,
     )
     title = translated.title
+    ingredientNames = translated.ingredientNames
   }
   return {
     id: recipe.id,
@@ -252,7 +254,7 @@ export async function serializeCard(recipe: NormalizedRecipe, lang: string) {
     image: recipe.image,
     servings: recipe.servings,
     readyInMinutes: recipe.readyInMinutes,
-    ingredientNames: names,
+    ingredientNames,
     calories: recipe.nutrition.calories,
     sourceUrl: recipe.sourceUrl,
   }

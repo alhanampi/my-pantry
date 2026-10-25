@@ -9,6 +9,7 @@ import {
 } from './recipeSerializers'
 import type { SpoonacularRecipe } from './spoonacular'
 import type { EdamamRecipe } from './edamam'
+import { translateRecipeContent } from './groq'
 
 vi.mock('./groq.js', () => ({
   translateRecipeContent: vi.fn(),
@@ -189,6 +190,31 @@ describe('serializeCard / serializeDetail — id and source', () => {
     const card = await serializeCard(normalizeEdamamRecipe(edamamRecipe()), 'en')
     expect(card.id).toBe(makeRecipeId('edamam', 'http://www.edamam.com/ontologies/edamam.owl#recipe_abc123'))
     expect(card.source).toBe('edamam')
+  })
+})
+
+describe('serializeCard — ingredient name translation', () => {
+  it('leaves ingredientNames untranslated when lang is not es', async () => {
+    const r = spoonacularRecipe({
+      extendedIngredients: [{ id: 1, name: 'chicken breast', amount: 1, unit: '', original: '1 chicken breast' }],
+    })
+    const card = await serializeCard(normalizeSpoonacularRecipe(r), 'en')
+    expect(card.ingredientNames).toEqual(['chicken breast'])
+    expect(translateRecipeContent).not.toHaveBeenCalled()
+  })
+
+  it('uses the translated ingredientNames (not the raw English ones) when lang is es', async () => {
+    vi.mocked(translateRecipeContent).mockResolvedValueOnce({
+      title: 'Pechuga de pollo',
+      ingredientNames: ['pechuga de pollo'],
+      instructionSteps: [],
+    })
+    const r = spoonacularRecipe({
+      extendedIngredients: [{ id: 1, name: 'chicken breast', amount: 1, unit: '', original: '1 chicken breast' }],
+    })
+    const card = await serializeCard(normalizeSpoonacularRecipe(r), 'es')
+    expect(card.title).toBe('Pechuga de pollo')
+    expect(card.ingredientNames).toEqual(['pechuga de pollo'])
   })
 })
 

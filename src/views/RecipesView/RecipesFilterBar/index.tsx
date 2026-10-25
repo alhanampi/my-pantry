@@ -1,8 +1,10 @@
 import TextField from '@mui/material/TextField'
+import Autocomplete from '@mui/material/Autocomplete'
 import InputAdornment from '@mui/material/InputAdornment'
 import { MdSearch } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { FilterBarWrapper, SearchField, FilterField } from './RecipesFilterBar.styles'
+import { CUISINE_OPTIONS, DIET_OPTIONS, type RecipeFilterOption } from '../../../utils/recipeFilterOptions'
 import type { RecipeSearchFilters } from '../../../utils/types'
 
 export interface RecipesFilterBarProps {
@@ -14,6 +16,12 @@ export default function RecipesFilterBar({ filters, onChange }: RecipesFilterBar
   const { t } = useTranslation()
 
   const set = (field: keyof RecipeSearchFilters) => (value: string) => onChange({ ...filters, [field]: value })
+
+  const setMultiSelect = (field: 'cuisine' | 'diet') => (values: RecipeFilterOption[]) =>
+    onChange({ ...filters, [field]: values.map((v) => v.value) })
+
+  const toOptions = (options: RecipeFilterOption[], values: string[]): RecipeFilterOption[] =>
+    options.filter((o) => values.includes(o.value))
 
   return (
     <FilterBarWrapper>
@@ -35,22 +43,28 @@ export default function RecipesFilterBar({ filters, onChange }: RecipesFilterBar
       </SearchField>
 
       <FilterField>
-        <TextField
-          fullWidth
+        <Autocomplete
+          multiple
           size="small"
-          label={t('recipes.cuisine')}
-          value={filters.cuisine}
-          onChange={(e) => set('cuisine')(e.target.value)}
+          options={CUISINE_OPTIONS}
+          value={toOptions(CUISINE_OPTIONS, filters.cuisine)}
+          onChange={(_, values) => setMultiSelect('cuisine')(values)}
+          getOptionLabel={(o) => t(o.labelKey)}
+          isOptionEqualToValue={(o, v) => o.value === v.value}
+          renderInput={(params) => <TextField {...params} label={t('recipes.cuisine')} />}
         />
       </FilterField>
 
       <FilterField>
-        <TextField
-          fullWidth
+        <Autocomplete
+          multiple
           size="small"
-          label={t('recipes.diet')}
-          value={filters.diet}
-          onChange={(e) => set('diet')(e.target.value)}
+          options={DIET_OPTIONS}
+          value={toOptions(DIET_OPTIONS, filters.diet)}
+          onChange={(_, values) => setMultiSelect('diet')(values)}
+          getOptionLabel={(o) => t(o.labelKey)}
+          isOptionEqualToValue={(o, v) => o.value === v.value}
+          renderInput={(params) => <TextField {...params} label={t('recipes.diet')} />}
         />
       </FilterField>
 

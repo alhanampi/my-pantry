@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { searchRecipesWithFallback } from './spoonacular'
+import { searchRecipesWithFallback, searchRecipeByTitle } from './spoonacular'
 
 // searchRecipesWithFallback drives real fetch calls (via searchRecipes) —
 // mocking fetch directly here (rather than mocking searchRecipes itself)
@@ -81,5 +81,34 @@ describe('searchRecipesWithFallback', () => {
     const firstCallUrl = mockFetch.mock.calls[0][0] as string
     expect(firstCallUrl).not.toContain('query=')
     expect(firstCallUrl).not.toContain('includeIngredients=')
+  })
+})
+
+describe('searchRecipeByTitle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', mockFetch)
+    process.env.SPOONACULAR_KEY = 'test-key'
+  })
+
+  it('does not force sort=random, unlike searchRecipes', async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([{ id: 1, title: 'Grilled chicken', image: 'img.jpg' }]))
+
+    await searchRecipeByTitle('Grilled chicken')
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string
+    expect(calledUrl).toContain('query=Grilled')
+    expect(calledUrl).not.toContain('sort=')
+  })
+
+  it('returns the first result', async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([{ id: 1, title: 'Grilled chicken', image: 'img.jpg' }]))
+    const result = await searchRecipeByTitle('Grilled chicken')
+    expect(result).toEqual(expect.objectContaining({ id: 1, image: 'img.jpg' }))
+  })
+
+  it('returns null when nothing matches', async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse([]))
+    expect(await searchRecipeByTitle('Nonexistent dish')).toBeNull()
   })
 })

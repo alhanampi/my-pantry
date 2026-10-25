@@ -1,16 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
-import { MdArrowBack, MdOutlineCalendarMonth, MdDeleteOutline, MdLocalShipping } from 'react-icons/md'
+import { MdArrowBack, MdOutlineCalendarMonth, MdDeleteOutline, MdLocalShipping, MdOutlineSoupKitchen } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import WeeklyCalendar from './WeeklyCalendar'
 import MealPlanGenerator from './MealPlanGenerator'
 import ConsolidatedListPreview from './ConsolidatedListPreview'
+import MealprepRecipeDetail from './MealprepRecipeDetail'
+import BatchPrepPlanView from './BatchPrepPlanView'
+import RefinePlanInput from './RefinePlanInput'
 import ConfirmActionDialog from '../../components/ConfirmActionDialog'
-import RecipeDetailPanel from '../RecipesView/RecipeDetailPanel'
 import RecipesSkeleton from '../RecipesView/RecipesSkeleton'
 import {
   useCurrentMealPlan,
@@ -18,10 +20,11 @@ import {
   useDeleteMealPlan,
   useConsolidateMealPlan,
   useCreateShoppingListFromMealPlan,
+  useRefineMealPlan,
+  useSwapMeal,
 } from '../../hooks/useMealPlan'
-import { useRecipeDetail } from '../../hooks/useRecipes'
-import { useFavoriteIds, useFavoriteToggle } from '../../hooks/useFavorites'
-import { Wrapper, TopBar, Title, EmptyState, ErrorState, BackRow, ActionsRow } from './MealprepView.styles'
+import { useGeolocation } from '../../hooks/useGeolocation'
+import { Wrapper, TopBar, Title, EmptyState, BackRow, ActionsRow } from './MealprepView.styles'
 import type { RecipeIngredient } from '../../utils/types'
 
 export interface MealprepViewProps {
@@ -37,7 +40,8 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
   const { t } = useTranslation()
   const { isSignedIn, isLoaded } = useAuth()
 
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
+  const [showPrepPlan, setShowPrepPlan] = useState(false)
   const [previewItems, setPreviewItems] = useState<ReturnType<typeof useConsolidateMealPlan>['data']>(undefined)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
 
@@ -46,10 +50,17 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
   const deleteMealPlan = useDeleteMealPlan()
   const consolidate = useConsolidateMealPlan()
   const createShoppingList = useCreateShoppingListFromMealPlan()
-  const detail = useRecipeDetail(selectedRecipeId)
-  const favoriteIds = useFavoriteIds()
-  const favoriteToggle = useFavoriteToggle()
-  const favoriteIdSet = new Set(favoriteIds.data ?? [])
+  const refineMealPlan = useRefineMealPlan()
+  const swapMeal = useSwapMeal()
+  const { coords, requestLocation } = useGeolocation()
+
+  // Fire-and-forget, same as ChatView/MealPlanGenerator — best-effort geo
+  // context for a later refine request (see geoContext.ts), silently
+  // skipped if denied.
+  useEffect(() => {
+    requestLocation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!isLoaded) return <RecipesSkeleton />
 
@@ -69,55 +80,61 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
     )
   }
 
-  const handleToggleFavorite = (id: string): void => {
-    favoriteToggle.requestToggle(id, favoriteIdSet.has(id))
-  }
-
   const handleSendToShoppingList = (payload: { recipeTitle: string; ingredients: RecipeIngredient[] }): void => {
     sendRecipeToShoppingList.mutate(payload, { onSuccess: (listId) => onSentToList(listId) })
   }
 
-  // Sub-state: viewing one day's recipe in full detail — same in-tab
-  // drill-down exception ChatView/RecipesView already use.
-  if (selectedRecipeId !== null) {
+  const mealPlan = mealPlanQuery.data
+  const selectedEntry = mealPlan?.days.find((d) => d.id === selectedEntryId) ?? null
+  const titleToImage: Record<string, string> = Object.fromEntries(
+    (mealPlan?.days ?? []).filter((d) => d.image).map((d) => [d.title, d.image]),
+  )
+
+  // Sub-state: viewing one meal's recipe in full detail — same in-tab
+  // drill-down exception ChatView/RecipesView already use. No fetch needed:
+  // the AI-generated content already lives on the entry itself.
+  if (selectedEntry) {
     return (
       <Wrapper>
         <BackRow>
-          <Button startIcon={<MdArrowBack size={18} />} onClick={() => setSelectedRecipeId(null)} size="small">
+          <Button startIcon={<MdArrowBack size={18} />} onClick={() => setSelectedEntryId(null)} size="small">
             {t('mealprep.backToCalendar')}
           </Button>
         </BackRow>
 
-        {detail.isLoading && <RecipesSkeleton />}
-        {detail.isError && (
-          <ErrorState>
-            <Typography variant="body1">{t('recipes.errors.generic')}</Typography>
-          </ErrorState>
-        )}
-        {detail.data && (
-          <RecipeDetailPanel
-            recipe={detail.data}
-            onSendToShoppingList={handleSendToShoppingList}
-            isSending={sendRecipeToShoppingList.isPending}
-            isFavorite={favoriteIdSet.has(detail.data.id)}
-            onToggleFavorite={handleToggleFavorite}
-            isTogglingFavorite={favoriteToggle.pendingRecipeId === detail.data.id}
-          />
-        )}
-
-        <ConfirmActionDialog
-          open={favoriteToggle.pendingRemoveId !== null}
-          title={t('recipes.removeFavoriteConfirmTitle')}
-          body={t('recipes.removeFavoriteConfirmBody')}
-          confirmLabel={t('recipes.removeFavorite')}
-          onConfirm={favoriteToggle.confirmRemove}
-          onCancel={favoriteToggle.cancelRemove}
+        <MealprepRecipeDetail
+          entry={selectedEntry}
+          initialServings={mealPlan?.servings ?? 2}
+          onSendToShoppingList={handleSendToShoppingList}
+          isSending={sendRecipeToShoppingList.isPending}
+          isSwapping={swapMeal.isPending}
+          onSwap={(reason) =>
+            swapMeal.mutate({
+              id: mealPlan!.id,
+              dayOfWeek: selectedEntry.dayOfWeek,
+              mealType: selectedEntry.mealType,
+              reason: reason || undefined,
+              location: coords ?? undefined,
+            })
+          }
         />
       </Wrapper>
     )
   }
 
-  const mealPlan = mealPlanQuery.data
+  // Sub-state: viewing the week's single-day batch prep plan.
+  if (showPrepPlan && mealPlan?.batchPrepPlan) {
+    return (
+      <Wrapper>
+        <BackRow>
+          <Button startIcon={<MdArrowBack size={18} />} onClick={() => setShowPrepPlan(false)} size="small">
+            {t('mealprep.backToCalendar')}
+          </Button>
+        </BackRow>
+        <BatchPrepPlanView plan={mealPlan.batchPrepPlan} titleToImage={titleToImage} />
+      </Wrapper>
+    )
+  }
 
   return (
     <Wrapper>
@@ -146,8 +163,17 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
 
       {mealPlan && previewItems === undefined && (
         <>
-          <WeeklyCalendar mealPlan={mealPlan} onSelectRecipe={setSelectedRecipeId} />
+          <WeeklyCalendar mealPlan={mealPlan} onSelectEntry={setSelectedEntryId} />
           <ActionsRow>
+            {mealPlan.batchPrepPlan && (
+              <Button
+                variant="outlined"
+                startIcon={<MdOutlineSoupKitchen size={18} />}
+                onClick={() => setShowPrepPlan(true)}
+              >
+                {t('mealprep.batchPrepPlan.viewButton')}
+              </Button>
+            )}
             <Button
               variant="contained"
               disableElevation
@@ -160,6 +186,12 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
               {consolidate.isPending ? t('mealprep.consolidating') : t('mealprep.consolidatedList.pushToShoppingList')}
             </Button>
           </ActionsRow>
+          <RefinePlanInput
+            disabled={refineMealPlan.isPending}
+            onSend={(message) =>
+              refineMealPlan.mutate({ id: mealPlan.id, message, location: coords ?? undefined })
+            }
+          />
         </>
       )}
 
@@ -192,15 +224,6 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
           if (mealPlan) deleteMealPlan.mutate(mealPlan.id)
         }}
         onCancel={() => setDeleteConfirm(false)}
-      />
-
-      <ConfirmActionDialog
-        open={favoriteToggle.pendingRemoveId !== null}
-        title={t('recipes.removeFavoriteConfirmTitle')}
-        body={t('recipes.removeFavoriteConfirmBody')}
-        confirmLabel={t('recipes.removeFavorite')}
-        onConfirm={favoriteToggle.confirmRemove}
-        onCancel={favoriteToggle.cancelRemove}
       />
     </Wrapper>
   )

@@ -183,8 +183,8 @@ export interface RecipeDetail {
 
 export interface RecipeSearchFilters {
   query: string
-  cuisine: string
-  diet: string
+  cuisine: string[]
+  diet: string[]
   includeIngredients: string
   maxCalories: string
 }
@@ -234,17 +234,61 @@ export interface DeleteConversationDialogState {
 
 // ─── Meal plan (Mealprep tab) ──────────────────────────────────────────────
 
-export interface MealPlanEntry {
+export interface MealIngredient {
+  name: string
+  amount: number
+  unit: string
+}
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner'
+
+// Full AI-generated recipe content — unlike the old Spoonacular/Edamam
+// bookmark shape, there's no external id to look the rest up by later.
+export interface MealPlanMeal {
+  title: string
+  description: string
+  image: string
+  ingredients: MealIngredient[]
+  steps: string[]
+  notes: string
+  prepTimeMinutes: number
+  totalTimeMinutes: number
+}
+
+export interface MealPlanEntry extends MealPlanMeal {
   id: string
   dayOfWeek: number
-  recipeId: string
-  title: string
-  image: string
+  mealType: MealType
+}
+
+// One batch-cooking session covering (some or all of) the week's meals —
+// see backend/src/services/mealPlanAi.ts for how this gets generated.
+// A base preparation (dough, filling, sauce, cooked grain/protein, etc.)
+// that two or more of the week's dishes reuse.
+export interface SharedComponent {
+  name: string
+  description: string
+  ingredients: MealIngredient[]
+  steps: string[]
+  usedInDishes: string[]
+}
+
+export interface BatchPrepPlan {
+  menu: string[]
+  totalQuantities: MealIngredient[]
+  sharedComponents: SharedComponent[]
+  cookingOrder: string[]
+  storageNotes: string
+  estimatedTotalMinutes: number
 }
 
 export interface MealPlan {
   id: string
   weekStart: string
+  includeBreakfast: boolean
+  servings: number
+  dietaryRestrictions: string[]
+  batchPrepPlan: BatchPrepPlan | null
   days: MealPlanEntry[]
 }
 

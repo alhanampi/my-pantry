@@ -12,6 +12,9 @@ vi.mock('../../hooks/useFavorites')
 vi.mock('../../hooks/useUnitSystem', () => ({
   useUnitSystem: () => ({ unitSystem: 'metric', setUnitSystem: vi.fn(), isPending: false }),
 }))
+// No delay in tests — the real 400ms debounce would make "type then assert"
+// tests flaky/slow for no benefit, this hook isn't what's under test here.
+vi.mock('../../hooks/useDebounce', () => ({ useDebounce: (v: unknown) => v }))
 
 vi.mock('./RecipeCardGrid', () => ({
   // Stubbed out — RecipeCardGrid's own IntersectionObserver behavior is
@@ -25,6 +28,12 @@ vi.mock('./RecipeCardGrid', () => ({
       ))}
     </div>
   ),
+}))
+
+vi.mock('./PantryAndRandomSuggestions', () => ({
+  // Covered by its own test — here we just need to tell it apart from the
+  // search grid to assert which one RecipesView picked.
+  default: () => <div>pantry-and-random-suggestions-stub</div>,
 }))
 
 const recipe: RecipeCard = {
@@ -98,6 +107,7 @@ describe('RecipesView', () => {
     vi.mocked(useRecipeDetail).mockReturnValue({ data: detail, isLoading: false, isError: false } as never)
 
     render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+    await userEvent.type(screen.getByPlaceholderText(/search recipes/i), 'pasta')
 
     expect(screen.getByText('Pasta al pomodoro')).toBeInTheDocument()
 
@@ -106,7 +116,7 @@ describe('RecipesView', () => {
     expect(screen.getByText('Boil water.')).toBeInTheDocument()
   })
 
-  it('shows the empty state when the search returns no results', () => {
+  it('shows the empty state when the search returns no results', async () => {
     vi.mocked(useRecipeSearch).mockReturnValue({
       data: { pages: [{ results: [], totalResults: 0, offset: 0, number: 4 }], pageParams: [0] },
       isLoading: false,
@@ -119,11 +129,12 @@ describe('RecipesView', () => {
     vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
 
     render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+    await userEvent.type(screen.getByPlaceholderText(/search recipes/i), 'pasta')
 
     expect(screen.getByText(/no recipes found/i)).toBeInTheDocument()
   })
 
-  it('shows the remove-favorite confirm dialog when useFavoriteToggle reports a pending removal', () => {
+  it('shows the remove-favorite confirm dialog when useFavoriteToggle reports a pending removal', async () => {
     vi.mocked(useRecipeSearch).mockReturnValue({
       data: { pages: [{ results: [recipe], totalResults: 1, offset: 0, number: 4 }], pageParams: [0] },
       isLoading: false,
@@ -144,7 +155,26 @@ describe('RecipesView', () => {
     })
 
     render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+    await userEvent.type(screen.getByPlaceholderText(/search recipes/i), 'pasta')
 
     expect(screen.getByText(/remove from favorites\?/i)).toBeInTheDocument()
+  })
+
+  it('shows the pantry+random suggestions landing section instead of the grid when no filters are active', () => {
+    vi.mocked(useRecipeSearch).mockReturnValue({
+      data: { pages: [{ results: [recipe], totalResults: 1, offset: 0, number: 4 }], pageParams: [0] },
+      isLoading: false,
+      isError: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      refetch: vi.fn(),
+    } as never)
+    vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
+
+    render(<RecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+
+    expect(screen.getByText('pantry-and-random-suggestions-stub')).toBeInTheDocument()
+    expect(screen.queryByText('Pasta al pomodoro')).not.toBeInTheDocument()
   })
 })

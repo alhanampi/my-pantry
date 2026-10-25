@@ -8,6 +8,7 @@ import RecipesFilterBar from './RecipesFilterBar'
 import RecipeCardGrid from './RecipeCardGrid'
 import RecipeDetailPanel from './RecipeDetailPanel'
 import RecipesSkeleton from './RecipesSkeleton'
+import PantryAndRandomSuggestions from './PantryAndRandomSuggestions'
 import ConfirmActionDialog from '../../components/ConfirmActionDialog'
 import { Wrapper, EmptyState, ErrorState, BackRow, BackButton } from './RecipesView.styles'
 import { useRecipeSearch, useRecipeDetail } from '../../hooks/useRecipes'
@@ -15,10 +16,10 @@ import { useFavoriteIds, useFavoriteToggle } from '../../hooks/useFavorites'
 import { useDebounce } from '../../hooks/useDebounce'
 import type { RecipeSearchFilters, RecipeIngredient } from '../../utils/types'
 
-const EMPTY_FILTERS: RecipeSearchFilters = {
+export const EMPTY_FILTERS: RecipeSearchFilters = {
   query: '',
-  cuisine: '',
-  diet: '',
+  cuisine: [],
+  diet: [],
   includeIngredients: '',
   maxCalories: '',
 }
@@ -41,7 +42,13 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
   // itself is debounced — otherwise every keystroke would fire a fresh
   // Spoonacular search call (see ROADMAP.md's Recipes tab entry).
   const debouncedFilters = useDebounce(filters, 400)
-  const search = useRecipeSearch(debouncedFilters)
+  const hasActiveFilters =
+    !!debouncedFilters.query ||
+    debouncedFilters.cuisine.length > 0 ||
+    debouncedFilters.diet.length > 0 ||
+    !!debouncedFilters.includeIngredients ||
+    !!debouncedFilters.maxCalories
+  const search = useRecipeSearch(debouncedFilters, hasActiveFilters)
   const detail = useRecipeDetail(selectedRecipeId)
   const favoriteIds = useFavoriteIds()
   const favoriteToggle = useFavoriteToggle()
@@ -107,9 +114,18 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
     <Wrapper>
       <RecipesFilterBar filters={filters} onChange={setFilters} />
 
-      {search.isLoading && <RecipesSkeleton />}
+      {!hasActiveFilters && (
+        <PantryAndRandomSuggestions
+          onSelectRecipe={setSelectedRecipeId}
+          favoriteIds={favoriteIdSet}
+          onToggleFavorite={handleToggleFavorite}
+          pendingFavoriteId={favoriteToggle.pendingRecipeId}
+        />
+      )}
 
-      {search.isError && (
+      {hasActiveFilters && search.isLoading && <RecipesSkeleton />}
+
+      {hasActiveFilters && search.isError && (
         <ErrorState>
           <Typography variant="body1">{t(errorKey(search.error))}</Typography>
           <Button variant="outlined" onClick={() => void search.refetch()}>
@@ -118,7 +134,7 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
         </ErrorState>
       )}
 
-      {!search.isLoading && !search.isError && recipes.length === 0 && (
+      {hasActiveFilters && !search.isLoading && !search.isError && recipes.length === 0 && (
         <EmptyState>
           <MdRestaurantMenu size={48} color="var(--scheme-accent-medium)" />
           <Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -127,7 +143,7 @@ export default function RecipesView({ sendRecipeToShoppingList, onSentToList }: 
         </EmptyState>
       )}
 
-      {!search.isLoading && recipes.length > 0 && (
+      {hasActiveFilters && !search.isLoading && recipes.length > 0 && (
         <RecipeCardGrid
           recipes={recipes}
           onSelect={setSelectedRecipeId}

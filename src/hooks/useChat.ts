@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import { useTranslation } from 'react-i18next'
-import type { ChatConversation, RecipeCard } from '../utils/types'
+import type { ChatConversation, Coordinates, RecipeCard } from '../utils/types'
 import {
   apiListConversations,
   apiCreateConversation,
@@ -110,10 +110,10 @@ export function useSuggestRecipe() {
 
   return useMutation({
     mutationFn: async (
-      conversationId: string,
+      params: { conversationId: string; location?: Coordinates },
     ): Promise<{ recipes: RecipeCard[] }> => {
       const token = await requireToken(getToken)
-      return apiSuggestRecipe(token, conversationId, i18n.language)
+      return apiSuggestRecipe(token, params.conversationId, i18n.language, params.location)
     },
   })
 }

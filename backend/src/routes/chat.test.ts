@@ -8,7 +8,9 @@ const mockPrisma = vi.hoisted(() => ({
   chatMessage: { create: vi.fn() },
   user: { findUnique: vi.fn() },
   product: { findMany: vi.fn() },
-  mealPlan: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn(), count: vi.fn() },
+  mealPlan: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+  mealPlanEntry: { deleteMany: vi.fn(), update: vi.fn() },
+  $transaction: vi.fn(),
 }))
 
 vi.mock('../db/index.js', () => ({ default: mockPrisma }))
@@ -57,11 +59,36 @@ vi.mock('../services/edamam.js', () => ({
   EdamamConfigError: class extends Error {},
 }))
 
+const mockGenerateMealPlan = vi.hoisted(() => vi.fn())
+const mockRefineMealPlan = vi.hoisted(() => vi.fn())
+const mockSwapMeal = vi.hoisted(() => vi.fn())
+const mockResolveMealImage = vi.hoisted(() => vi.fn())
+vi.mock('../services/mealPlanAi.js', () => ({
+  generateMealPlan: mockGenerateMealPlan,
+  refineMealPlan: mockRefineMealPlan,
+  swapMeal: mockSwapMeal,
+  resolveMealImage: mockResolveMealImage,
+}))
+
+function generatedMeal(title: string) {
+  return {
+    title,
+    description: `${title} description`,
+    ingredients: [{ name: 'rice', amount: 200, unit: 'g' }],
+    steps: [`Cook ${title}`],
+    notes: '',
+    prepTimeMinutes: 10,
+    totalTimeMinutes: 20,
+  }
+}
+
 describe('chat routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(verifyToken).mockResolvedValue({ sub: 'user_1' } as never)
     mockSearchEdamamRecipes.mockResolvedValue([])
+    mockResolveMealImage.mockResolvedValue('')
+    mockPrisma.$transaction.mockImplementation((fn: (tx: typeof mockPrisma) => unknown) => fn(mockPrisma))
   })
 
   it('GET /conversations returns 401 without a token', async () => {
@@ -313,7 +340,7 @@ describe('chat routes', () => {
       expect(mockTranslateIngredientNames).toHaveBeenCalledWith(['Arroz', 'Pollo'])
       expect(mockSearchRecipesWithFallback).toHaveBeenCalledWith(
         expect.objectContaining({ includeIngredients: 'Rice,Chicken' }),
-        3,
+        4,
       )
       expect(res.body.recipes).toHaveLength(1)
     })
@@ -358,7 +385,7 @@ describe('chat routes', () => {
       const res = await request(app).post('/api/chat/pantry-suggestions').set('Authorization', 'Bearer good-token')
 
       expect(res.status).toBe(200)
-      expect(mockSearchEdamamRecipes).toHaveBeenCalledWith(expect.objectContaining({ number: 2 }))
+      expect(mockSearchEdamamRecipes).toHaveBeenCalledWith(expect.objectContaining({ number: 3 }))
       expect(res.body.recipes).toHaveLength(2)
       expect(res.body.recipes[1].source).toBe('edamam')
     })
@@ -435,19 +462,21 @@ describe('chat routes', () => {
       expect(mockPrisma.mealPlan.create).not.toHaveBeenCalled()
     })
 
-    it('generates one recipe per day and persists a MealPlan with MealPlanEntry rows', async () => {
+    it('generates a plan via the AI service and persists one MealPlanEntry per meal', async () => {
       mockPrisma.mealPlan.count.mockResolvedValue(0)
-      mockSearchRecipesWithFallback.mockResolvedValue({
-        results: [{ id: 1, title: 'Recipe A', image: 'a.jpg', servings: 2, readyInMinutes: 20, extendedIngredients: [], nutrition: { nutrients: [] } }],
-        offset: 0,
-        number: 3,
-        totalResults: 1,
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      mockGenerateMealPlan.mockResolvedValue({
+        days: [{ dayOfWeek: 0, lunch: generatedMeal('Lunch A'), dinner: generatedMeal('Dinner A') }],
+        batchPrepPlan: { menu: [], totalQuantities: [], cookingOrder: [], storageNotes: '', estimatedTotalMinutes: 30 },
       })
       mockPrisma.mealPlan.create.mockResolvedValue({
         id: 'plan1',
         ownerId: 'user_1',
         weekStart: new Date().toISOString(),
-        days: [{ id: 'e1', dayOfWeek: 0, recipeId: 'spoonacular:1', title: 'Recipe A', image: 'a.jpg' }],
+        days: [
+          { id: 'e1', dayOfWeek: 0, mealType: 'lunch', title: 'Lunch A' },
+          { id: 'e2', dayOfWeek: 0, mealType: 'dinner', title: 'Dinner A' },
+        ],
       })
 
       const res = await request(app)
@@ -456,61 +485,211 @@ describe('chat routes', () => {
         .send({ dietaryRestrictions: [], servings: 2, daysCount: 1 })
 
       expect(res.status).toBe(201)
-      expect(mockPrisma.mealPlan.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            ownerId: 'user_1',
-            days: { create: [expect.objectContaining({ dayOfWeek: 0, recipeId: 'spoonacular:1', title: 'Recipe A' })] },
-          }),
-        }),
+      expect(mockGenerateMealPlan).toHaveBeenCalledWith(
+        expect.objectContaining({ servings: 2, daysCount: 1, unitSystem: 'metric' }),
       )
+      const createdDays = mockPrisma.mealPlan.create.mock.calls[0][0].data.days.create
+      expect(createdDays).toHaveLength(2)
+      expect(createdDays[0]).toMatchObject({ dayOfWeek: 0, mealType: 'lunch', title: 'Lunch A' })
+      expect(createdDays[1]).toMatchObject({ dayOfWeek: 0, mealType: 'dinner', title: 'Dinner A' })
       expect(res.body.mealPlan.id).toBe('plan1')
     })
 
-    it('never repeats a recipe across days, even when a pick comes from Edamam', async () => {
+    it('includes a breakfast row per day only when includeBreakfast is true', async () => {
       mockPrisma.mealPlan.count.mockResolvedValue(0)
-      mockSearchRecipesWithFallback.mockResolvedValue({
-        results: [{ id: 1, title: 'Recipe A', image: 'a.jpg', servings: 2, readyInMinutes: 20, extendedIngredients: [], nutrition: { nutrients: [] } }],
-        offset: 0,
-        number: 3,
-        totalResults: 1,
-      })
-      mockSearchEdamamRecipes.mockResolvedValue([
-        {
-          uri: 'http://www.edamam.com/ontologies/edamam.owl#recipe_xyz',
-          label: 'Recipe B',
-          image: 'b.jpg',
-          source: 'Example',
-          url: 'https://example.com/recipe-b',
-          yield: 2,
-          totalTime: 20,
-          ingredientLines: [],
-          ingredients: [],
-          totalNutrients: {},
-          totalDaily: {},
-        },
-      ])
-      mockPrisma.mealPlan.create.mockResolvedValue({
-        id: 'plan1',
-        ownerId: 'user_1',
-        weekStart: new Date().toISOString(),
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      mockGenerateMealPlan.mockResolvedValue({
         days: [
-          { id: 'e1', dayOfWeek: 0, recipeId: 'spoonacular:1', title: 'Recipe A', image: 'a.jpg' },
-          { id: 'e2', dayOfWeek: 1, recipeId: 'edamam:http://www.edamam.com/ontologies/edamam.owl#recipe_xyz', title: 'Recipe B', image: 'b.jpg' },
+          {
+            dayOfWeek: 0,
+            breakfast: generatedMeal('Breakfast A'),
+            lunch: generatedMeal('Lunch A'),
+            dinner: generatedMeal('Dinner A'),
+          },
         ],
+        batchPrepPlan: { menu: [], totalQuantities: [], cookingOrder: [], storageNotes: '', estimatedTotalMinutes: 30 },
       })
+      mockPrisma.mealPlan.create.mockResolvedValue({ id: 'plan1', days: [] })
 
       const res = await request(app)
         .post('/api/chat/meal-plan')
         .set('Authorization', 'Bearer good-token')
-        .send({ dietaryRestrictions: [], servings: 2, daysCount: 2 })
+        .send({ dietaryRestrictions: [], servings: 2, daysCount: 1, includeBreakfast: true })
 
       expect(res.status).toBe(201)
+      expect(mockGenerateMealPlan).toHaveBeenCalledWith(expect.objectContaining({ includeBreakfast: true }))
       const createdDays = mockPrisma.mealPlan.create.mock.calls[0][0].data.days.create
+      expect(createdDays.map((d: { mealType: string }) => d.mealType)).toEqual(['breakfast', 'lunch', 'dinner'])
+    })
+
+    it('returns 503 when the AI service reports a quota error', async () => {
+      mockPrisma.mealPlan.count.mockResolvedValue(0)
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      const { ChatQuotaError } = await import('../services/chatAssistant.js')
+      mockGenerateMealPlan.mockRejectedValue(new ChatQuotaError())
+
+      const res = await request(app)
+        .post('/api/chat/meal-plan')
+        .set('Authorization', 'Bearer good-token')
+        .send({ dietaryRestrictions: [], servings: 2 })
+
+      expect(res.status).toBe(503)
+      expect(mockPrisma.mealPlan.create).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('POST /meal-plan/:id/refine', () => {
+    it('returns 404 when the plan is not owned by the caller', async () => {
+      mockPrisma.mealPlan.findFirst.mockResolvedValue(null)
+      const res = await request(app)
+        .post('/api/chat/meal-plan/plan1/refine')
+        .set('Authorization', 'Bearer good-token')
+        .send({ message: 'less spicy please' })
+      expect(res.status).toBe(404)
+    })
+
+    it('rebuilds the current plan, calls refineMealPlan, and replaces the entries', async () => {
+      mockPrisma.mealPlan.findFirst.mockResolvedValue({
+        id: 'plan1',
+        ownerId: 'user_1',
+        dietaryRestrictions: ['vegetarian'],
+        servings: 2,
+        includeBreakfast: false,
+        batchPrepPlan: { menu: [], totalQuantities: [], cookingOrder: [], storageNotes: '', estimatedTotalMinutes: 30 },
+        days: [
+          {
+            dayOfWeek: 0,
+            mealType: 'lunch',
+            title: 'Old lunch',
+            description: '',
+            ingredients: [],
+            steps: [],
+            notes: '',
+            prepTimeMinutes: 10,
+            totalTimeMinutes: 20,
+          },
+          {
+            dayOfWeek: 0,
+            mealType: 'dinner',
+            title: 'Old dinner',
+            description: '',
+            ingredients: [],
+            steps: [],
+            notes: '',
+            prepTimeMinutes: 10,
+            totalTimeMinutes: 20,
+          },
+        ],
+      })
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      mockRefineMealPlan.mockResolvedValue({
+        days: [{ dayOfWeek: 0, lunch: generatedMeal('New lunch'), dinner: generatedMeal('New dinner') }],
+        batchPrepPlan: { menu: [], totalQuantities: [], cookingOrder: [], storageNotes: '', estimatedTotalMinutes: 30 },
+      })
+      mockPrisma.mealPlan.update.mockResolvedValue({
+        id: 'plan1',
+        days: [
+          { id: 'e1', dayOfWeek: 0, mealType: 'lunch', title: 'New lunch' },
+          { id: 'e2', dayOfWeek: 0, mealType: 'dinner', title: 'New dinner' },
+        ],
+      })
+
+      const res = await request(app)
+        .post('/api/chat/meal-plan/plan1/refine')
+        .set('Authorization', 'Bearer good-token')
+        .send({ message: 'less spicy please' })
+
+      expect(res.status).toBe(200)
+      expect(mockRefineMealPlan).toHaveBeenCalledWith(
+        expect.objectContaining({ days: expect.any(Array) }),
+        'less spicy please',
+        expect.objectContaining({ dietaryRestrictions: ['vegetarian'], servings: 2 }),
+      )
+      expect(mockPrisma.mealPlanEntry.deleteMany).toHaveBeenCalledWith({ where: { mealPlanId: 'plan1' } })
+      const createdDays = mockPrisma.mealPlan.update.mock.calls[0][0].data.days.create
       expect(createdDays).toHaveLength(2)
-      expect(createdDays[0].recipeId).toBe('spoonacular:1')
-      expect(createdDays[1].recipeId).toContain('edamam:')
-      expect(createdDays[0].recipeId).not.toBe(createdDays[1].recipeId)
+      expect(res.body.mealPlan.id).toBe('plan1')
+    })
+  })
+
+  describe('POST /meal-plan/:id/swap-meal', () => {
+    const existingPlan = {
+      id: 'plan1',
+      ownerId: 'user_1',
+      dietaryRestrictions: ['vegetarian'],
+      servings: 2,
+      includeBreakfast: false,
+      days: [
+        { id: 'e1', dayOfWeek: 0, mealType: 'lunch', title: 'Old lunch' },
+        { id: 'e2', dayOfWeek: 0, mealType: 'dinner', title: 'Old dinner' },
+      ],
+    }
+
+    it('returns 404 when the plan is not owned by the caller', async () => {
+      mockPrisma.mealPlan.findFirst.mockResolvedValue(null)
+      const res = await request(app)
+        .post('/api/chat/meal-plan/plan1/swap-meal')
+        .set('Authorization', 'Bearer good-token')
+        .send({ dayOfWeek: 0, mealType: 'lunch' })
+      expect(res.status).toBe(404)
+    })
+
+    it('returns 404 when the requested slot has no entry in this plan', async () => {
+      mockPrisma.mealPlan.findFirst.mockResolvedValue(existingPlan)
+      const res = await request(app)
+        .post('/api/chat/meal-plan/plan1/swap-meal')
+        .set('Authorization', 'Bearer good-token')
+        .send({ dayOfWeek: 3, mealType: 'lunch' })
+      expect(res.status).toBe(404)
+      expect(mockSwapMeal).not.toHaveBeenCalled()
+    })
+
+    it('excludes the current dish and the rest of the week, and updates only that entry', async () => {
+      mockPrisma.mealPlan.findFirst.mockResolvedValue(existingPlan)
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      mockSwapMeal.mockResolvedValue(generatedMeal('New lunch'))
+      mockResolveMealImage.mockResolvedValue('new-lunch.jpg')
+      mockPrisma.mealPlanEntry.update.mockResolvedValue({ id: 'e1', title: 'New lunch' })
+
+      const res = await request(app)
+        .post('/api/chat/meal-plan/plan1/swap-meal')
+        .set('Authorization', 'Bearer good-token')
+        .send({ dayOfWeek: 0, mealType: 'lunch', reason: 'no me gusta el pescado' })
+
+      expect(res.status).toBe(200)
+      expect(mockSwapMeal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dayOfWeek: 0,
+          mealType: 'lunch',
+          excludeTitle: 'Old lunch',
+          otherTitlesInPlan: ['Old dinner'],
+          reason: 'no me gusta el pescado',
+          dietaryRestrictions: ['vegetarian'],
+          servings: 2,
+        }),
+      )
+      expect(mockPrisma.mealPlanEntry.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'e1' },
+          data: expect.objectContaining({ title: 'New lunch', image: 'new-lunch.jpg' }),
+        }),
+      )
+      expect(res.body.entry.title).toBe('New lunch')
+    })
+
+    it('returns 503 when the AI service reports a quota error', async () => {
+      mockPrisma.mealPlan.findFirst.mockResolvedValue(existingPlan)
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      const { ChatQuotaError } = await import('../services/chatAssistant.js')
+      mockSwapMeal.mockRejectedValue(new ChatQuotaError())
+
+      const res = await request(app)
+        .post('/api/chat/meal-plan/plan1/swap-meal')
+        .set('Authorization', 'Bearer good-token')
+        .send({ dayOfWeek: 0, mealType: 'lunch' })
+
+      expect(res.status).toBe(503)
+      expect(mockPrisma.mealPlanEntry.update).not.toHaveBeenCalled()
     })
   })
 
@@ -557,8 +736,8 @@ describe('chat routes', () => {
         id: 'plan1',
         ownerId: 'user_1',
         days: [
-          { id: 'e1', dayOfWeek: 0, recipeId: 'spoonacular:1' },
-          { id: 'e2', dayOfWeek: 1, recipeId: 'spoonacular:2' },
+          { id: 'e1', dayOfWeek: 0, mealType: 'lunch', ingredients: [{ name: 'rice', amount: 200, unit: 'g' }] },
+          { id: 'e2', dayOfWeek: 1, mealType: 'lunch', ingredients: [{ name: 'rice', amount: 200, unit: 'g' }] },
         ],
       })
     })
@@ -569,13 +748,7 @@ describe('chat routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('unions ingredients across every recipe in the plan and subtracts a parseable pantry quantity', async () => {
-      mockGetRecipeInformation.mockImplementation(async (id: number) => ({
-        id,
-        extendedIngredients: [
-          { id: 10, name: 'rice', amount: 200, unit: 'g', measures: { metric: { amount: 200, unitShort: 'g' }, us: { amount: 7, unitShort: 'oz' } } },
-        ],
-      }))
+    it('unions ingredients across every meal in the plan and subtracts a parseable pantry quantity', async () => {
       mockPrisma.product.findMany.mockResolvedValue([{ name: 'rice', quantity: '150 g' }])
 
       const res = await request(app).post('/api/chat/meal-plan/plan1/consolidate').set('Authorization', 'Bearer good-token')
@@ -586,11 +759,10 @@ describe('chat routes', () => {
     })
 
     it('drops a line entirely once parseable pantry quantities fully cover it', async () => {
-      mockGetRecipeInformation.mockResolvedValue({
-        id: 1,
-        extendedIngredients: [
-          { id: 10, name: 'salt', amount: 5, unit: 'g', measures: { metric: { amount: 5, unitShort: 'g' }, us: { amount: 1, unitShort: 'tsp' } } },
-        ],
+      mockPrisma.mealPlan.findFirst.mockResolvedValue({
+        id: 'plan1',
+        ownerId: 'user_1',
+        days: [{ id: 'e1', dayOfWeek: 0, mealType: 'lunch', ingredients: [{ name: 'salt', amount: 5, unit: 'g' }] }],
       })
       mockPrisma.product.findMany.mockResolvedValue([{ name: 'salt', quantity: '1000 g' }])
 
@@ -601,10 +773,12 @@ describe('chat routes', () => {
     })
 
     it('keeps the full line with a pantryNote when the matching pantry quantity cannot be parsed', async () => {
-      mockGetRecipeInformation.mockResolvedValue({
-        id: 1,
-        extendedIngredients: [
-          { id: 10, name: 'flour', amount: 300, unit: 'g', measures: { metric: { amount: 300, unitShort: 'g' }, us: { amount: 10, unitShort: 'oz' } } },
+      mockPrisma.mealPlan.findFirst.mockResolvedValue({
+        id: 'plan1',
+        ownerId: 'user_1',
+        days: [
+          { id: 'e1', dayOfWeek: 0, mealType: 'lunch', ingredients: [{ name: 'flour', amount: 300, unit: 'g' }] },
+          { id: 'e2', dayOfWeek: 1, mealType: 'lunch', ingredients: [{ name: 'flour', amount: 300, unit: 'g' }] },
         ],
       })
       mockPrisma.product.findMany.mockResolvedValue([{ name: 'flour', quantity: 'un paquete' }])

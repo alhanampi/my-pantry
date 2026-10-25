@@ -5,6 +5,8 @@ import type { ReactNode } from 'react'
 import {
   useCurrentMealPlan,
   useGenerateMealPlan,
+  useRefineMealPlan,
+  useSwapMeal,
   useDeleteMealPlan,
   useConsolidateMealPlan,
   useCreateShoppingListFromMealPlan,
@@ -39,20 +41,69 @@ describe('useMealPlan hooks', () => {
     expect(mealPlanApi.apiGetCurrentMealPlan).not.toHaveBeenCalled()
   })
 
+  const baseMealPlan = {
+    id: 'p1',
+    weekStart: '',
+    includeBreakfast: false,
+    servings: 2,
+    dietaryRestrictions: [],
+    batchPrepPlan: null,
+    days: [],
+  }
+
   it('useCurrentMealPlan fetches the caller\'s current plan when signed in', async () => {
-    vi.mocked(mealPlanApi.apiGetCurrentMealPlan).mockResolvedValue({ id: 'p1', weekStart: '', days: [] })
+    vi.mocked(mealPlanApi.apiGetCurrentMealPlan).mockResolvedValue(baseMealPlan)
     const { result } = renderHook(() => useCurrentMealPlan(), { wrapper })
     await waitFor(() => expect(result.current.data?.id).toBe('p1'))
   })
 
   it('useGenerateMealPlan posts dietaryRestrictions/servings and invalidates the current plan', async () => {
-    vi.mocked(mealPlanApi.apiGenerateMealPlan).mockResolvedValue({ id: 'p1', weekStart: '', days: [] })
+    vi.mocked(mealPlanApi.apiGenerateMealPlan).mockResolvedValue(baseMealPlan)
     const { result } = renderHook(() => useGenerateMealPlan(), { wrapper })
     result.current.mutate({ dietaryRestrictions: ['vegan'], servings: 3 })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(mealPlanApi.apiGenerateMealPlan).toHaveBeenCalledWith(
       'token-123',
       { dietaryRestrictions: ['vegan'], servings: 3 },
+      expect.any(String),
+    )
+  })
+
+  it('useRefineMealPlan posts the message and invalidates the current plan', async () => {
+    vi.mocked(mealPlanApi.apiRefineMealPlan).mockResolvedValue(baseMealPlan)
+    const { result } = renderHook(() => useRefineMealPlan(), { wrapper })
+    result.current.mutate({ id: 'p1', message: 'make it spicier', location: { lat: 1, lng: 2 } })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(mealPlanApi.apiRefineMealPlan).toHaveBeenCalledWith(
+      'token-123',
+      'p1',
+      'make it spicier',
+      expect.any(String),
+      { lat: 1, lng: 2 },
+    )
+  })
+
+  it('useSwapMeal posts the slot/reason and invalidates the current plan', async () => {
+    vi.mocked(mealPlanApi.apiSwapMeal).mockResolvedValue({
+      id: 'e1',
+      dayOfWeek: 0,
+      mealType: 'lunch',
+      title: 'New lunch',
+      description: '',
+      image: '',
+      ingredients: [],
+      steps: [],
+      notes: '',
+      prepTimeMinutes: 10,
+      totalTimeMinutes: 20,
+    })
+    const { result } = renderHook(() => useSwapMeal(), { wrapper })
+    result.current.mutate({ id: 'p1', dayOfWeek: 0, mealType: 'lunch', reason: 'no pescado' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(mealPlanApi.apiSwapMeal).toHaveBeenCalledWith(
+      'token-123',
+      'p1',
+      { dayOfWeek: 0, mealType: 'lunch', reason: 'no pescado', location: undefined },
       expect.any(String),
     )
   })

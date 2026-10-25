@@ -199,6 +199,7 @@ export interface SearchCriteria {
  */
 export async function extractSearchCriteria(
   history: ChatHistoryMessage[],
+  geoHint?: string,
 ): Promise<SearchCriteria> {
   if (!groq) throw new ChatConfigError()
 
@@ -219,6 +220,10 @@ export async function extractSearchCriteria(
             'empty object if truly nothing is inferable, that is a valid answer, not an error. ' +
             'includeIngredients should be a comma-separated list of ingredient names the user said they ' +
             'have. maxReadyTime is in minutes, only include it if the user gave a real time constraint. ' +
+            (geoHint
+              ? `${geoHint} Only use this to pick "cuisine" when the conversation itself gives no cuisine ` +
+                'preference — an explicit preference from the user always wins over the location guess. '
+              : '') +
             'IMPORTANT: the recipe API only indexes English text, regardless of what language the ' +
             'conversation is in. Always translate query, cuisine, and includeIngredients into English ' +
             'before returning them — e.g. a conversation about "pollo a la plancha" should produce ' +

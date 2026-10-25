@@ -1,12 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import { useTranslation } from 'react-i18next'
-import type { MealPlan, ShoppingListItem, ConsolidatedShoppingItem } from '../utils/types'
+import type { MealPlan, MealPlanEntry, ShoppingListItem, ConsolidatedShoppingItem, Coordinates, MealType } from '../utils/types'
 import {
   apiGenerateMealPlan,
+  apiRefineMealPlan,
+  apiSwapMeal,
   apiGetCurrentMealPlan,
   apiDeleteMealPlan,
   apiConsolidateMealPlan,
+  type GenerateMealPlanPayload,
 } from '../api/mealPlanApi'
 import { apiCreateShoppingList, apiCreateShoppingItem } from '../api/pantryApi'
 
@@ -38,13 +41,66 @@ export function useGenerateMealPlan() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: async (payload: {
-      dietaryRestrictions: string[]
-      servings: number
-      daysCount?: number
-    }): Promise<MealPlan> => {
+    mutationFn: async (payload: GenerateMealPlanPayload): Promise<MealPlan> => {
       const token = await requireToken(getToken)
       return apiGenerateMealPlan(token, payload, i18n.language)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mealPlan'] })
+    },
+  })
+}
+
+// Free-text adjustment to the current plan — the backend re-generates the
+// full week with the user's message layered onto the existing plan as
+// context, so this invalidates the same query generation does.
+export function useRefineMealPlan() {
+  const { getToken } = useAuth()
+  const { i18n } = useTranslation()
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      message,
+      location,
+    }: {
+      id: string
+      message: string
+      location?: Coordinates
+    }): Promise<MealPlan> => {
+      const token = await requireToken(getToken)
+      return apiRefineMealPlan(token, id, message, i18n.language, location)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mealPlan'] })
+    },
+  })
+}
+
+// Replaces one meal (e.g. the user doesn't want the suggested Tuesday
+// lunch) without touching the rest of the week.
+export function useSwapMeal() {
+  const { getToken } = useAuth()
+  const { i18n } = useTranslation()
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      dayOfWeek,
+      mealType,
+      reason,
+      location,
+    }: {
+      id: string
+      dayOfWeek: number
+      mealType: MealType
+      reason?: string
+      location?: Coordinates
+    }): Promise<MealPlanEntry> => {
+      const token = await requireToken(getToken)
+      return apiSwapMeal(token, id, { dayOfWeek, mealType, reason, location }, i18n.language)
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['mealPlan'] })

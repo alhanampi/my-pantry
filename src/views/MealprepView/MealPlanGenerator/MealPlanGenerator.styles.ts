@@ -23,3 +23,9 @@ export const ServingsRow = styled.div`
   align-items: center;
   gap: 12px;
 `
+
+export const ChipsRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`

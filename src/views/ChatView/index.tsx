@@ -11,7 +11,7 @@ import { MdArrowBack, MdAutoAwesome, MdHistory, MdAddComment, MdOutlineLightbulb
 import { useTranslation } from 'react-i18next'
 import ChatSidebar from './ChatSidebar'
 import NewChatOnboarding from './NewChatOnboarding'
-import PantrySuggestions from './PantrySuggestions'
+import QuickResultView from './QuickResultView'
 import ChatMessageList, { type SuggestionEvent } from './ChatMessageList'
 import ChatComposer, { type ChatComposerHandle } from './ChatComposer'
 import QuickReplies from './QuickReplies'
@@ -41,7 +41,7 @@ import { useNearbyStores } from '../../hooks/useNearbyStores'
 import { usePantry } from '../../hooks/usePantry'
 import { useAvailableHeight } from '../../hooks/useAvailableHeight'
 import { DEFAULT_SHOP_TYPES } from '../../api/overpass'
-import type { RecipeIngredient, ChatConversation } from '../../utils/types'
+import type { RecipeIngredient, ChatConversation, RecipeCard } from '../../utils/types'
 
 // Must exactly match MainContent's own bottom padding (App.styles.ts) — not
 // BottomNav's rendered height. BottomNav overlays the page (position: fixed)
@@ -63,12 +63,11 @@ export interface ChatViewProps {
     { recipeTitle: string; ingredients: RecipeIngredient[] }
   >
   onSentToList: (listId: string) => void
-  onNavigateToMealprep: () => void
 }
 
 const MIN_MESSAGES_FOR_SUGGESTION = 2
 
-export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNavigateToMealprep }: ChatViewProps) {
+export default function ChatView({ sendRecipeToShoppingList, onSentToList }: ChatViewProps) {
   const { t } = useTranslation()
   const { isSignedIn, isLoaded } = useAuth()
 
@@ -88,6 +87,11 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
   // whenever the active conversation changes so a switch never carries
   // stale suggestions over.
   const [suggestionEvents, setSuggestionEvents] = useState<SuggestionEvent[]>([])
+  // null = not in the post-onboarding "quick result" screen (either still
+  // onboarding, already moved into the full conversation, or resumed an
+  // existing chat from history) — see QuickResultView's own comment for why
+  // this screen exists instead of dropping straight into ChatBody.
+  const [quickResult, setQuickResult] = useState<{ recipes: RecipeCard[] } | 'loading' | null>(null)
 
   const conversationsQuery = useConversations()
   const conversationQuery = useConversation(activeConversationId)
@@ -188,18 +192,21 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
     if (!autoStart || autoStart.conversationId !== activeConversationId) return
     const { conversationId, initialQuery } = autoStart
     setAutoStart(null)
-    if (initialQuery) {
-      void session.sendMessage(initialQuery, nearbyStoresSummary).then(() => {
-        suggestRecipe.mutate(conversationId, {
-          onSuccess: (data) => pushSuggestionEvent(messagesRef.current.length, data.recipes),
-        })
-      })
-    } else {
-      suggestRecipe.mutate(conversationId, {
-        onSuccess: (data) => pushSuggestionEvent(messagesRef.current.length, data.recipes),
-      })
+    const fetchQuickResult = (): void => {
+      suggestRecipe.mutate(
+        { conversationId, location: coords ?? undefined },
+        {
+          onSuccess: (data) => setQuickResult({ recipes: data.recipes }),
+          onError: () => setQuickResult({ recipes: [] }),
+        },
+      )
     }
-    // session/suggestRecipe/nearbyStoresSummary are re-derived every render
+    if (initialQuery) {
+      void session.sendMessage(initialQuery, nearbyStoresSummary).then(fetchQuickResult)
+    } else {
+      fetchQuickResult()
+    }
+    // session/suggestRecipe/nearbyStoresSummary/coords are re-derived every render
     // and intentionally excluded — this should only re-run when autoStart or
     // activeConversationId actually change, not on every unrelated render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,6 +245,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
           loadedConversationRef.current = conversation.id
           session.resetMessages([])
           setSuggestionEvents([])
+          setQuickResult('loading')
           // Picked up by the auto-start effect above once activeConversationId
           // has actually become conversation.id on a subsequent render.
           setAutoStart({ conversationId: conversation.id, initialQuery })
@@ -260,6 +268,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
           setActiveConversationId(null)
           loadedConversationRef.current = null
           setSuggestionEvents([])
+          setQuickResult(null)
         }
       },
     })
@@ -268,9 +277,10 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
   const handleSuggestRecipe = (): void => {
     if (!activeConversationId) return
     const afterIndex = messagesRef.current.length
-    suggestRecipe.mutate(activeConversationId, {
-      onSuccess: (data) => pushSuggestionEvent(afterIndex, data.recipes),
-    })
+    suggestRecipe.mutate(
+      { conversationId: activeConversationId, location: coords ?? undefined },
+      { onSuccess: (data) => pushSuggestionEvent(afterIndex, data.recipes) },
+    )
   }
 
   const handleSendToShoppingList = (payload: { recipeTitle: string; ingredients: RecipeIngredient[] }): void => {
@@ -290,11 +300,13 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
         onSelect={(id) => {
           setActiveConversationId(id)
           setCreatingNew(false)
+          setQuickResult(null)
           setHistoryOpen(false)
         }}
         onNewChat={() => {
           setCreatingNew(true)
           setActiveConversationId(null)
+          setQuickResult(null)
           setHistoryOpen(false)
         }}
         onDeleteClick={setDeleteTarget}
@@ -355,6 +367,7 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
               setCreatingNew(true)
               setActiveConversationId(null)
               setSuggestionEvents([])
+              setQuickResult(null)
             }}
           >
             <MdAddComment size={20} />
@@ -367,16 +380,26 @@ export default function ChatView({ sendRecipeToShoppingList, onSentToList, onNav
 
       {creatingNew && (
         <NewChatStack>
-          <PantrySuggestions onSelectRecipe={setSuggestedRecipeId} />
           <NewChatOnboarding
             onStart={handleStartConversation}
-            onGoToMealprep={onNavigateToMealprep}
             isPending={createConversation.isPending}
           />
         </NewChatStack>
       )}
 
-      {!creatingNew && activeConversationId !== null && (
+      {!creatingNew && activeConversationId !== null && quickResult !== null && (
+        <QuickResultView
+          isLoading={quickResult === 'loading'}
+          recipes={quickResult === 'loading' ? [] : quickResult.recipes}
+          onSelectRecipe={setSuggestedRecipeId}
+          favoriteIds={favoriteIdSet}
+          onToggleFavorite={handleToggleFavorite}
+          pendingFavoriteId={favoriteToggle.pendingRecipeId}
+          onContinueChat={() => setQuickResult(null)}
+        />
+      )}
+
+      {!creatingNew && activeConversationId !== null && quickResult === null && (
         <ChatBody ref={chatBodyRef} style={{ height: availableHeight }}>
           <ScrollArea>
             <ChatMessageList

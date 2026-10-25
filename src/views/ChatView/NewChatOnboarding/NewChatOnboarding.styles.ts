@@ -71,9 +71,3 @@ export const GoalOptionHint = styled.span`
 export const BackRow = styled.div`
   display: flex;
 `
-
-export const ChipsRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`
