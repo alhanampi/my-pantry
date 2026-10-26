@@ -200,6 +200,29 @@ export interface SupplementedSearchResult {
   number: number
 }
 
+// Translates the subset of SPOONACULAR_CUISINES (see chatAssistant.ts) that
+// has a reasonably close equivalent in Edamam's own cuisineType vocabulary —
+// the two providers don't share one list, and several Spoonacular values
+// (e.g. "Cajun", "Jewish", "Southern") have no sane Edamam match. Omitting
+// `cuisineType` entirely for those keeps today's behavior rather than
+// guessing wrong.
+const SPOONACULAR_TO_EDAMAM_CUISINE: Record<string, string> = {
+  American: 'american',
+  British: 'british',
+  Caribbean: 'caribbean',
+  Chinese: 'chinese',
+  French: 'french',
+  Indian: 'indian',
+  Italian: 'italian',
+  Japanese: 'japanese',
+  Mediterranean: 'mediterranean',
+  Mexican: 'mexican',
+  'Middle Eastern': 'middle eastern',
+  Nordic: 'nordic',
+  Thai: 'south east asian',
+  Vietnamese: 'south east asian',
+}
+
 // Spoonacular is the primary source; Edamam only fills in the remainder when
 // Spoonacular's own search (plain or already relaxed via
 // searchRecipesWithFallback) came back thinner than what was asked for.
@@ -212,7 +235,7 @@ export interface SupplementedSearchResult {
 // a 200 into a 500.
 export async function searchWithEdamamSupplement(
   spoonacularResult: { results: SpoonacularRecipe[]; offset: number; number: number; totalResults: number },
-  edamamParams: { query?: string; includeIngredients?: string },
+  edamamParams: { query?: string; includeIngredients?: string; cuisine?: string },
   requestedNumber: number,
 ): Promise<SupplementedSearchResult> {
   const recipes = spoonacularResult.results.map(normalizeSpoonacularRecipe)
@@ -223,6 +246,7 @@ export async function searchWithEdamamSupplement(
       const edamamRecipes = await searchEdamamRecipes({
         query: edamamParams.query,
         includeIngredients: edamamParams.includeIngredients,
+        cuisineType: edamamParams.cuisine ? SPOONACULAR_TO_EDAMAM_CUISINE[edamamParams.cuisine] : undefined,
         number: requestedNumber - recipes.length,
       })
       recipes.push(...edamamRecipes.map(normalizeEdamamRecipe))

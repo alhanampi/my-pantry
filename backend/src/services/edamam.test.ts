@@ -56,6 +56,20 @@ describe('searchEdamamRecipes', () => {
     expect(url).toContain('q=meal')
   })
 
+  it('sends cuisineType when provided', async () => {
+    mockFetch.mockResolvedValue(jsonResponse(200, { count: 0, hits: [] }))
+    await searchEdamamRecipes({ query: 'kebab', cuisineType: 'middle eastern', number: 3 })
+    const url = new URL(mockFetch.mock.calls[0][0] as string)
+    expect(url.searchParams.get('cuisineType')).toBe('middle eastern')
+  })
+
+  it('omits cuisineType when not provided', async () => {
+    mockFetch.mockResolvedValue(jsonResponse(200, { count: 0, hits: [] }))
+    await searchEdamamRecipes({ query: 'kebab', number: 3 })
+    const url = mockFetch.mock.calls[0][0] as string
+    expect(url).not.toContain('cuisineType=')
+  })
+
   it('slices results down to the requested number', async () => {
     mockFetch.mockResolvedValue(
       jsonResponse(200, { count: 3, hits: [hit({ uri: 'r1' }), hit({ uri: 'r2' }), hit({ uri: 'r3' })] }),

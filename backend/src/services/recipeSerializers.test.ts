@@ -6,13 +6,19 @@ import {
   serializeDetail,
   makeRecipeId,
   parseRecipeId,
+  searchWithEdamamSupplement,
 } from './recipeSerializers'
 import type { SpoonacularRecipe } from './spoonacular'
 import type { EdamamRecipe } from './edamam'
 import { translateRecipeContent } from './groq'
+import { searchEdamamRecipes } from './edamam'
 
 vi.mock('./groq.js', () => ({
   translateRecipeContent: vi.fn(),
+}))
+
+vi.mock('./edamam.js', () => ({
+  searchEdamamRecipes: vi.fn(),
 }))
 
 function spoonacularRecipe(overrides: Partial<SpoonacularRecipe>): SpoonacularRecipe {
@@ -249,5 +255,35 @@ describe('normalizeEdamamRecipe', () => {
     const normalized = normalizeEdamamRecipe(edamamRecipe({ yield: 0 }))
     expect(normalized.servings).toBe(1)
     expect(normalized.nutrition.calories).toBe(800)
+  })
+})
+
+describe('searchWithEdamamSupplement — cuisine forwarding', () => {
+  const thinSpoonacularResult = { results: [], offset: 0, number: 3, totalResults: 0 }
+
+  it('translates a mappable Spoonacular cuisine into Edamam cuisineType', async () => {
+    vi.mocked(searchEdamamRecipes).mockResolvedValue([])
+
+    await searchWithEdamamSupplement(thinSpoonacularResult, { cuisine: 'Middle Eastern' }, 3)
+
+    expect(searchEdamamRecipes).toHaveBeenCalledWith(
+      expect.objectContaining({ cuisineType: 'middle eastern' }),
+    )
+  })
+
+  it('omits cuisineType when the cuisine has no Edamam equivalent', async () => {
+    vi.mocked(searchEdamamRecipes).mockResolvedValue([])
+
+    await searchWithEdamamSupplement(thinSpoonacularResult, { cuisine: 'Cajun' }, 3)
+
+    expect(searchEdamamRecipes).toHaveBeenCalledWith(expect.objectContaining({ cuisineType: undefined }))
+  })
+
+  it('omits cuisineType when no cuisine was given at all', async () => {
+    vi.mocked(searchEdamamRecipes).mockResolvedValue([])
+
+    await searchWithEdamamSupplement(thinSpoonacularResult, { query: 'soup' }, 3)
+
+    expect(searchEdamamRecipes).toHaveBeenCalledWith(expect.objectContaining({ cuisineType: undefined }))
   })
 })

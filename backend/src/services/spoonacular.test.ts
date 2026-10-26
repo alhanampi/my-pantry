@@ -33,11 +33,11 @@ describe('searchRecipesWithFallback', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('relaxes the criteria step by step until a non-empty result comes back', async () => {
+  it('relaxes the time window, then ingredients, while keeping cuisine as long as possible', async () => {
     mockFetch
       .mockResolvedValueOnce(jsonResponse([])) // full criteria — nothing
-      .mockResolvedValueOnce(jsonResponse([])) // drop maxReadyTime/cuisine — still nothing
-      .mockResolvedValueOnce(jsonResponse([{ id: 2, title: 'Rice bowl' }])) // single term + diet — hit
+      .mockResolvedValueOnce(jsonResponse([])) // drop maxReadyTime (still cuisine+query+ingredients) — nothing
+      .mockResolvedValueOnce(jsonResponse([{ id: 2, title: 'Rice bowl' }])) // drop ingredients too, keep cuisine+query — hit
 
     const result = await searchRecipesWithFallback(
       { query: 'grilled chicken', cuisine: 'mexican', includeIngredients: 'rice', maxReadyTime: 15 },
@@ -46,20 +46,24 @@ describe('searchRecipesWithFallback', () => {
 
     expect(result.results).toHaveLength(1)
     expect(mockFetch).toHaveBeenCalledTimes(3)
+    const hitCallUrl = mockFetch.mock.calls[2][0] as string
+    expect(hitCallUrl).toContain('cuisine=mexican')
+    expect(hitCallUrl).not.toContain('includeIngredients=')
   })
 
   it('falls all the way through to an unfiltered search when everything else is empty', async () => {
+    // A query-only criteria object collapses several of the relaxation
+    // steps into the exact same request (deduped — see pushUnique), so only
+    // two genuinely distinct attempts exist: query-based, then unfiltered.
     mockFetch
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse([{ id: 3, title: 'Surprise me' }]))
 
     const result = await searchRecipesWithFallback({ query: 'something obscure' }, 3)
 
     expect(result.results).toHaveLength(1)
-    expect(mockFetch).toHaveBeenCalledTimes(4)
-    const lastCallUrl = mockFetch.mock.calls[3][0] as string
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    const lastCallUrl = mockFetch.mock.calls[1][0] as string
     expect(lastCallUrl).not.toContain('query=')
   })
 
@@ -69,7 +73,29 @@ describe('searchRecipesWithFallback', () => {
     const result = await searchRecipesWithFallback({ query: 'nonexistent' }, 3)
 
     expect(result.results).toEqual([])
-    expect(mockFetch).toHaveBeenCalledTimes(4)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('tries the cuisine alone BEFORE an unrelated ingredient-only match, not after', async () => {
+    // This is the exact shape of the real bug report: a cuisine ("Middle
+    // Eastern") paired with ingredients that also happen to match plenty of
+    // totally unrelated dishes (e.g. "eggs, flour" matches scones). Cuisine
+    // must get its own dedicated attempt before the ingredient-only step
+    // ever runs, or an unrelated match wins first just because it's broader.
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse([])) // full (cuisine + includeIngredients) — nothing
+      .mockResolvedValueOnce(jsonResponse([{ id: 5, title: 'Baba ganoush' }])) // cuisine alone — hit
+
+    const result = await searchRecipesWithFallback(
+      { cuisine: 'Middle Eastern', includeIngredients: 'eggplant, flour, eggs' },
+      3,
+    )
+
+    expect(result.results).toHaveLength(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    const hitCallUrl = mockFetch.mock.calls[1][0] as string
+    expect(hitCallUrl).toContain('cuisine=Middle')
+    expect(hitCallUrl).not.toContain('includeIngredients=')
   })
 
   it('handles an empty criteria object by going straight to the unfiltered search shape', async () => {

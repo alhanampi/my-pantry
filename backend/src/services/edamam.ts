@@ -76,6 +76,11 @@ interface EdamamSearchResponse {
 export interface SearchEdamamParams {
   query?: string
   includeIngredients?: string
+  // Edamam's own cuisineType vocabulary (lowercase, e.g. "middle eastern") —
+  // already translated from Spoonacular's vocabulary by the caller (see
+  // recipeSerializers.ts's SPOONACULAR_TO_EDAMAM_CUISINE), since the two
+  // providers don't share one.
+  cuisineType?: string
   number: number
 }
 
@@ -92,6 +97,7 @@ export async function searchEdamamRecipes(params: SearchEdamamParams): Promise<E
   const q = [params.query, params.includeIngredients].filter(Boolean).join(' ').trim() || 'meal'
 
   const usp = new URLSearchParams({ type: 'public', q, app_id: appId, app_key: appKey })
+  if (params.cuisineType) usp.set('cuisineType', params.cuisineType)
 
   const res = await fetch(`${BASE}?${usp.toString()}`, {
     headers: { 'Edamam-Account-User': ACCOUNT_USER },

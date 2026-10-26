@@ -161,19 +161,50 @@ export async function searchRecipesWithFallback(
 ): Promise<ComplexSearchResponse> {
   const { query, cuisine, includeIngredients, maxReadyTime, diet } = criteria
 
-  const attempts: SearchRecipesParams[] = [
-    // 1. Everything the AI extracted, as-is.
-    { query, cuisine, includeIngredients, maxReadyTime, diet, number, offset: 0 },
-    // 2. Drop the most likely culprits for over-constraining: the time
-    //    window and the cuisine tag.
-    { query, includeIngredients, diet, number, offset: 0 },
-    // 3. Keep only one main term (prefer includeIngredients — it's closer
-    //    to "what the user actually has") plus diet.
-    { ...(includeIngredients ? { includeIngredients } : { query }), diet, number, offset: 0 },
-    // 4. No filters at all — guaranteed non-empty via Spoonacular's random
-    //    sort.
-    { number, offset: 0 },
-  ]
+  // Sparser criteria (e.g. just a query) makes several of the steps below
+  // collapse to the exact same request — pushUnique skips a step whose
+  // params are identical to one already queued, so a thin criteria object
+  // doesn't waste calls re-asking Spoonacular the same question.
+  const attempts: SearchRecipesParams[] = []
+  const seen = new Set<string>()
+  const pushUnique = (params: SearchRecipesParams): void => {
+    const key = JSON.stringify(params)
+    if (seen.has(key)) return
+    seen.add(key)
+    attempts.push(params)
+  }
+
+  // `cuisine` is the strongest cultural signal we have (e.g. "Middle
+  // Eastern" for a request about Arabic food) and is deliberately kept
+  // through several steps before ever being dropped — relaxing query/
+  // includeIngredients/maxReadyTime first means a later step can still
+  // find *something* on-theme instead of an early weak text/ingredient
+  // match silently winning with zero relation to the cuisine asked for
+  // (e.g. matching on "rice" alone and returning an unrelated dish).
+
+  // 1. Everything the AI extracted, as-is.
+  pushUnique({ query, cuisine, includeIngredients, maxReadyTime, diet, number, offset: 0 })
+  // 2. Drop the time window — the most likely culprit for over-constraining
+  //    that has nothing to do with relevance, cuisine included.
+  pushUnique({ query, cuisine, includeIngredients, diet, number, offset: 0 })
+  // 3. Also drop includeIngredients, but keep cuisine + query.
+  pushUnique({ query, cuisine, diet, number, offset: 0 })
+  // 4. Cuisine alone (+ diet) — still on-theme (e.g. "something Middle
+  //    Eastern") even with every other constraint gone.
+  if (cuisine) pushUnique({ cuisine, diet, number, offset: 0 })
+  // 5. Only from here on does cuisine actually get dropped: ingredients +
+  //    query, closest to "what can I cook with this" but no longer
+  //    cuisine-constrained.
+  pushUnique({ query, includeIngredients, diet, number, offset: 0 })
+  // 6. Ingredients the user actually has, on their own.
+  if (includeIngredients) pushUnique({ includeIngredients, diet, number, offset: 0 })
+  // 7. The free-text query on its own — complexSearch's query does a fuzzy
+  //    text match, often forgiving even when fuller combinations found
+  //    nothing.
+  if (query) pushUnique({ query, diet, number, offset: 0 })
+  // 8. No filters at all — guaranteed non-empty via Spoonacular's random
+  //    sort. Last resort only, once every context-tied attempt failed.
+  pushUnique({ number, offset: 0 })
 
   let last: ComplexSearchResponse = { results: [], offset: 0, number, totalResults: 0 }
   for (const params of attempts) {

@@ -25,6 +25,9 @@ export const DIET_OPTIONS: RecipeFilterOption[] = [
   { value: 'whole30', labelKey: 'recipes.filters.dietOptions.whole30' },
 ]
 
+// Multi-word cuisines keep Spoonacular's documented spaced form ("Middle
+// Eastern", not "middleEastern") — complexSearch's cuisine matcher is
+// case-insensitive but still expects the space.
 export const CUISINE_OPTIONS: RecipeFilterOption[] = [
   { value: 'african', labelKey: 'recipes.filters.cuisineOptions.african' },
   { value: 'american', labelKey: 'recipes.filters.cuisineOptions.american' },
@@ -32,7 +35,7 @@ export const CUISINE_OPTIONS: RecipeFilterOption[] = [
   { value: 'cajun', labelKey: 'recipes.filters.cuisineOptions.cajun' },
   { value: 'caribbean', labelKey: 'recipes.filters.cuisineOptions.caribbean' },
   { value: 'chinese', labelKey: 'recipes.filters.cuisineOptions.chinese' },
-  { value: 'easternEuropean', labelKey: 'recipes.filters.cuisineOptions.easternEuropean' },
+  { value: 'Eastern European', labelKey: 'recipes.filters.cuisineOptions.easternEuropean' },
   { value: 'european', labelKey: 'recipes.filters.cuisineOptions.european' },
   { value: 'french', labelKey: 'recipes.filters.cuisineOptions.french' },
   { value: 'german', labelKey: 'recipes.filters.cuisineOptions.german' },
@@ -43,10 +46,10 @@ export const CUISINE_OPTIONS: RecipeFilterOption[] = [
   { value: 'japanese', labelKey: 'recipes.filters.cuisineOptions.japanese' },
   { value: 'jewish', labelKey: 'recipes.filters.cuisineOptions.jewish' },
   { value: 'korean', labelKey: 'recipes.filters.cuisineOptions.korean' },
-  { value: 'latinAmerican', labelKey: 'recipes.filters.cuisineOptions.latinAmerican' },
+  { value: 'Latin American', labelKey: 'recipes.filters.cuisineOptions.latinAmerican' },
   { value: 'mediterranean', labelKey: 'recipes.filters.cuisineOptions.mediterranean' },
   { value: 'mexican', labelKey: 'recipes.filters.cuisineOptions.mexican' },
-  { value: 'middleEastern', labelKey: 'recipes.filters.cuisineOptions.middleEastern' },
+  { value: 'Middle Eastern', labelKey: 'recipes.filters.cuisineOptions.middleEastern' },
   { value: 'nordic', labelKey: 'recipes.filters.cuisineOptions.nordic' },
   { value: 'southern', labelKey: 'recipes.filters.cuisineOptions.southern' },
   { value: 'spanish', labelKey: 'recipes.filters.cuisineOptions.spanish' },
