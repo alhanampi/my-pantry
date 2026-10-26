@@ -25,10 +25,12 @@ const DEFAULT_SERVINGS = 2
 const DEFAULT_DAYS_COUNT = 7
 const MIN_DAYS_COUNT = 1
 const MAX_DAYS_COUNT = 7
-// Includes longer sessions (2h/3h) on top of per-meal cook times — cooking
-// for a whole week plausibly means one long batch-cooking block, not just
-// 90 minutes max per single dish.
-const TIME_OPTIONS = [15, 30, 45, 60, 90, 120, 180] as const
+// This represents the WHOLE batch-cooking session's budget, not a single
+// dish's cook time (see mealPlanAi.ts's buildMealPrepSkeletonSystemPrompt/
+// buildBatchPrepPlanSystemPrompt) — a real meal-prep session covering
+// several dishes is never realistically under 90 minutes, so no shorter
+// option is offered.
+const TIME_OPTIONS = [90, 120, 180] as const
 
 function todayIsoDate(): string {
   const d = new Date()

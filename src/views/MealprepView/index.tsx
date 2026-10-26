@@ -24,7 +24,7 @@ import {
   useSwapMeal,
 } from '../../hooks/useMealPlan'
 import { useGeolocation } from '../../hooks/useGeolocation'
-import { Wrapper, TopBar, Title, EmptyState, BackRow, ActionsRow } from './MealprepView.styles'
+import { Wrapper, TopBar, Title, EmptyState, ErrorState, BackRow, ActionsRow } from './MealprepView.styles'
 import type { RecipeIngredient } from '../../utils/types'
 
 export interface MealprepViewProps {
@@ -155,10 +155,20 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
       {mealPlanQuery.isLoading && <RecipesSkeleton />}
 
       {!mealPlanQuery.isLoading && !mealPlan && (
-        <MealPlanGenerator
-          onGenerate={(payload) => generateMealPlan.mutate(payload)}
-          isPending={generateMealPlan.isPending}
-        />
+        <>
+          <MealPlanGenerator
+            onGenerate={(payload) => generateMealPlan.mutate(payload)}
+            isPending={generateMealPlan.isPending}
+          />
+          {generateMealPlan.isError && (
+            <ErrorState>
+              <Typography variant="body1">{t(errorKey(generateMealPlan.error))}</Typography>
+              <Button variant="outlined" onClick={() => generateMealPlan.reset()}>
+                {t('mealprep.retry')}
+              </Button>
+            </ErrorState>
+          )}
+        </>
       )}
 
       {mealPlan && previewItems === undefined && (
@@ -192,6 +202,14 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
               refineMealPlan.mutate({ id: mealPlan.id, message, location: coords ?? undefined })
             }
           />
+          {refineMealPlan.isError && (
+            <ErrorState>
+              <Typography variant="body1">{t(errorKey(refineMealPlan.error))}</Typography>
+              <Button variant="outlined" onClick={() => refineMealPlan.reset()}>
+                {t('mealprep.retry')}
+              </Button>
+            </ErrorState>
+          )}
         </>
       )}
 
@@ -227,4 +245,12 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
       />
     </Wrapper>
   )
+}
+
+function errorKey(error: unknown): string {
+  const message = error instanceof Error ? error.message : ''
+  if (message === 'quotaExceeded') return 'mealprep.errors.quotaExceeded'
+  if (message === 'configError') return 'mealprep.errors.configError'
+  if (message === 'emptyPlan') return 'mealprep.errors.emptyPlan'
+  return 'mealprep.errors.generic'
 }

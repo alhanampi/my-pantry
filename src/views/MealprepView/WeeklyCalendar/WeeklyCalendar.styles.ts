@@ -8,17 +8,13 @@ export const Grid = styled.div`
 
 export const DayRow = styled.div`
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
 `
 
-// Fixed-width column of its own, pinned to the left of the row regardless
-// of how the meal cards wrap on narrow screens — keeps the day clearly
-// readable instead of scrolling out of view with its meals.
+// Sits above its meal cards (rather than as a side column) so the row
+// reads symmetrically regardless of how many cards it has.
 export const DayLabel = styled.span`
-  flex: 0 0 56px;
-  padding-top: 8px;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;

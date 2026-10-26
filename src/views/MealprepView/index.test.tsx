@@ -99,6 +99,38 @@ describe('MealprepView', () => {
     )
   })
 
+  it('shows an error message with a retry button when generation fails', async () => {
+    const generateMealPlan = mutationSpy({ isError: true, error: new Error('emptyPlan'), reset: vi.fn() })
+    vi.mocked(useGenerateMealPlan).mockReturnValue(generateMealPlan as never)
+
+    renderMealprepView()
+
+    expect(screen.getByText(i18n.t('mealprep.errors.emptyPlan'))).toBeInTheDocument()
+    await userEvent.click(screen.getByText(i18n.t('mealprep.retry')))
+    expect((generateMealPlan as unknown as { reset: () => void }).reset).toHaveBeenCalled()
+  })
+
+  it('maps a generic/unrecognized generation error to the generic message', () => {
+    const generateMealPlan = mutationSpy({ isError: true, error: new Error('boom'), reset: vi.fn() })
+    vi.mocked(useGenerateMealPlan).mockReturnValue(generateMealPlan as never)
+
+    renderMealprepView()
+
+    expect(screen.getByText(i18n.t('mealprep.errors.generic'))).toBeInTheDocument()
+  })
+
+  it('shows an error message with a retry button when a refine request fails', async () => {
+    vi.mocked(useCurrentMealPlan).mockReturnValue({ data: mealPlan, isLoading: false } as never)
+    const refineMealPlan = mutationSpy({ isError: true, error: new Error('quotaExceeded'), reset: vi.fn() })
+    vi.mocked(useRefineMealPlan).mockReturnValue(refineMealPlan as never)
+
+    renderMealprepView()
+
+    expect(screen.getByText(i18n.t('mealprep.errors.quotaExceeded'))).toBeInTheDocument()
+    await userEvent.click(screen.getByText(i18n.t('mealprep.retry')))
+    expect((refineMealPlan as unknown as { reset: () => void }).reset).toHaveBeenCalled()
+  })
+
   it('renders the weekly calendar from the current plan, grouped by meal', () => {
     vi.mocked(useCurrentMealPlan).mockReturnValue({ data: mealPlan, isLoading: false } as never)
     renderMealprepView()

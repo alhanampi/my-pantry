@@ -159,7 +159,13 @@ export function useCreateShoppingListFromMealPlan() {
     }): Promise<string> => {
       const token = await requireToken(getToken)
 
-      const listName = t('mealprep.shoppingListName', { date: new Date(weekStart).toLocaleDateString() })
+      // weekStart is a date-only value (UTC midnight) — toLocaleDateString()
+      // without timeZone: 'UTC' reads it back in the viewer's local
+      // calendar, which shifts it a day back for negative UTC offsets (see
+      // WeeklyCalendar's own comment on the same issue).
+      const listName = t('mealprep.shoppingListName', {
+        date: new Date(weekStart).toLocaleDateString(undefined, { timeZone: 'UTC' }),
+      })
       const list = await apiCreateShoppingList(token, listName)
 
       const itemPayloads = items.map(

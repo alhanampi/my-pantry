@@ -13,6 +13,24 @@ const MODEL = 'openai/gpt-oss-120b'
 
 const LANGUAGE_NAMES: Record<string, string> = { en: 'English', es: 'Spanish' }
 
+// Spoonacular's complexSearch `cuisine` param only matches its own fixed
+// vocabulary (case-insensitive, but still exact otherwise) — kept in sync
+// with src/utils/recipeFilterOptions.ts's CUISINE_OPTIONS (frontend and
+// backend are separate packages with no shared module between them, so this
+// is a genuine duplicated copy, not a single source of truth — exported
+// here so chatAssistant.test.ts can at least pin its exact contents and
+// catch an accidental edit on this side; a change to the frontend list
+// still needs a human to mirror it here on purpose). Giving the model free
+// rein here let it emit things like "Arabic" for a conversation about "cena
+// árabe", which silently matches nothing and used to cascade all the way
+// down to an unrelated random result (see extractSearchCriteria below).
+export const SPOONACULAR_CUISINES = [
+  'African', 'American', 'British', 'Cajun', 'Caribbean', 'Chinese', 'Eastern European', 'European',
+  'French', 'German', 'Greek', 'Indian', 'Irish', 'Italian', 'Japanese', 'Jewish', 'Korean',
+  'Latin American', 'Mediterranean', 'Mexican', 'Middle Eastern', 'Nordic', 'Southern', 'Spanish',
+  'Thai', 'Vietnamese',
+]
+
 export class ChatConfigError extends Error {
   constructor() {
     super('GROQ_API_KEY is not configured')
@@ -60,8 +78,6 @@ function buildSystemPrompt(
   pantrySummary?: string,
 ): string {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
-  const restrictionsText =
-    dietaryRestrictions.length > 0 ? dietaryRestrictions.join(', ') : 'none specified'
 
   return [
     'You are a warm, friendly, encouraging home-cooking assistant helping the user figure out what to ' +
@@ -71,8 +87,14 @@ function buildSystemPrompt(
       'Use a natural, encouraging tone, and sprinkle in the occasional food/kitchen emoji (🍳🥘😋👩‍🍳🧑‍🍳🥕) ' +
       'where it feels natural — a light touch (roughly one per reply, sometimes none), never more than two, ' +
       'never one on every single sentence.',
-    `The user has already specified up front: dietary restrictions = [${restrictionsText}], ` +
-      `desired servings = ${servings}. These are already known — never ask for them again, just use them.`,
+    dietaryRestrictions.length > 0
+      ? `The user has stated these dietary restrictions: ${dietaryRestrictions.join(', ')}. Never ask ` +
+        'about these — just honor them.'
+      : '',
+    `Default assumption: ${servings} serving(s), unless the conversation itself says otherwise (e.g. ` +
+      '"para 4", "somos 3 comiendo") — if so, use that instead. This default was never actually chosen ' +
+      "by the user (there's no upfront form anymore), so don't treat it as confirmed information; just " +
+      "use it quietly unless the dish or the user's own words suggest a different headcount.",
     'ASSUME the user already has basic pantry staples on hand — cooking oil, salt, pepper, common dried ' +
       'spices/herbs, sugar, flour, water — unless they say otherwise. Never ask about these; only ask ' +
       'about the actual main ingredients/proteins/produce they have or need.',
@@ -98,13 +120,12 @@ function buildSystemPrompt(
       'cooking time.',
     'If it seems relevant, ask (as one of your 2-3 total questions, not an extra one) whether the user ' +
       'plans to visit a nearby store for anything missing and, if so, roughly how many blocks/cuadras ' +
-      'away it is. Once you know that, silently add walking time to your estimate at about 2-3 minutes ' +
-      'per block, DOUBLED for the round trip (there and back) — this is YOUR internal arithmetic only. ' +
-      'NEVER show the user the calculation, the per-block rate, or the multiplier (e.g. never say ' +
-      'something like "2-3 min per block x2" or list out distances/times per store) — just state the ' +
-      'final total time naturally, the way a person would ("con la vuelta al negocio, calculá alrededor ' +
-      'de 40 minutos en total"). Skip asking about this entirely if the user already has everything or ' +
-      'is not going out — do not ask just to ask.',
+      'away it is. Once you know that, silently add about 5 minutes per block to your time estimate — ' +
+      'that single number already covers the round trip, so do not multiply or double it again. This is ' +
+      'YOUR internal arithmetic only: NEVER show the user the calculation, the per-block rate, or list ' +
+      'out distances/times per store — just state the final total time naturally, the way a person ' +
+      'would ("con la vuelta al negocio, calculá alrededor de 40 minutos en total"). Skip asking about ' +
+      'this entirely if the user already has everything or is not going out — do not ask just to ask.',
     nearbyStoresSummary
       ? `Nearby stores the user could walk to (from the app's own location lookup, not from the user): ` +
         `${nearbyStoresSummary}. This is background info for you only — if something is missing, mention ` +
@@ -156,10 +177,19 @@ export async function streamChatReply(params: StreamChatReplyParams): Promise<st
     const stream = await groq.chat.completions.create({
       model: MODEL,
       temperature: 0.6,
+      // gpt-oss-120b does hidden reasoning by default (Groq's own default is
+      // 'medium') that eats into max_tokens before any visible reply text —
+      // on a longer/more complex turn this could exhaust the whole budget
+      // during reasoning and leave zero tokens for the actual answer,
+      // producing a silently empty (not failed) response. 'low' keeps that
+      // overhead small for this low-stakes, conversational use case.
+      reasoning_effort: 'low',
       // Backstop for the "be brief" system-prompt instruction, not just a
       // context-window limit — keeps a verbose model from rambling even if
-      // it ignores the prompt.
-      max_tokens: 300,
+      // it ignores the prompt. Headroom raised alongside reasoning_effort
+      // above, as a safety margin against the same reasoning-exhaustion
+      // failure mode even at 'low' effort.
+      max_tokens: 600,
       stream: true,
       messages: [{ role: 'system', content: system }, ...params.history],
     })
@@ -218,8 +248,17 @@ export async function extractSearchCriteria(
             '{ "query": string, "cuisine": string, "includeIngredients": string, "maxReadyTime": number }. ' +
             "All fields are optional — omit any you can't confidently infer; it's fine to return an " +
             'empty object if truly nothing is inferable, that is a valid answer, not an error. ' +
+            `"cuisine" MUST be exactly one of this fixed list (omit it entirely if nothing fits, even if ` +
+            `the conversation mentions a cuisine/region — never invent a value outside this list): ` +
+            `${SPOONACULAR_CUISINES.join(', ')}. ` +
+            'Map demonyms/regions/dish origins that are not themselves in the list to the closest entry ' +
+            'in it — for example "árabe"/"Arabic"/"Lebanese"/"Syrian"/"Egyptian" all map to "Middle ' +
+            'Eastern"; "tex-mex" maps to "Mexican"; "cantonese"/"szechuan" map to "Chinese". Prefer this ' +
+            "kind of inference over omitting cuisine, as long as there's a real, confident match. " +
             'includeIngredients should be a comma-separated list of ingredient names the user said they ' +
-            'have. maxReadyTime is in minutes, only include it if the user gave a real time constraint. ' +
+            'have (also pick these up from mentions in your own prior assistant replies in this history, ' +
+            'not just the user turns). maxReadyTime is in minutes, only include it if the user gave a ' +
+            'real time constraint. ' +
             (geoHint
               ? `${geoHint} Only use this to pick "cuisine" when the conversation itself gives no cuisine ` +
                 'preference — an explicit preference from the user always wins over the location guess. '
@@ -251,6 +290,74 @@ export async function extractSearchCriteria(
     }
 
     return criteria
+  } catch (err) {
+    throw mapGroqError(err)
+  }
+}
+
+const MAX_INGREDIENT_SUGGESTIONS = 6
+
+/**
+ * Reads the conversation and suggests ingredient names the user hasn't
+ * already said they have, but would plausibly need for whatever dish is
+ * being discussed — shown as tap-to-insert pills next to the composer.
+ * Unlike extractSearchCriteria, this is user-facing copy, not a Spoonacular
+ * query term, so it stays in the conversation's own language instead of
+ * being translated to English. Deliberately conservative: an empty list is
+ * the correct, expected answer whenever nothing concrete is being cooked
+ * yet, rather than forcing a guess that has nothing to do with the chat.
+ */
+export async function suggestPossibleIngredients(
+  history: ChatHistoryMessage[],
+  language: string,
+): Promise<string[]> {
+  if (!groq) throw new ChatConfigError()
+
+  const langName = LANGUAGE_NAMES[language] ?? 'English'
+
+  try {
+    const completion = await groq.chat.completions.create({
+      model: MODEL,
+      temperature: 0.2,
+      max_tokens: 150,
+      reasoning_effort: 'low',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Read the following cooking-assistant conversation and suggest up to ' +
+            `${MAX_INGREDIENT_SUGGESTIONS} short ingredient names the user would plausibly still need for ` +
+            "whatever dish/direction is being discussed, that they haven't already said they have. " +
+            `Respond ONLY in ${langName} (the suggestions are shown to the user as tappable UI labels, ` +
+            'not sent to any external API — do not translate them to English). Respond ONLY with a JSON ' +
+            'object of the shape { "ingredients": string[] }. If there is no concrete dish/direction yet, ' +
+            "or the conversation's last turn isn't about gathering ingredients, return an empty array — " +
+            'never invent generic suggestions with no real connection to the conversation.',
+        },
+        ...history,
+      ],
+    })
+
+    const raw = completion.choices[0]?.message?.content
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw) as { ingredients?: unknown }
+    if (!Array.isArray(parsed.ingredients)) return []
+
+    const seen = new Set<string>()
+    const result: string[] = []
+    for (const entry of parsed.ingredients) {
+      if (typeof entry !== 'string') continue
+      const trimmed = entry.trim()
+      if (!trimmed) continue
+      const key = trimmed.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push(trimmed)
+      if (result.length >= MAX_INGREDIENT_SUGGESTIONS) break
+    }
+    return result
   } catch (err) {
     throw mapGroqError(err)
   }
@@ -294,6 +401,46 @@ export async function translateIngredientNames(names: string[]): Promise<string[
     if (!Array.isArray(parsed.names)) throw new Error('Malformed translation response')
 
     return parsed.names.map((n, i) => (typeof n === 'string' && n.trim() ? n.trim() : names[i]))
+  } catch (err) {
+    throw mapGroqError(err)
+  }
+}
+
+/**
+ * Translates a single recipe/dish title into English so it can be used as a
+ * Spoonacular/Edamam search term — same "recipe API only indexes English
+ * text" constraint as translateIngredientNames above, but phrased for a
+ * whole dish name (e.g. "Arroz con pollo" → "Chicken and rice") rather than
+ * a list of ingredient names, which read oddly through that prompt. Throws
+ * on failure like translateIngredientNames — callers that need a best-effort
+ * fallback (mealPlanAi.ts's resolveMealImage) catch it themselves and keep
+ * the original title rather than aborting the image lookup.
+ */
+export async function translateDishTitle(title: string): Promise<string> {
+  if (!groq) throw new ChatConfigError()
+
+  try {
+    const completion = await groq.chat.completions.create({
+      model: MODEL,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Translate the following recipe/dish name into English, the way it would naturally appear on ' +
+            'an English-language recipe site (not a literal word-for-word translation). If it is already ' +
+            'in English, return it unchanged. Respond ONLY with a JSON object of the shape { "title": string }.',
+        },
+        { role: 'user', content: title },
+      ],
+    })
+
+    const raw = completion.choices[0]?.message?.content
+    if (!raw) throw new Error('Empty translation response')
+
+    const parsed = JSON.parse(raw) as { title?: unknown }
+    return typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : title
   } catch (err) {
     throw mapGroqError(err)
   }

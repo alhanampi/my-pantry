@@ -49,9 +49,19 @@ export default function WeeklyCalendar({ mealPlan, onSelectEntry }: WeeklyCalend
   return (
     <Grid>
       {dayNumbers.map((dayOfWeek) => {
+        // weekStart is a date-only value (parsed as UTC midnight) — using
+        // local getDate()/setDate()/toLocaleDateString() here shifted the
+        // displayed day back by one for any negative-UTC-offset timezone
+        // (e.g. weekStart "2026-10-26" rendered as "25" in Argentina).
+        // UTC-based arithmetic/formatting keeps the literal calendar date
+        // that was stored, regardless of the viewer's own timezone.
         const date = new Date(mealPlan.weekStart)
-        date.setDate(date.getDate() + dayOfWeek)
-        const dayLabel = date.toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric' })
+        date.setUTCDate(date.getUTCDate() + dayOfWeek)
+        const dayLabel = date.toLocaleDateString(i18n.language, {
+          weekday: 'short',
+          day: 'numeric',
+          timeZone: 'UTC',
+        })
         const entries = entriesByDay.get(dayOfWeek) ?? []
         const byType = new Map(entries.map((e) => [e.mealType, e]))
 

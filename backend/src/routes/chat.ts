@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js'
 import {
   streamChatReply,
   extractSearchCriteria,
+  suggestPossibleIngredients,
   translateIngredientNames,
   mapDietaryRestrictionsToSpoonacularDiet,
   resolveUnitSystem,
@@ -25,6 +26,7 @@ import {
   refineMealPlan,
   swapMeal,
   resolveMealImage,
+  MealPlanGenerationError,
   type GeneratedMealPlan,
   type GeneratedDay,
   type GeneratedMeal,
@@ -153,12 +155,28 @@ function consolidateIngredients(
 // best-effort real photo per meal by title (see mealPlanAi.ts's
 // resolveMealImage) before persisting. Run in parallel — up to 21 lookups
 // for a full week with breakfast, each independently fail-soft.
-async function buildMealPlanEntryRows(days: GeneratedDay[]) {
+//
+// Meal-prep plans now intentionally repeat the same dish title across
+// several slots (see mealPlanAi.ts's buildMealPrepSkeletonSystemPrompt) —
+// imageByTitle memoizes the lookup per title so a repeated dish fires one
+// external search instead of one per occurrence, and so every occurrence
+// ends up with the exact same photo instead of possibly different ones.
+async function buildMealPlanEntryRows(days: GeneratedDay[], lang: 'en' | 'es') {
   const flat: { dayOfWeek: number; mealType: 'breakfast' | 'lunch' | 'dinner'; meal: GeneratedMeal }[] = []
   for (const day of days) {
     if (day.breakfast) flat.push({ dayOfWeek: day.dayOfWeek, mealType: 'breakfast', meal: day.breakfast })
     flat.push({ dayOfWeek: day.dayOfWeek, mealType: 'lunch', meal: day.lunch })
     flat.push({ dayOfWeek: day.dayOfWeek, mealType: 'dinner', meal: day.dinner })
+  }
+
+  const imageByTitle = new Map<string, Promise<string>>()
+  function resolveMealImageCached(title: string): Promise<string> {
+    let promise = imageByTitle.get(title)
+    if (!promise) {
+      promise = resolveMealImage(title, lang)
+      imageByTitle.set(title, promise)
+    }
+    return promise
   }
 
   return Promise.all(
@@ -167,7 +185,7 @@ async function buildMealPlanEntryRows(days: GeneratedDay[]) {
       mealType,
       title: meal.title,
       description: meal.description,
-      image: await resolveMealImage(meal.title),
+      image: await resolveMealImageCached(meal.title),
       ingredients: meal.ingredients as unknown as Prisma.InputJsonValue,
       steps: meal.steps,
       notes: meal.notes,
@@ -242,6 +260,10 @@ function respondMealPlanAiError(err: unknown, res: Response): boolean {
   }
   if (err instanceof ChatQuotaError) {
     res.status(503).json({ error: 'quotaExceeded' })
+    return true
+  }
+  if (err instanceof MealPlanGenerationError) {
+    res.status(500).json({ error: 'emptyPlan' })
     return true
   }
   return false
@@ -471,6 +493,18 @@ router.post(
         return
       }
 
+      // streamChatReply resolving with no real text isn't an exception (the
+      // Groq call itself succeeded), but persisting/announcing it as a
+      // normal "done" message leaves a permanently empty, unexplained
+      // bubble in the UI — surface it as an error instead, same as any
+      // other failure, rather than silently completing with nothing to
+      // show. The user's own message above is already saved either way.
+      if (!fullReply.trim()) {
+        writeFrame({ type: 'error', message: 'generic' })
+        res.end()
+        return
+      }
+
       const assistantMessage = await prisma.chatMessage.create({
         data: { conversationId: conversation.id, role: 'assistant', content: fullReply },
       })
@@ -549,7 +583,7 @@ router.post(
 
       const supplemented = await searchWithEdamamSupplement(
         result,
-        { query: criteria.query, includeIngredients: criteria.includeIngredients },
+        { query: criteria.query, includeIngredients: criteria.includeIngredients, cuisine: criteria.cuisine },
         SUGGESTION_COUNT,
       )
 
@@ -565,6 +599,47 @@ router.post(
         return
       }
       handleSpoonacularError(err, res)
+    }
+  },
+)
+
+// Lightweight, separate from the main streaming turn on purpose — called
+// automatically by the frontend right after an assistant reply finishes
+// streaming (see useChatSession's onDone), not blocking it. A failure here
+// is swallowed client-side (missing pills, nothing more), so unlike
+// /suggest-recipe this never needs to report "not enough info" either.
+router.post(
+  '/conversations/:id/suggest-ingredients',
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const conversation = await prisma.chatConversation.findFirst({
+        where: { id: req.params.id, ownerId: req.clerkUserId! },
+        include: { messages: { orderBy: { createdAt: 'asc' } } },
+      })
+      if (!conversation) {
+        res.status(404).json({ error: 'Conversation not found' })
+        return
+      }
+
+      const history: ChatHistoryMessage[] = conversation.messages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+
+      const lang = req.query.lang === 'es' ? 'es' : 'en'
+      const ingredients = await suggestPossibleIngredients(history, lang)
+      res.json({ ingredients })
+    } catch (err) {
+      if (err instanceof ChatConfigError) {
+        res.status(500).json({ error: 'configError' })
+        return
+      }
+      if (err instanceof ChatQuotaError) {
+        res.status(503).json({ error: 'quotaExceeded' })
+        return
+      }
+      res.status(500).json({ error: 'Server error' })
     }
   },
 )
@@ -641,7 +716,7 @@ router.post(
         language: lang,
         daysCount,
       })
-      const entryRows = await buildMealPlanEntryRows(generated.days)
+      const entryRows = await buildMealPlanEntryRows(generated.days, lang)
 
       const mealPlan = await prisma.mealPlan.create({
         data: {
@@ -659,6 +734,10 @@ router.post(
       res.status(201).json({ mealPlan })
     } catch (err) {
       if (respondMealPlanAiError(err, res)) return
+      // Unlike the config/quota cases above (expected, user-facing), this is
+      // an unanticipated failure — log it so it's actually diagnosable, since
+      // the response just says "Server error" with no detail.
+      console.error('[meal-plan] unexpected error:', err)
       res.status(500).json({ error: 'Server error' })
     }
   },
@@ -725,7 +804,7 @@ router.post(
         language: lang,
         daysCount,
       })
-      const entryRows = await buildMealPlanEntryRows(refined.days)
+      const entryRows = await buildMealPlanEntryRows(refined.days, lang)
 
       const mealPlan = await prisma.$transaction(async (tx) => {
         await tx.mealPlanEntry.deleteMany({ where: { mealPlanId: existing.id } })
@@ -742,6 +821,10 @@ router.post(
       res.json({ mealPlan })
     } catch (err) {
       if (respondMealPlanAiError(err, res)) return
+      // Unlike the config/quota cases above (expected, user-facing), this is
+      // an unanticipated failure — log it so it's actually diagnosable, since
+      // the response just says "Server error" with no detail.
+      console.error('[meal-plan] unexpected error:', err)
       res.status(500).json({ error: 'Server error' })
     }
   },
@@ -814,7 +897,7 @@ router.post(
         otherTitlesInPlan,
         reason,
       })
-      const image = await resolveMealImage(replacement.title)
+      const image = await resolveMealImage(replacement.title, lang)
 
       const updated = await prisma.mealPlanEntry.update({
         where: { id: target.id },
@@ -833,6 +916,10 @@ router.post(
       res.json({ entry: updated })
     } catch (err) {
       if (respondMealPlanAiError(err, res)) return
+      // Unlike the config/quota cases above (expected, user-facing), this is
+      // an unanticipated failure — log it so it's actually diagnosable, since
+      // the response just says "Server error" with no detail.
+      console.error('[meal-plan] unexpected error:', err)
       res.status(500).json({ error: 'Server error' })
     }
   },

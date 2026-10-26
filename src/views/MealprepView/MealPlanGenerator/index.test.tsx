@@ -57,9 +57,12 @@ describe('MealPlanGenerator', () => {
     expect(onGenerate).toHaveBeenCalledWith(expect.objectContaining({ daysCount: 1 }))
   })
 
-  it('shows hour labels for the longer time options and minute labels for the shorter ones', () => {
+  // No option under 90 minutes is offered — a real meal-prep session
+  // covering several dishes is never realistically shorter than that (see
+  // TIME_OPTIONS's own comment).
+  it('shows hour labels for the longer time options and a minute label for the shortest one', () => {
     renderGenerator()
-    expect(screen.getByText(i18n.t('mealprep.generator.timeMinutes', { count: 15 }))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('mealprep.generator.timeMinutes', { count: 90 }))).toBeInTheDocument()
     expect(screen.getByText(i18n.t('mealprep.generator.timeHours', { count: 2 }))).toBeInTheDocument()
     expect(screen.getByText(i18n.t('mealprep.generator.timeHours', { count: 3 }))).toBeInTheDocument()
   })
@@ -68,10 +71,10 @@ describe('MealPlanGenerator', () => {
     const onGenerate = vi.fn()
     renderGenerator({ onGenerate })
 
-    const chip = screen.getByText(i18n.t('mealprep.generator.timeMinutes', { count: 30 }))
+    const chip = screen.getByText(i18n.t('mealprep.generator.timeMinutes', { count: 90 }))
     await userEvent.click(chip)
     await userEvent.click(screen.getByText(i18n.t('mealprep.generate')))
-    expect(onGenerate).toHaveBeenCalledWith(expect.objectContaining({ timeAvailableMinutes: 30 }))
+    expect(onGenerate).toHaveBeenCalledWith(expect.objectContaining({ timeAvailableMinutes: 90 }))
 
     onGenerate.mockClear()
     await userEvent.click(chip)

@@ -24,10 +24,12 @@ vi.mock('../services/groq.js', () => ({ translateRecipeContent: vi.fn() }))
 
 const mockStreamChatReply = vi.hoisted(() => vi.fn())
 const mockExtractSearchCriteria = vi.hoisted(() => vi.fn())
+const mockSuggestPossibleIngredients = vi.hoisted(() => vi.fn())
 const mockTranslateIngredientNames = vi.hoisted(() => vi.fn())
 vi.mock('../services/chatAssistant.js', () => ({
   streamChatReply: mockStreamChatReply,
   extractSearchCriteria: mockExtractSearchCriteria,
+  suggestPossibleIngredients: mockSuggestPossibleIngredients,
   translateIngredientNames: mockTranslateIngredientNames,
   mapDietaryRestrictionsToSpoonacularDiet: vi.fn(() => undefined),
   // Real logic (not a stub) — several assertions below care about which
@@ -68,6 +70,7 @@ vi.mock('../services/mealPlanAi.js', () => ({
   refineMealPlan: mockRefineMealPlan,
   swapMeal: mockSwapMeal,
   resolveMealImage: mockResolveMealImage,
+  MealPlanGenerationError: class MealPlanGenerationError extends Error {},
 }))
 
 function generatedMeal(title: string) {
@@ -273,6 +276,20 @@ describe('chat routes', () => {
       expect(mockPrisma.chatMessage.create).toHaveBeenCalledTimes(1) // only the user message
     })
 
+    it('emits an error frame (not an empty "done") when streamChatReply resolves with no real text', async () => {
+      mockStreamChatReply.mockResolvedValue('   ')
+
+      const res = await request(app)
+        .post('/api/chat/conversations/c1/messages')
+        .set('Authorization', 'Bearer good-token')
+        .send({ content: 'hola' })
+
+      expect(res.status).toBe(200)
+      expect(res.text).toContain('"type":"error"')
+      expect(res.text).not.toContain('"type":"done"')
+      expect(mockPrisma.chatMessage.create).toHaveBeenCalledTimes(1) // only the user message
+    })
+
     it('passes a pantrySummary built from the account\'s own products, scoped to the caller', async () => {
       mockPrisma.product.findMany.mockResolvedValue([{ name: 'Arroz' }, { name: 'Pollo' }])
       mockStreamChatReply.mockResolvedValue('ok')
@@ -442,6 +459,82 @@ describe('chat routes', () => {
     })
   })
 
+  describe('POST /conversations/:id/suggest-ingredients', () => {
+    beforeEach(() => {
+      mockPrisma.chatConversation.findFirst.mockResolvedValue({
+        id: 'c1',
+        ownerId: 'user_1',
+        messages: [
+          { role: 'user', content: 'quiero hacer comida china, tengo cebolla y fideos de arroz' },
+          { role: 'assistant', content: 'qué otros ingredientes tenés a mano?' },
+        ],
+      })
+    })
+
+    it('returns the ingredients Groq suggests', async () => {
+      mockSuggestPossibleIngredients.mockResolvedValue(['jengibre', 'ajo', 'salsa de soja'])
+
+      const res = await request(app)
+        .post('/api/chat/conversations/c1/suggest-ingredients')
+        .set('Authorization', 'Bearer good-token')
+
+      expect(res.status).toBe(200)
+      expect(res.body.ingredients).toEqual(['jengibre', 'ajo', 'salsa de soja'])
+      expect(mockSuggestPossibleIngredients).toHaveBeenCalledWith(
+        [
+          { role: 'user', content: 'quiero hacer comida china, tengo cebolla y fideos de arroz' },
+          { role: 'assistant', content: 'qué otros ingredientes tenés a mano?' },
+        ],
+        'en',
+      )
+    })
+
+    it('passes lang=es through from the query string', async () => {
+      mockSuggestPossibleIngredients.mockResolvedValue([])
+
+      await request(app)
+        .post('/api/chat/conversations/c1/suggest-ingredients?lang=es')
+        .set('Authorization', 'Bearer good-token')
+
+      expect(mockSuggestPossibleIngredients).toHaveBeenCalledWith(expect.any(Array), 'es')
+    })
+
+    it('returns 404 for a conversation owned by someone else', async () => {
+      mockPrisma.chatConversation.findFirst.mockResolvedValue(null)
+
+      const res = await request(app)
+        .post('/api/chat/conversations/c1/suggest-ingredients')
+        .set('Authorization', 'Bearer good-token')
+
+      expect(res.status).toBe(404)
+      expect(mockSuggestPossibleIngredients).not.toHaveBeenCalled()
+    })
+
+    it('surfaces a configError when Groq is not configured', async () => {
+      const { ChatConfigError } = await import('../services/chatAssistant.js')
+      mockSuggestPossibleIngredients.mockRejectedValue(new ChatConfigError())
+
+      const res = await request(app)
+        .post('/api/chat/conversations/c1/suggest-ingredients')
+        .set('Authorization', 'Bearer good-token')
+
+      expect(res.status).toBe(500)
+      expect(res.body.error).toBe('configError')
+    })
+
+    it('surfaces quotaExceeded when Groq quota is hit', async () => {
+      const { ChatQuotaError } = await import('../services/chatAssistant.js')
+      mockSuggestPossibleIngredients.mockRejectedValue(new ChatQuotaError())
+
+      const res = await request(app)
+        .post('/api/chat/conversations/c1/suggest-ingredients')
+        .set('Authorization', 'Bearer good-token')
+
+      expect(res.status).toBe(503)
+      expect(res.body.error).toBe('quotaExceeded')
+    })
+  })
+
   describe('POST /meal-plan', () => {
     it('returns 400 for invalid servings', async () => {
       const res = await request(app)
@@ -534,6 +627,22 @@ describe('chat routes', () => {
         .send({ dietaryRestrictions: [], servings: 2 })
 
       expect(res.status).toBe(503)
+      expect(mockPrisma.mealPlan.create).not.toHaveBeenCalled()
+    })
+
+    it('returns a 500 with error "emptyPlan" instead of persisting a thin/empty plan', async () => {
+      mockPrisma.mealPlan.count.mockResolvedValue(0)
+      mockPrisma.user.findUnique.mockResolvedValue({ unitSystem: 'metric' })
+      const { MealPlanGenerationError } = await import('../services/mealPlanAi.js')
+      mockGenerateMealPlan.mockRejectedValue(new MealPlanGenerationError())
+
+      const res = await request(app)
+        .post('/api/chat/meal-plan')
+        .set('Authorization', 'Bearer good-token')
+        .send({ dietaryRestrictions: [], servings: 2 })
+
+      expect(res.status).toBe(500)
+      expect(res.body.error).toBe('emptyPlan')
       expect(mockPrisma.mealPlan.create).not.toHaveBeenCalled()
     })
   })
