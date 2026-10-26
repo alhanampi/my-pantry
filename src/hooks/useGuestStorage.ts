@@ -1,9 +1,12 @@
-import type { Product, ShoppingListItem, ProductFormData, ShoppingList } from '../utils/types'
+import type { Product, ShoppingListItem, ProductFormData, ShoppingList, FavoriteStore } from '../utils/types'
 
 const PRODUCTS_KEY = 'guest_products'
 const SHOPPING_KEY = 'guest_shopping'
 const SHOPPING_LISTS_KEY = 'guest_shopping_lists'
 const FAVORITE_RECIPES_KEY = 'guest_favorite_recipes'
+const FAVORITE_INGREDIENTS_KEY = 'guest_favorite_ingredients'
+const FAVORITE_STORES_KEY = 'guest_favorite_stores'
+const FAVORITE_SHOPPING_LISTS_KEY = 'guest_favorite_shopping_lists'
 const UNIT_SYSTEM_KEY = 'guest_unit_system'
 
 const GENERAL_LIST_ID = 'guest-general'
@@ -60,6 +63,48 @@ function writeFavoriteIds(ids: string[]): void {
   localStorage.setItem(FAVORITE_RECIPES_KEY, JSON.stringify(ids))
 }
 
+function readFavoriteIngredients(): string[] {
+  try {
+    const raw = localStorage.getItem(FAVORITE_INGREDIENTS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function writeFavoriteIngredients(names: string[]): void {
+  localStorage.setItem(FAVORITE_INGREDIENTS_KEY, JSON.stringify(names))
+}
+
+function readFavoriteStores(): FavoriteStore[] {
+  try {
+    const raw = localStorage.getItem(FAVORITE_STORES_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function writeFavoriteStores(stores: FavoriteStore[]): void {
+  localStorage.setItem(FAVORITE_STORES_KEY, JSON.stringify(stores))
+}
+
+function readFavoriteShoppingListIds(): string[] {
+  try {
+    const raw = localStorage.getItem(FAVORITE_SHOPPING_LISTS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function writeFavoriteShoppingListIds(ids: string[]): void {
+  localStorage.setItem(FAVORITE_SHOPPING_LISTS_KEY, JSON.stringify(ids))
+}
+
 // Lazily seeds the guest "General" list on first access — mirrors the
 // backend's ensureGeneralList so both storages behave the same way.
 function ensureGeneralList(): ShoppingList[] {
@@ -110,6 +155,7 @@ export const guestStorage = {
     if (!target || target.isGeneral) return
     writeShoppingLists(lists.filter((l) => l.id !== id))
     writeShopping(readShopping().filter((i) => i.listId !== id))
+    writeFavoriteShoppingListIds(readFavoriteShoppingListIds().filter((listId) => listId !== id))
   },
 
   getFavoriteIds: readFavoriteIds,
@@ -136,6 +182,57 @@ export const guestStorage = {
   removeFavorite(recipeId: string): string[] {
     const next = readFavoriteIds().filter((id) => id !== recipeId)
     writeFavoriteIds(next)
+    return next
+  },
+
+  getFavoriteIngredients: readFavoriteIngredients,
+
+  addFavoriteIngredient(name: string): string[] {
+    const names = readFavoriteIngredients()
+    if (names.includes(name)) return names
+    const next = [...names, name]
+    writeFavoriteIngredients(next)
+    return next
+  },
+
+  removeFavoriteIngredient(name: string): string[] {
+    const next = readFavoriteIngredients().filter((n) => n !== name)
+    writeFavoriteIngredients(next)
+    return next
+  },
+
+  getFavoriteStores: readFavoriteStores,
+
+  addFavoriteStore(store: Omit<FavoriteStore, 'id' | 'createdAt'>): FavoriteStore[] {
+    const stores = readFavoriteStores()
+    const existing = stores.filter((s) => s.placeId !== store.placeId)
+    const next = [
+      ...existing,
+      { ...store, id: `guest-favorite-store-${store.placeId}`, createdAt: new Date().toISOString() },
+    ]
+    writeFavoriteStores(next)
+    return next
+  },
+
+  removeFavoriteStore(placeId: string): FavoriteStore[] {
+    const next = readFavoriteStores().filter((s) => s.placeId !== placeId)
+    writeFavoriteStores(next)
+    return next
+  },
+
+  getFavoriteShoppingListIds: readFavoriteShoppingListIds,
+
+  addFavoriteShoppingList(listId: string): string[] {
+    const ids = readFavoriteShoppingListIds()
+    if (ids.includes(listId)) return ids
+    const next = [...ids, listId]
+    writeFavoriteShoppingListIds(next)
+    return next
+  },
+
+  removeFavoriteShoppingList(listId: string): string[] {
+    const next = readFavoriteShoppingListIds().filter((id) => id !== listId)
+    writeFavoriteShoppingListIds(next)
     return next
   },
 
@@ -188,6 +285,9 @@ export const guestStorage = {
     localStorage.removeItem(SHOPPING_KEY)
     localStorage.removeItem(SHOPPING_LISTS_KEY)
     localStorage.removeItem(FAVORITE_RECIPES_KEY)
+    localStorage.removeItem(FAVORITE_INGREDIENTS_KEY)
+    localStorage.removeItem(FAVORITE_STORES_KEY)
+    localStorage.removeItem(FAVORITE_SHOPPING_LISTS_KEY)
     localStorage.removeItem(UNIT_SYSTEM_KEY)
   },
 }

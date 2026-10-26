@@ -13,6 +13,16 @@ import type { ShoppingListItem } from '../../utils/types'
 vi.mock('../../hooks/useUnitSystem', () => ({
   useUnitSystem: () => ({ unitSystem: 'metric' as const, setUnitSystem: vi.fn(), isPending: false }),
 }))
+vi.mock('../../hooks/useFavoriteStores', () => ({
+  useFavoriteStoreIds: () => ({ data: [] }),
+  useToggleFavoriteStore: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+const mockFavoriteListIds = vi.fn((): { data: string[] } => ({ data: [] }))
+const mockToggleFavoriteListMutate = vi.fn()
+vi.mock('../../hooks/useFavoriteShoppingLists', () => ({
+  useFavoriteShoppingListIds: () => mockFavoriteListIds(),
+  useToggleFavoriteShoppingList: () => ({ mutate: mockToggleFavoriteListMutate, isPending: false }),
+}))
 
 const item = (overrides: Partial<ShoppingListItem> = {}): ShoppingListItem => ({
   id: 1,
@@ -103,5 +113,37 @@ describe('ShoppingView', () => {
     renderWithProviders(<ShoppingView {...baseProps} items={[item()]} onExportPdf={onExportPdf} />)
     await userEvent.click(screen.getByText(i18n.t('shopping.exportPdf')))
     expect(onExportPdf).toHaveBeenCalledOnce()
+  })
+
+  it('favorites the currently selected list from the heart next to the selector', async () => {
+    renderWithProviders(
+      <ShoppingView
+        {...baseProps}
+        lists={[
+          { id: 'l1', name: 'General', ownerId: 'u1', isGeneral: true, createdAt: '' },
+          { id: 'l2', name: 'Party', ownerId: 'u1', isGeneral: false, createdAt: '' },
+        ]}
+        selectedListId="l2"
+        onSelectList={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByLabelText(i18n.t('shopping.addFavoriteList')))
+
+    expect(mockToggleFavoriteListMutate).toHaveBeenCalledWith({ listId: 'l2', isFavorite: false })
+  })
+
+  it('shows the remove-favorite label when the selected list is already favorited', () => {
+    mockFavoriteListIds.mockReturnValueOnce({ data: ['l2'] })
+    renderWithProviders(
+      <ShoppingView
+        {...baseProps}
+        lists={[{ id: 'l2', name: 'Party', ownerId: 'u1', isGeneral: false, createdAt: '' }]}
+        selectedListId="l2"
+        onSelectList={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText(i18n.t('shopping.removeFavoriteList'))).toBeInTheDocument()
   })
 })

@@ -4,11 +4,13 @@ import userEvent from '@testing-library/user-event'
 import MealPlanGenerator from './index'
 import { usePantry } from '../../../hooks/usePantry'
 import { useGeolocation } from '../../../hooks/useGeolocation'
+import { useFavoriteIngredients, useToggleFavoriteIngredient } from '../../../hooks/useFavoriteIngredients'
 import '../../../i18n'
 import i18n from '../../../i18n'
 
 vi.mock('../../../hooks/usePantry')
 vi.mock('../../../hooks/useGeolocation')
+vi.mock('../../../hooks/useFavoriteIngredients')
 
 function renderGenerator(props: Partial<Parameters<typeof MealPlanGenerator>[0]> = {}) {
   return render(<MealPlanGenerator onGenerate={vi.fn()} {...props} />)
@@ -19,6 +21,8 @@ describe('MealPlanGenerator', () => {
     vi.clearAllMocks()
     vi.mocked(usePantry).mockReturnValue({ products: [] } as never)
     vi.mocked(useGeolocation).mockReturnValue({ coords: null, error: null, requestLocation: vi.fn() } as never)
+    vi.mocked(useFavoriteIngredients).mockReturnValue({ data: [] } as never)
+    vi.mocked(useToggleFavoriteIngredient).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
   })
 
   it('defaults to today, 7 days, and 2 servings', async () => {

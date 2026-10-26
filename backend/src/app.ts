@@ -8,6 +8,10 @@ import notificationsRoutes from './routes/notifications'
 import recipesRoutes from './routes/recipes'
 import shoppingListsRoutes from './routes/shoppingLists'
 import chatRoutes from './routes/chat'
+import favoriteIngredientsRoutes from './routes/favoriteIngredients'
+import favoriteStoresRoutes from './routes/favoriteStores'
+import favoriteShoppingListsRoutes from './routes/favoriteShoppingLists'
+import favoriteMealPlansRoutes from './routes/favoriteMealPlans'
 
 const app = express()
 
@@ -63,6 +67,10 @@ app.use('/api/pantry', pantryRoutes)
 app.use('/api/notifications', notificationsRoutes)
 app.use('/api/recipes', recipesLimiter, recipesRoutes)
 app.use('/api/chat', chatLimiter, chatRoutes)
+app.use('/api/favorites/ingredients', limiter, favoriteIngredientsRoutes)
+app.use('/api/favorites/stores', limiter, favoriteStoresRoutes)
+app.use('/api/favorites/shopping-lists', limiter, favoriteShoppingListsRoutes)
+app.use('/api/favorites/meal-plans', limiter, favoriteMealPlansRoutes)
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 

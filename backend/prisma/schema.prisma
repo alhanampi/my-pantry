@@ -20,17 +20,21 @@ model User {
   unitSystem String?
   createdAt  DateTime @default(now())
 
-  linksAsUser         UserLink[]         @relation("UserLinks")
-  linksAsPartner      UserLink[]         @relation("PartnerLinks")
-  products            Product[]
-  shoppingItems       ShoppingItem[]
-  pushSubscriptions   PushSubscription[]
-  sentInvitations     LinkInvitation[]   @relation("SentInvitations")
-  receivedInvitations LinkInvitation[]   @relation("ReceivedInvitations")
-  shoppingLists       ShoppingList[]
-  favoriteRecipes     FavoriteRecipe[]
-  chatConversations   ChatConversation[]
-  mealPlans           MealPlan[]
+  linksAsUser           UserLink[]             @relation("UserLinks")
+  linksAsPartner        UserLink[]             @relation("PartnerLinks")
+  products              Product[]
+  shoppingItems         ShoppingItem[]
+  pushSubscriptions     PushSubscription[]
+  sentInvitations       LinkInvitation[]       @relation("SentInvitations")
+  receivedInvitations   LinkInvitation[]       @relation("ReceivedInvitations")
+  shoppingLists         ShoppingList[]
+  favoriteRecipes       FavoriteRecipe[]
+  favoriteIngredients   FavoriteIngredient[]
+  favoriteStores        FavoriteStore[]
+  favoriteShoppingLists FavoriteShoppingList[]
+  favoriteMealPlans     FavoriteMealPlan[]
+  chatConversations     ChatConversation[]
+  mealPlans             MealPlan[]
 }
 
 // Personal AI cooking-assistant conversations (Groq-backed "Chat" tab).
@@ -86,6 +90,67 @@ model FavoriteRecipe {
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, recipeId])
+  @@index([ownerId])
+}
+
+// A bare bookmark of a free-text ingredient name — there's no reusable
+// "ingredient" entity elsewhere in the schema (Product is a full pantry
+// item, RecipeIngredient/MealIngredient are transient recipe-scoped
+// shapes), so this is just a saved string, surfaced as a 4th chip source in
+// IngredientPicker (pantry / common / favorites / free text). Personal, not
+// shared via accessibleUserIds — same reasoning as FavoriteRecipe.
+model FavoriteIngredient {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+// A snapshot, not a bookmark — unlike FavoriteRecipe, there's no backend
+// endpoint to re-hydrate a store by placeId later (Geoapify's Places API has
+// no "detail by id" call wired up here), so what the search already
+// returned (name/type/coords) is saved as-is at favorite time. `placeId` is
+// Geoapify's own id (RawNearbyStore.id). Personal, not shared via
+// accessibleUserIds — same reasoning as FavoriteRecipe.
+model FavoriteStore {
+  id        String   @id @default(cuid())
+  ownerId   String
+  placeId   String
+  name      String
+  type      String
+  lat       Float
+  lon       Float
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, placeId])
+  @@index([ownerId])
+}
+
+// A pointer, not a snapshot — unlike FavoriteStore, the ShoppingList itself
+// stays live in the DB (can be renamed, gets items added/removed), so this
+// just pins a listId. Distinct from the (not yet built, see ROADMAP.md)
+// "archive a list" idea: archiving hides a list from the normal dropdown,
+// this is an unrelated quick-access bookmark — a list could be both,
+// neither, or either independently. Personal: the bookmark itself isn't
+// shared via accessibleUserIds even though a shopping list can be (a linked
+// partner with access to the same list favorites it separately, if at all).
+model FavoriteShoppingList {
+  id        String   @id @default(cuid())
+  ownerId   String
+  listId    String
+  createdAt DateTime @default(now())
+
+  owner User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  list  ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, listId])
   @@index([ownerId])
 }
 
@@ -147,6 +212,51 @@ model MealPlanEntry {
   @@unique([mealPlanId, dayOfWeek, mealType])
 }
 
+// A snapshot, not a pointer — a MealPlan is transient (explicitly deleted,
+// or just buried once a new one is generated past the 10-per-user cap), and
+// there's no external id to re-hydrate from (same AI-generated-content
+// reasoning as MealPlanEntry itself). Favoriting copies the whole week's
+// content here, independent of the live MealPlan's lifecycle.
+model FavoriteMealPlan {
+  id      String @id @default(cuid())
+  ownerId String
+  name    String
+  // Metadata only, no FK — the live MealPlan can be deleted without
+  // affecting this row. Just lets Mealprep show "already favorited" for the
+  // plan currently on screen, so it doesn't offer to duplicate it silently.
+  sourceMealPlanId    String?
+  dietaryRestrictions String[] @default([])
+  servings            Int      @default(2)
+  includeBreakfast    Boolean  @default(false)
+  batchPrepPlan       Json?
+  createdAt           DateTime @default(now())
+
+  owner User                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  days  FavoriteMealPlanEntry[]
+
+  @@index([ownerId])
+}
+
+model FavoriteMealPlanEntry {
+  id                 String @id @default(cuid())
+  favoriteMealPlanId String
+  dayOfWeek          Int
+  mealType           String
+
+  title            String
+  description      String   @default("")
+  image            String   @default("")
+  ingredients      Json
+  steps            String[]
+  notes            String   @default("")
+  prepTimeMinutes  Int?
+  totalTimeMinutes Int?
+
+  favoriteMealPlan FavoriteMealPlan @relation(fields: [favoriteMealPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([favoriteMealPlanId, dayOfWeek, mealType])
+}
+
 model ShoppingList {
   id        String   @id @default(cuid())
   name      String
@@ -154,8 +264,9 @@ model ShoppingList {
   isGeneral Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  owner User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  items ShoppingItem[]
+  owner       User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items       ShoppingItem[]
+  favoritedBy FavoriteShoppingList[]
 
   @@index([ownerId])
 }

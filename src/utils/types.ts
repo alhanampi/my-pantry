@@ -117,6 +117,18 @@ export interface NearbyStore extends RawNearbyStore {
   distance: number
 }
 
+// A saved snapshot (name/type/coords as they were at favorite time) — see
+// FavoriteStore's own comment in schema.prisma on why this isn't a bookmark.
+export interface FavoriteStore {
+  id: string
+  placeId: string
+  name: string
+  type: string
+  lat: number
+  lon: number
+  createdAt: string
+}
+
 // ─── Recipes (Spoonacular via backend proxy + Groq translation) ──────────────
 
 export interface RecipeMeasure {
@@ -210,6 +222,16 @@ export interface ShoppingList {
   createdAt: string
 }
 
+// Hydrated favorite — the list's own name/isGeneral/item count, joined
+// server-side (or locally, for guests) rather than re-fetched by the
+// Favorites tab from the full ShoppingList list.
+export interface FavoriteShoppingListSummary {
+  id: string
+  name: string
+  isGeneral: boolean
+  itemCount: number
+}
+
 // ─── Chat (Groq AI cooking assistant) ──────────────────────────────────────
 
 export interface ChatConversation {
@@ -290,6 +312,21 @@ export interface MealPlan {
   dietaryRestrictions: string[]
   batchPrepPlan: BatchPrepPlan | null
   days: MealPlanEntry[]
+}
+
+// A snapshot of a whole week, saved from Favorites — not tied to the live
+// MealPlan's lifecycle (see backend/prisma/schema.prisma's own comment on
+// FavoriteMealPlan). sourceMealPlanId is metadata only, not a live pointer.
+export interface FavoriteMealPlan {
+  id: string
+  name: string
+  sourceMealPlanId: string | null
+  includeBreakfast: boolean
+  servings: number
+  dietaryRestrictions: string[]
+  batchPrepPlan: BatchPrepPlan | null
+  days: MealPlanEntry[]
+  createdAt: string
 }
 
 export interface ConsolidatedShoppingItem {

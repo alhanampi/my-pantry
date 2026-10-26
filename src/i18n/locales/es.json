@@ -17,6 +17,26 @@
     "mealprep": "Mealprep",
     "about": "Acerca de"
   },
+  "favorites": {
+    "recipesSectionTitle": "Recetas",
+    "ingredientsSectionTitle": "Ingredientes",
+    "ingredientsEmpty": "Todavía no guardaste ingredientes favoritos. Agregá uno abajo, o guardá uno desde el selector de ingredientes en Mealprep.",
+    "ingredientsAddPlaceholder": "Agregar ingrediente favorito",
+    "storesSectionTitle": "Tiendas",
+    "storesEmpty": "Todavía no guardaste tiendas favoritas. Guardá una desde el buscador de tiendas cercanas en Lista de Súper.",
+    "shoppingListsSectionTitle": "Listas de compras",
+    "shoppingListsEmpty": "Todavía no guardaste listas de compras favoritas. Guardá una desde el selector de listas en Lista de Súper.",
+    "mealplansSectionTitle": "Planes semanales",
+    "mealplansEmpty": "Todavía no guardaste planes semanales favoritos. Guardá el actual desde el corazón en Mealprep.",
+    "mealplanDays_one": "{{count}} día",
+    "mealplanDays_other": "{{count}} días",
+    "mealplanServings_one": "{{count}} porción",
+    "mealplanServings_other": "{{count}} porciones",
+    "restorePlan": "Restaurar plan",
+    "restoreReplaceConfirmTitle": "¿Reemplazar el plan activo?",
+    "restoreReplaceConfirmBody": "Ya tenés un plan en curso en Mealprep. Restaurar este lo va a reemplazar (el plan actual no se borra, pero deja de ser el que ves).",
+    "deleteFavoritePlan": "Eliminar plan favorito"
+  },
   "header": {
     "addProduct": "Agregar producto",
     "about": "Acerca de",
@@ -115,6 +135,8 @@
     "itemDeleted": "Ítem eliminado",
     "sendToPantry": "Enviar a la despensa",
     "sentToPantry": "{{name}} fue enviado a la despensa",
+    "addFavoriteList": "Guardar lista favorita",
+    "removeFavoriteList": "Quitar de listas favoritas",
     "lists": {
       "general": "General"
     }
@@ -216,6 +238,8 @@
     "locationDenied": "Permiso de ubicación denegado.",
     "locationError": "No se pudo obtener tu ubicación.",
     "notSupported": "Tu navegador no soporta geolocalización.",
+    "addFavorite": "Guardar tienda favorita",
+    "removeFavorite": "Quitar de tiendas favoritas",
     "shopTypes": {
       "supermarket": "Supermercado",
       "grocery": "Almacén",
@@ -318,6 +342,10 @@
     "deletePlan": "Borrar plan",
     "deletePlanConfirmTitle": "¿Borrar este plan de comidas?",
     "deletePlanConfirmBody": "El plan de esta semana se va a borrar de forma permanente. Esta acción no se puede deshacer.",
+    "favoritePlan": "Guardar como favorito",
+    "favoritePlanAlready": "Ya guardado como favorito",
+    "favoritePlanNamePrompt": "Nombrá este plan",
+    "favoritePlanNamePlaceholder": "Ej. Semana liviana",
     "backToCalendar": "Volver al calendario",
     "shoppingListName": "Plan semanal — {{date}}",
     "pantryNoteDetail": "Puede que ya tengas algo de esto — revisá tu despensa",
@@ -345,6 +373,7 @@
     },
     "ingredientPicker": {
       "fromPantry": "De tu despensa",
+      "fromFavorites": "De tus favoritos",
       "common": "Ingredientes comunes",
       "addOtherPlaceholder": "Agregar otro ingrediente",
       "addOther": "Agregar ingrediente",

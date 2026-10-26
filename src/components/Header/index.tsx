@@ -87,7 +87,7 @@ export default function Header({
     void i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')
   }
 
-  const tabOrder = ['pantry', 'recipes', 'favorites', 'chat', 'mealprep', 'shopping'] as const
+  const tabOrder = ['pantry', 'recipes', 'chat', 'mealprep', 'shopping', 'favorites'] as const
   const tabValue = tabOrder.includes(currentView as (typeof tabOrder)[number])
     ? tabOrder.indexOf(currentView as (typeof tabOrder)[number])
     : false
@@ -428,12 +428,6 @@ export default function Header({
             sx={desktopTabSx}
           />
           <Tab
-            label={t('nav.favorites')}
-            icon={<MdOutlineFavorite size={18} />}
-            iconPosition="start"
-            sx={desktopTabSx}
-          />
-          <Tab
             label={t('nav.chat')}
             icon={<MdOutlineLightbulb size={18} />}
             iconPosition="start"
@@ -448,6 +442,12 @@ export default function Header({
           <Tab
             label={t('nav.shopping')}
             icon={<MdOutlineShoppingCart size={18} />}
+            iconPosition="start"
+            sx={desktopTabSx}
+          />
+          <Tab
+            label={t('nav.favorites')}
+            icon={<MdOutlineFavorite size={18} />}
             iconPosition="start"
             sx={desktopTabSx}
           />

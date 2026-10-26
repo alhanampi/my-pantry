@@ -17,7 +17,7 @@ import BottomNav from './components/BottomNav'
 import PantryView from './views/PantryView'
 import ShoppingView from './views/ShoppingView'
 import RecipesView from './views/RecipesView'
-import FavoriteRecipesView from './views/FavoriteRecipesView'
+import FavoritesView from './views/FavoritesView'
 import ChatView from './views/ChatView'
 import MealprepView from './views/MealprepView'
 import AboutView from './views/AboutView'
@@ -83,9 +83,11 @@ export default function App() {
                 />
               )}
               {app.currentView === 'favorites' && (
-                <FavoriteRecipesView
+                <FavoritesView
                   sendRecipeToShoppingList={app.sendRecipeToShoppingList}
                   onSentToList={app.handleRecipeSentToList}
+                  onSelectShoppingList={app.switchToShoppingList}
+                  onMealPlanRestored={() => app.handleViewChange('mealprep')}
                 />
               )}
               {app.currentView === 'chat' && (
