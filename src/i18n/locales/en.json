@@ -18,7 +18,6 @@
     "about": "About"
   },
   "header": {
-    "searchPlaceholder": "Search product...",
     "addProduct": "Add product",
     "about": "About",
     "colorScheme": "Color scheme",
@@ -28,6 +27,7 @@
     "unitSystemImperial": "Imperial"
   },
   "table": {
+    "searchPlaceholder": "Search product...",
     "name": "Name",
     "brand": "Brand",
     "purchaseDate": "Purchase Date",

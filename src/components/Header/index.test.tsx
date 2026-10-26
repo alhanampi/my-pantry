@@ -42,9 +42,6 @@ function renderHeader(props: Partial<React.ComponentProps<typeof Header>> = {}) 
 }
 
 const baseProps = {
-  onAddClick: vi.fn(),
-  searchQuery: '',
-  onSearchChange: vi.fn(),
   onAboutClick: vi.fn(),
   currentView: 'pantry' as const,
   onViewChange: vi.fn(),
@@ -98,17 +95,5 @@ describe('Header', () => {
     const signOutButtons = screen.getAllByText(i18n.t('auth.signOut'))
     await userEvent.click(signOutButtons[signOutButtons.length - 1])
     expect(signOut).toHaveBeenCalledOnce()
-  })
-
-  it('calls onSearchChange when typing in the search box', async () => {
-    mockUseUser.mockReturnValue({ user: null, isSignedIn: false })
-    mockUseClerk.mockReturnValue({ openSignIn: vi.fn(), signOut: vi.fn() })
-    const onSearchChange = vi.fn()
-
-    renderHeader({ onSearchChange })
-
-    const [searchBox] = screen.getAllByPlaceholderText(i18n.t('header.searchPlaceholder'))
-    await userEvent.type(searchBox, 'a')
-    expect(onSearchChange).toHaveBeenCalledWith('a')
   })
 })

@@ -1,6 +1,10 @@
 import styled from 'styled-components'
 import Typography from '@mui/material/Typography'
 
+export const SearchFieldWrapper = styled.div`
+  margin-bottom: 12px;
+`
+
 export const TableWrapper = styled.div`
   background: var(--scheme-surface);
   border-radius: 12px;
