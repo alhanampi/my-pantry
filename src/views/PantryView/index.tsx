@@ -1,14 +1,17 @@
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import TextField from '@mui/material/TextField'
+import InputAdornment from '@mui/material/InputAdornment'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { MdInventory2, MdAddCircle, MdFileDownload } from 'react-icons/md'
+import { MdInventory2, MdAddCircle, MdFileDownload, MdSearch, MdClear } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import SortableHeader from './SortableHeader'
 import ProductRow from './ProductRow'
 import ProductCard from './ProductCard'
 import { SkeletonRow, SkeletonCard } from './PantrySkeleton'
 import {
+  SearchFieldWrapper,
   TableWrapper,
   ScrollContainer,
   HeaderRow,
@@ -34,6 +37,8 @@ export default function PantryView({
   onAddClick,
   onQuantityChange,
   onExportCsv,
+  searchQuery,
+  onSearchChange,
   isLoading = false,
 }: ProductTableProps) {
   const { t } = useTranslation()
@@ -72,9 +77,37 @@ export default function PantryView({
     </Tooltip>
   )
 
+  const searchField = (
+    <SearchFieldWrapper>
+      <TextField
+        fullWidth
+        size="small"
+        placeholder={t('table.searchPlaceholder')}
+        value={searchQuery}
+        onChange={(e) => onSearchChange(e.target.value)}
+        inputProps={{ 'aria-label': t('table.searchPlaceholder') }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <MdSearch size={18} color="var(--scheme-text-secondary)" />
+            </InputAdornment>
+          ),
+          endAdornment: searchQuery && (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => onSearchChange('')}>
+                <MdClear size={16} />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+      />
+    </SearchFieldWrapper>
+  )
+
   if (isMobile) {
     return (
       <div>
+        {searchField}
         <MobileActionBar>
           <CountText>
             {!isLoading && (products.length > 0 ? t('table.count', { count: products.length }) : t('table.emptyTitle'))}
@@ -105,52 +138,55 @@ export default function PantryView({
   }
 
   return (
-    <TableWrapper>
-      <ActionBar>
-        <CountText>
-          {!isLoading && products.length > 0 ? t('table.count', { count: products.length }) : ''}
-        </CountText>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {exportButton}
-          {addButton}
-        </div>
-      </ActionBar>
-      <ScrollContainer>
-        <HeaderRow role="row">
-          {columns.map((col) => (
-            <SortableHeader
-              key={col.key}
-              columnKey={col.key}
-              label={col.label}
-              flex={col.flex}
-              minWidth={col.minWidth}
-              sortConfig={sortConfig}
-              onSort={onSort}
-            />
-          ))}
-          <ActionsHeaderCell />
-        </HeaderRow>
-        {isLoading ? (
-          <div role="list">
-            {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonRow key={i} />)}
+    <div>
+      {searchField}
+      <TableWrapper>
+        <ActionBar>
+          <CountText>
+            {!isLoading && products.length > 0 ? t('table.count', { count: products.length }) : ''}
+          </CountText>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {exportButton}
+            {addButton}
           </div>
-        ) : products.length === 0 ? (
-          empty
-        ) : (
-          <div role="list">
-            {products.map((product) => (
-              <ProductRow
-                key={product.id}
-                product={product}
-                onDelete={onDelete}
-                onEdit={onEdit}
-                onAddToCart={onAddToCart}
-                onQuantityChange={onQuantityChange}
+        </ActionBar>
+        <ScrollContainer>
+          <HeaderRow role="row">
+            {columns.map((col) => (
+              <SortableHeader
+                key={col.key}
+                columnKey={col.key}
+                label={col.label}
+                flex={col.flex}
+                minWidth={col.minWidth}
+                sortConfig={sortConfig}
+                onSort={onSort}
               />
             ))}
-          </div>
-        )}
-      </ScrollContainer>
-    </TableWrapper>
+            <ActionsHeaderCell />
+          </HeaderRow>
+          {isLoading ? (
+            <div role="list">
+              {Array.from({ length: SKELETON_COUNT }).map((_, i) => <SkeletonRow key={i} />)}
+            </div>
+          ) : products.length === 0 ? (
+            empty
+          ) : (
+            <div role="list">
+              {products.map((product) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  onAddToCart={onAddToCart}
+                  onQuantityChange={onQuantityChange}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollContainer>
+      </TableWrapper>
+    </div>
   )
 }

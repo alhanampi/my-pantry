@@ -43,6 +43,8 @@ const baseProps = {
   onAddClick: vi.fn(),
   onQuantityChange: vi.fn(),
   onExportCsv: vi.fn(),
+  searchQuery: '',
+  onSearchChange: vi.fn(),
 }
 
 describe('PantryView', () => {
@@ -93,5 +95,24 @@ describe('PantryView', () => {
     render(<PantryView {...baseProps} onExportCsv={onExportCsv} />)
     await userEvent.click(screen.getByLabelText(i18n.t('table.exportCsv')))
     expect(onExportCsv).toHaveBeenCalledOnce()
+  })
+
+  it('calls onSearchChange when typing in the search field', async () => {
+    stubMatchMedia(false)
+    const onSearchChange = vi.fn()
+    render(<PantryView {...baseProps} onSearchChange={onSearchChange} />)
+
+    const searchField = screen.getByPlaceholderText(i18n.t('table.searchPlaceholder'))
+    await userEvent.type(searchField, 'a')
+    expect(onSearchChange).toHaveBeenCalledWith('a')
+  })
+
+  it('shows a clear button that resets the search query', async () => {
+    stubMatchMedia(false)
+    const onSearchChange = vi.fn()
+    render(<PantryView {...baseProps} searchQuery="leche" onSearchChange={onSearchChange} />)
+
+    await userEvent.click(screen.getByRole('button', { name: '' }))
+    expect(onSearchChange).toHaveBeenCalledWith('')
   })
 })

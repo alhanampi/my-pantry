@@ -325,9 +325,6 @@ export interface Feature {
 }
 
 export interface HeaderProps {
-  onAddClick: () => void
-  searchQuery: string
-  onSearchChange: (query: string) => void
   onAboutClick: () => void
   currentView: AppView
   onViewChange: (view: AppView) => void
@@ -368,6 +365,8 @@ export interface ProductTableProps {
   onAddClick: () => void
   onQuantityChange: (id: number, delta: number) => void
   onExportCsv: () => void
+  searchQuery: string
+  onSearchChange: (query: string) => void
   isLoading?: boolean
 }
 

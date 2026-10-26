@@ -18,7 +18,6 @@
     "about": "Acerca de"
   },
   "header": {
-    "searchPlaceholder": "Buscar producto...",
     "addProduct": "Agregar producto",
     "about": "Acerca de",
     "colorScheme": "Esquema de color",
@@ -28,6 +27,7 @@
     "unitSystemImperial": "Imperial"
   },
   "table": {
+    "searchPlaceholder": "Buscar producto...",
     "name": "Nombre",
     "brand": "Marca",
     "purchaseDate": "Fec. Compra",
