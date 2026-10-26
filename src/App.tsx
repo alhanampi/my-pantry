@@ -34,9 +34,6 @@ export default function App() {
         <AuthProvider>
           <AppWrapper>
             <Header
-              onAddClick={app.openAddModal}
-              searchQuery={app.searchQuery}
-              onSearchChange={app.setSearchQuery}
               onAboutClick={() =>
                 app.handleViewChange(app.currentView === 'about' ? 'pantry' : 'about')
               }
@@ -56,6 +53,8 @@ export default function App() {
                   onAddClick={app.openAddModal}
                   onQuantityChange={app.handleQuantityChange}
                   onExportCsv={app.handleExportPantryCsv}
+                  searchQuery={app.searchQuery}
+                  onSearchChange={app.setSearchQuery}
                   isLoading={app.isLoading}
                 />
               )}

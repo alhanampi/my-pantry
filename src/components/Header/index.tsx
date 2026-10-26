@@ -22,7 +22,6 @@ import Divider from '@mui/material/Divider'
 import Chip from '@mui/material/Chip'
 import Avatar from '@mui/material/Avatar'
 import {
-  MdSearch,
   MdInfoOutline,
   MdOutlineInventory2,
   MdOutlineShoppingCart,
@@ -44,13 +43,9 @@ import {
   StyledAppBar,
   TopRow,
   TitleGroup,
-  SearchBox,
-  SearchBoxMobile,
-  StyledInputBase,
   DesktopActions,
   MobileHamburger,
   DesktopTabs,
-  SearchIconWrapper,
   UserGreeting,
 } from './Header.styles'
 import ThemePicker from '../ThemePicker'
@@ -77,8 +72,6 @@ const desktopTabSx = {
 }
 
 export default function Header({
-  searchQuery,
-  onSearchChange,
   onAboutClick,
   currentView,
   onViewChange,
@@ -104,29 +97,6 @@ export default function Header({
   }
 
   const displayName = user?.username ?? user?.firstName ?? t('auth.guest')
-
-  const searchInput = (
-    <>
-      <SearchIconWrapper>
-        <MdSearch size={18} color="var(--scheme-on-primary-muted)" />
-      </SearchIconWrapper>
-      <StyledInputBase
-        placeholder={t('header.searchPlaceholder')}
-        value={searchQuery}
-        onChange={(e) => onSearchChange(e.target.value)}
-        inputProps={{ 'aria-label': t('header.searchPlaceholder') }}
-      />
-      {searchQuery && (
-        <IconButton
-          size="small"
-          onClick={() => onSearchChange('')}
-          sx={{ color: 'var(--scheme-on-primary-muted)', p: 0.5 }}
-        >
-          <MdClear size={16} />
-        </IconButton>
-      )}
-    </>
-  )
 
   const mobileDrawer = (
     <Box sx={{ width: 272, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -294,8 +264,6 @@ export default function Header({
             </Typography>
           </TitleGroup>
 
-          <SearchBox>{searchInput}</SearchBox>
-
           {/* Acciones desktop */}
           <DesktopActions>
             {isSignedIn ? (
@@ -437,8 +405,6 @@ export default function Header({
             </IconButton>
           </MobileHamburger>
         </TopRow>
-
-        <SearchBoxMobile>{searchInput}</SearchBoxMobile>
       </Toolbar>
 
       <DesktopTabs>
