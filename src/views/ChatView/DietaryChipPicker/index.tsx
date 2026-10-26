@@ -29,11 +29,11 @@ const PREDEFINED_RESTRICTIONS = [
 export interface DietaryChipPickerProps {
   selected: string[]
   onChange: (next: string[]) => void
-  // NewChatOnboarding sets this to false — its own free-text field is used
-  // for the recipe/ingredient the user wants, not for a custom dietary
-  // restriction, so the "add other" row would be a second, confusingly
-  // similar-looking input there. Defaults to true so every other caller
-  // (and this component's own tests) keeps the existing behavior.
+  // MealPlanGenerator sets this to false — its own free-text field is used
+  // for ingredients on hand, not for a custom dietary restriction, so the
+  // "add other" row would be a second, confusingly similar-looking input
+  // there. Defaults to true so every other caller (and this component's own
+  // tests) keeps the existing behavior.
   allowCustom?: boolean
 }
 

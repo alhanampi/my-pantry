@@ -244,31 +244,12 @@
     "emptySidebar": "No conversations yet. Start a new one!",
     "placeholder": "Tell me what you have on hand...",
     "send": "Send",
-    "onboardingGoal": {
-      "title": "What do you feel like doing?",
-      "quick": "A quick recipe idea",
-      "quickHint": "Tell me what you have and I'll suggest something now",
-      "specific": "A specific goal",
-      "specificHint": "Something more particular — I'll ask a few questions"
-    },
-    "pantrySuggestions": {
-      "heading": "From what's in your pantry",
-      "emptyHint": "Add a few products to your pantry and I'll suggest recipes based on them.",
-      "loading": "Looking at your pantry..."
-    },
-    "quickPresets": {
-      "heading": "Or start straight from your pantry"
-    },
-    "backToGoals": "Back",
-    "onboardingTitle": "Before we start",
-    "onboardingQuery": "What do you want to cook?",
-    "onboardingQueryPlaceholder": "A recipe or an ingredient you have, e.g. chicken, pasta, apple pie...",
     "onboardingDietary": "Any dietary restrictions?",
-    "onboardingDietaryNone": "None of these — I'll add my own",
     "onboardingAddOther": "Add other",
     "onboardingAddOtherPlaceholder": "Type a restriction and press Enter",
     "onboardingServings": "How many servings?",
-    "onboardingStart": "Start chat",
+    "emptyConversationTitle": "What do you feel like cooking?",
+    "emptyConversationHint": "Tell me what you have on hand, or tap a suggestion below to get started.",
     "dietary": {
       "vegetarian": "Vegetarian",
       "vegan": "Vegan",
@@ -286,7 +267,10 @@
     },
     "quickReplies": {
       "timeGroupLabel": "Quick time replies",
+      "dietaryGroupLabel": "Quick dietary replies",
+      "servingsGroupLabel": "Quick servings replies",
       "ingredientsGroupLabel": "Quick ingredient replies from your pantry",
+      "aiIngredientsGroupLabel": "Ingredients you might still need",
       "time10Label": "10 min",
       "time10Phrase": "About 10 minutes.",
       "time30Label": "30 min",
@@ -295,13 +279,20 @@
       "time60Phrase": "About 1 hour.",
       "timeMoreLabel": "More than 1 hour",
       "timeMorePhrase": "More than 1 hour.",
+      "servings1Label": "1 serving",
+      "servings1Phrase": "For 1 serving.",
+      "servings2Label": "2 servings",
+      "servings2Phrase": "For 2 servings.",
+      "servings4Label": "4 servings",
+      "servings4Phrase": "For 4 servings.",
+      "servings6PlusLabel": "6+ servings",
+      "servings6PlusPhrase": "For 6 servings or more.",
       "haveIngredientsPrefix": "I have: "
     },
     "suggestRecipe": "Suggest a recipe",
     "suggesting": "Looking for recipes...",
     "suggestionsIntro": "Here are a few tasty ideas for you! 🍳😋",
     "noSuggestions": "Hmm, couldn't find a matching recipe this time 😅 — try again or keep chatting for a bit.",
-    "continueChat": "Keep chatting",
     "backToChat": "Back to chat",
     "conversationTooLong": "This conversation has gotten long — start a new one to keep going.",
     "errors": {
@@ -317,6 +308,13 @@
     "generate": "Generate meal plan",
     "generating": "Building your week...",
     "consolidating": "Working out what you need...",
+    "retry": "Try again",
+    "errors": {
+      "quotaExceeded": "The meal plan assistant is temporarily unavailable. Try again later.",
+      "configError": "The meal plan assistant is not configured on this server.",
+      "emptyPlan": "We couldn't put together a full plan this time. Try again.",
+      "generic": "Something went wrong. Try again."
+    },
     "deletePlan": "Delete plan",
     "deletePlanConfirmTitle": "Delete this meal plan?",
     "deletePlanConfirmBody": "This week's plan will be permanently deleted. This can't be undone.",

@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { streamChatMessage } from './chatApi'
+import { streamChatMessage, apiSuggestIngredients } from './chatApi'
 
-function sseResponse(chunks: string[]): Response {
-  const encoder = new TextEncoder()
-  const stream = new ReadableStream({
+function sseResponse(frames: string[], status = 200): Response {
+  const body = new ReadableStream<Uint8Array>({
     start(controller) {
-      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk))
+      const encoder = new TextEncoder()
+      for (const frame of frames) controller.enqueue(encoder.encode(frame))
       controller.close()
     },
   })
-  return new Response(stream, { status: 200 })
+  return new Response(body, { status })
 }
 
 describe('streamChatMessage', () => {
@@ -17,63 +17,92 @@ describe('streamChatMessage', () => {
     vi.stubGlobal('fetch', vi.fn())
   })
 
-  it('parses token frames (including one split across chunk boundaries) and the done frame', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
+  it('calls onToken for each token frame and onDone for the terminal done frame', async () => {
+    vi.mocked(fetch).mockResolvedValue(
       sseResponse([
-        'data: {"type":"token","value":"Hola"}\n\n',
-        'data: {"type":"tok',
-        'en","value":" mundo"}\n\n',
-        'data: {"type":"done","messageId":"m1","title":"Hi"}\n\n',
+        `data: ${JSON.stringify({ type: 'token', value: 'Hola' })}\n\n`,
+        `data: ${JSON.stringify({ type: 'token', value: ' mundo' })}\n\n`,
+        `data: ${JSON.stringify({ type: 'done', messageId: 'm1', title: 'Nuevo chat' })}\n\n`,
       ]),
     )
 
     const onToken = vi.fn()
     const onDone = vi.fn()
     const onError = vi.fn()
-
-    await streamChatMessage(
-      'token-123',
-      'c1',
-      { content: 'hola', language: 'es' },
-      { onToken, onDone, onError },
-    )
+    await streamChatMessage('token', 'c1', { content: 'hola', language: 'es' }, { onToken, onDone, onError })
 
     expect(onToken).toHaveBeenNthCalledWith(1, 'Hola')
     expect(onToken).toHaveBeenNthCalledWith(2, ' mundo')
-    expect(onDone).toHaveBeenCalledWith({ messageId: 'm1', title: 'Hi' })
+    expect(onDone).toHaveBeenCalledWith({ messageId: 'm1', title: 'Nuevo chat' })
     expect(onError).not.toHaveBeenCalled()
   })
 
-  it('calls onError for a mid-stream error frame', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      sseResponse(['data: {"type":"error","message":"configError"}\n\n']),
+  it('calls onError with the server-sent message for an error frame', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      sseResponse([`data: ${JSON.stringify({ type: 'error', message: 'quotaExceeded' })}\n\n`]),
     )
-    const onError = vi.fn()
 
-    await streamChatMessage('t', 'c1', { content: 'x', language: 'en' }, { onToken: vi.fn(), onDone: vi.fn(), onError })
+    const onDone = vi.fn()
+    const onError = vi.fn()
+    await streamChatMessage('token', 'c1', { content: 'hola', language: 'es' }, { onToken: vi.fn(), onDone, onError })
+
+    expect(onError).toHaveBeenCalledWith('quotaExceeded')
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  // A dropped connection, proxy timeout, or server crash after headers were
+  // sent can end the stream with no 'done' or 'error' frame ever delivered —
+  // without a fallback, neither callback fires, isStreaming stays true
+  // forever on the caller's side, and the empty assistant placeholder bubble
+  // never resolves (see useChatSession, which relies on one of these two
+  // callbacks always firing exactly once).
+  it('calls onError as a fallback when the stream ends with no terminal frame at all', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      sseResponse([`data: ${JSON.stringify({ type: 'token', value: 'Hola' })}\n\n`]),
+    )
+
+    const onDone = vi.fn()
+    const onError = vi.fn()
+    await streamChatMessage('token', 'c1', { content: 'hola', language: 'es' }, { onToken: vi.fn(), onDone, onError })
+
+    expect(onDone).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledWith('generic')
+  })
+
+  it('calls onError straight away when the HTTP response itself is not ok', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ error: 'configError' }), { status: 500 }))
+
+    const onDone = vi.fn()
+    const onError = vi.fn()
+    await streamChatMessage('token', 'c1', { content: 'hola', language: 'es' }, { onToken: vi.fn(), onDone, onError })
 
     expect(onError).toHaveBeenCalledWith('configError')
+    expect(onDone).not.toHaveBeenCalled()
+  })
+})
+
+describe('apiSuggestIngredients', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
   })
 
-  it('calls onError with the JSON error body when the response is not ok', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'conversationTooLong' }), { status: 400 }),
+  it('returns the ingredients from the response', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ ingredients: ['jengibre', 'ajo'] }), { status: 200 }),
     )
-    const onError = vi.fn()
 
-    await streamChatMessage('t', 'c1', { content: 'x', language: 'en' }, { onToken: vi.fn(), onDone: vi.fn(), onError })
+    const result = await apiSuggestIngredients('token', 'c1', 'es')
 
-    expect(onError).toHaveBeenCalledWith('conversationTooLong')
+    expect(result).toEqual(['jengibre', 'ajo'])
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    expect(url).toContain('/conversations/c1/suggest-ingredients?lang=es')
   })
 
-  it('skips a malformed frame instead of throwing', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      sseResponse(['data: not-json\n\n', 'data: {"type":"token","value":"ok"}\n\n']),
+  it('throws on a non-ok response, the same as the other api* helpers', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: 'configError' }), { status: 500 }),
     )
-    const onToken = vi.fn()
 
-    await streamChatMessage('t', 'c1', { content: 'x', language: 'en' }, { onToken, onDone: vi.fn(), onError: vi.fn() })
-
-    expect(onToken).toHaveBeenCalledWith('ok')
+    await expect(apiSuggestIngredients('token', 'c1', 'en')).rejects.toThrow('configError')
   })
 })

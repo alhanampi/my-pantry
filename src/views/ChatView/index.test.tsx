@@ -53,6 +53,7 @@ function defaultSessionMock() {
     sendMessage: vi.fn(),
     isStreaming: false,
     streamError: null,
+    ingredientSuggestions: [],
   }
 }
 
@@ -64,12 +65,6 @@ function renderChatView(props: Partial<Parameters<typeof ChatView>[0]> = {}) {
       {...props}
     />,
   )
-}
-
-// Onboarding now opens on a goal-choice step before the dietary/servings/
-// query form — tests that need the form click past it first.
-async function goToOnboardingDetails() {
-  await userEvent.click(screen.getByText(i18n.t('chat.onboardingGoal.quick')))
 }
 
 const existingConversation = {
@@ -104,31 +99,25 @@ describe('ChatView', () => {
     expect(screen.getByText(i18n.t('chat.signedOutTitle'))).toBeInTheDocument()
   })
 
-  it('shows the goal-choice step automatically (no button click needed) when there are no conversations yet', () => {
+  it('shows the composer directly when there are no conversations yet — no gate before it', () => {
     renderChatView()
-    expect(screen.getByText(i18n.t('chat.onboardingGoal.title'))).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(i18n.t('chat.placeholder'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('chat.emptyConversationTitle'))).toBeInTheDocument()
   })
 
-  it('offers no "plan the week" goal — Mealprep is the only entry point for that', () => {
-    renderChatView()
-    expect(screen.queryByText(i18n.t('chat.onboardingGoal.weekly'))).not.toBeInTheDocument()
-  })
-
-  it('creates a conversation from the onboarding form (dietaryRestrictions/servings only, no initialQuery)', async () => {
-    const createConversation = mutationSpy()
-    vi.mocked(useCreateConversation).mockReturnValue(createConversation as never)
+  it('auto-resumes the most recent conversation when one exists, without going through history', () => {
+    vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
+    vi.mocked(useConversation).mockReturnValue({
+      data: { conversation: existingConversation, messages: [{ id: '1', role: 'user', content: 'hola', createdAt: '' }] },
+    } as never)
 
     renderChatView()
-    await goToOnboardingDetails()
-    await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
 
-    expect(createConversation.mutate).toHaveBeenCalledWith(
-      { dietaryRestrictions: [], servings: 2 },
-      expect.anything(),
-    )
+    expect(screen.getByText(existingConversation.title)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(i18n.t('chat.placeholder'))).toBeInTheDocument()
   })
 
-  it('sends the typed recipe/ingredient as the first message and auto-requests suggestions once the chat opens', async () => {
+  it('lazily creates a conversation on the first typed message when none exists yet, then sends it', async () => {
     const createConversation = mutationSpy({
       mutate: vi.fn((_payload, opts) => {
         opts.onSuccess({ id: 'new1', title: 'New chat', dietaryRestrictions: [], servings: 2, updatedAt: '' })
@@ -137,88 +126,42 @@ describe('ChatView', () => {
     vi.mocked(useCreateConversation).mockReturnValue(createConversation as never)
     const sendMessage = vi.fn().mockResolvedValue(undefined)
     vi.mocked(useChatSession).mockReturnValue({ ...defaultSessionMock(), sendMessage } as never)
-    const suggestRecipe = mutationSpy({ data: undefined })
-    vi.mocked(useSuggestRecipe).mockReturnValue(suggestRecipe as never)
 
     renderChatView()
-    await goToOnboardingDetails()
-    await userEvent.type(screen.getByPlaceholderText(i18n.t('chat.onboardingQueryPlaceholder')), 'pollo')
-    await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
+    await userEvent.type(screen.getByPlaceholderText(i18n.t('chat.placeholder')), 'tengo pollo y arroz')
+    await userEvent.click(screen.getByLabelText(i18n.t('chat.send')))
 
-    await waitFor(() => expect(sendMessage).toHaveBeenCalledWith('pollo', undefined))
-    await waitFor(() =>
-      expect(suggestRecipe.mutate).toHaveBeenCalledWith(
-        { conversationId: 'new1', location: undefined },
-        expect.anything(),
-      ),
+    expect(createConversation.mutate).toHaveBeenCalledWith(
+      { dietaryRestrictions: [], servings: 2 },
+      expect.anything(),
     )
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledWith('tengo pollo y arroz', undefined))
   })
 
-  it('still requests suggestions after onboarding even with an empty query (diet-only fallback)', async () => {
-    const createConversation = mutationSpy({
-      mutate: vi.fn((_payload, opts) => {
-        opts.onSuccess({ id: 'new2', title: 'New chat', dietaryRestrictions: [], servings: 2, updatedAt: '' })
-      }),
-    })
-    vi.mocked(useCreateConversation).mockReturnValue(createConversation as never)
-    const sendMessage = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(useChatSession).mockReturnValue({ ...defaultSessionMock(), sendMessage } as never)
-    const suggestRecipe = mutationSpy({ data: undefined })
-    vi.mocked(useSuggestRecipe).mockReturnValue(suggestRecipe as never)
-
-    renderChatView()
-    await goToOnboardingDetails()
-    await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
-
-    await waitFor(() =>
-      expect(suggestRecipe.mutate).toHaveBeenCalledWith(
-        { conversationId: 'new2', location: undefined },
-        expect.anything(),
-      ),
-    )
-    expect(sendMessage).not.toHaveBeenCalled()
-  })
-
-  it('shows suggestions below the onboarding form (quick result screen) instead of inline chat bubbles, then switches to the conversation on "keep chatting"', async () => {
-    const createConversation = mutationSpy({
-      mutate: vi.fn((_payload, opts) => {
-        opts.onSuccess({ id: 'new3', title: 'New chat', dietaryRestrictions: [], servings: 2, updatedAt: '' })
-      }),
-    })
-    vi.mocked(useCreateConversation).mockReturnValue(createConversation as never)
-    const sendMessage = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(useChatSession).mockReturnValue({ ...defaultSessionMock(), sendMessage } as never)
-    const suggestRecipe = mutationSpy({
-      mutate: vi.fn((_payload, opts) =>
-        opts.onSuccess({
-          recipes: [
-            { id: 'r1', title: 'Arroz con pollo', image: '', servings: 2, readyInMinutes: 20, ingredientNames: [], calories: 300 },
-          ],
-        }),
-      ),
-    })
-    vi.mocked(useSuggestRecipe).mockReturnValue(suggestRecipe as never)
-
-    renderChatView()
-    await goToOnboardingDetails()
-    await userEvent.click(screen.getByText(i18n.t('chat.onboardingStart')))
-
-    await waitFor(() => expect(screen.getByText('Arroz con pollo')).toBeInTheDocument())
-    // Not in the scrolling chat composer view yet.
-    expect(screen.queryByPlaceholderText(i18n.t('chat.placeholder'))).not.toBeInTheDocument()
-
-    await userEvent.click(screen.getByText(i18n.t('chat.continueChat')))
-
-    expect(screen.getByPlaceholderText(i18n.t('chat.placeholder'))).toBeInTheDocument()
-  })
-
-  it('always shows the new-chat goal step on entering the tab, even with existing conversations', () => {
+  it('"nuevo chat" clears the active conversation and messages, returning to the empty composer state', async () => {
     vi.mocked(useConversations).mockReturnValue({ data: [existingConversation], isSuccess: true } as never)
+    vi.mocked(useConversation).mockReturnValue({
+      data: { conversation: existingConversation, messages: [] },
+    } as never)
+    const resetMessages = vi.fn()
+    vi.mocked(useChatSession).mockReturnValue({
+      ...defaultSessionMock(),
+      resetMessages,
+      messages: [{ id: '1', role: 'user', content: 'hola', createdAt: '' }],
+    } as never)
 
     renderChatView()
+    expect(screen.getByText(existingConversation.title)).toBeInTheDocument()
 
-    expect(screen.getByText(i18n.t('chat.onboardingGoal.title'))).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText(i18n.t('chat.placeholder'))).not.toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText(i18n.t('chat.newChat')))
+
+    // session.resetMessages is mocked (not real state), so the rendered
+    // message list itself doesn't change here — what matters is that
+    // ChatView actually calls it rather than leaving the old conversation's
+    // messages on screen once activeConversationId goes back to null (see
+    // the comment on the "nuevo chat" handler for why this call is needed).
+    expect(resetMessages).toHaveBeenCalledWith([])
+    expect(screen.getByPlaceholderText(i18n.t('chat.placeholder'))).toBeInTheDocument()
   })
 
   function suggestRecipeSpyWithRecipes(recipes: unknown[]) {
@@ -243,8 +186,6 @@ describe('ChatView', () => {
     )
 
     renderChatView()
-    await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
-    await userEvent.click(screen.getByText(existingConversation.title))
 
     expect(screen.getByText(i18n.t('chat.suggestRecipe'))).toBeInTheDocument()
     expect(screen.queryByText('Arroz con pollo')).not.toBeInTheDocument()
@@ -271,8 +212,6 @@ describe('ChatView', () => {
     vi.mocked(useFavoriteToggle).mockReturnValue(favoriteToggle as never)
 
     renderChatView()
-    await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
-    await userEvent.click(screen.getByText(existingConversation.title))
     await userEvent.click(screen.getByText(i18n.t('chat.suggestRecipe')))
 
     await userEvent.click(screen.getByLabelText(i18n.t('recipes.addFavorite')))
@@ -295,8 +234,6 @@ describe('ChatView', () => {
     )
 
     renderChatView()
-    await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
-    await userEvent.click(screen.getByText(existingConversation.title))
 
     expect(screen.getByText(i18n.t('chat.quickReplies.time10Label'))).toBeInTheDocument()
 
@@ -316,8 +253,6 @@ describe('ChatView', () => {
     } as never)
 
     renderChatView()
-    await userEvent.click(screen.getByLabelText(i18n.t('chat.history')))
-    await userEvent.click(screen.getByText(existingConversation.title))
 
     expect(screen.getByText('Queso fresco')).toBeInTheDocument()
     expect(screen.queryByText('Lentejas')).not.toBeInTheDocument()

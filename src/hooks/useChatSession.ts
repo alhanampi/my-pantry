@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import { useTranslation } from 'react-i18next'
-import { streamChatMessage } from '../api/chatApi'
+import { streamChatMessage, apiSuggestIngredients } from '../api/chatApi'
 import type { ChatMessageItem } from '../utils/types'
 
 // Sending a message isn't a useMutation — streaming doesn't fit that shape
@@ -17,12 +17,20 @@ export function useChatSession(conversationId: string | null, initialMessages: C
   const [messages, setMessages] = useState<ChatMessageItem[]>(initialMessages)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamError, setStreamError] = useState<string | null>(null)
+  // AI-inferred "you might also need..." pills (see QuickReplies) — fetched
+  // separately after a reply finishes streaming, not part of it, so it never
+  // adds latency to the chat reply itself. Best-effort only: a failure here
+  // just means no pills show up, never a chat-breaking error.
+  const [ingredientSuggestions, setIngredientSuggestions] = useState<string[]>([])
 
   const resetMessages = (next: ChatMessageItem[]): void => setMessages(next)
 
   const sendMessage = async (content: string, nearbyStoresSummary?: string): Promise<void> => {
     if (!conversationId || isStreaming) return
     setStreamError(null)
+    // Clear the previous turn's suggestions immediately so stale pills don't
+    // linger while the new reply (and its own suggestions) are in flight.
+    setIngredientSuggestions([])
 
     const userMessage: ChatMessageItem = {
       id: `local-user-${Date.now()}`,
@@ -64,6 +72,11 @@ export function useChatSession(conversationId: string | null, initialMessages: C
             setIsStreaming(false)
             void qc.invalidateQueries({ queryKey: ['chat', 'conversation', conversationId] })
             void qc.invalidateQueries({ queryKey: ['chat', 'conversations'] })
+            apiSuggestIngredients(token, conversationId, i18n.language)
+              .then(setIngredientSuggestions)
+              .catch(() => {
+                // Swallowed on purpose — missing pills, nothing more.
+              })
           },
           onError: (message) => {
             setStreamError(message)
@@ -87,5 +100,5 @@ export function useChatSession(conversationId: string | null, initialMessages: C
     }
   }
 
-  return { messages, resetMessages, sendMessage, isStreaming, streamError }
+  return { messages, resetMessages, sendMessage, isStreaming, streamError, ingredientSuggestions }
 }

@@ -69,6 +69,22 @@ export async function apiSuggestRecipe(
   return handleResponse<{ recipes: RecipeCard[]; notEnoughInfo: boolean }>(res)
 }
 
+// Fire-and-forget from the caller's perspective (useChatSession calls this
+// right after a reply finishes streaming, without blocking it) — a failure
+// here just means no suggestion pills show up, never a chat-breaking error.
+export async function apiSuggestIngredients(
+  token: string,
+  conversationId: string,
+  lang: string,
+): Promise<string[]> {
+  const res = await fetch(
+    `${API_URL}/api/chat/conversations/${conversationId}/suggest-ingredients?lang=${lang}`,
+    { method: 'POST', headers: headers(token) },
+  )
+  const json = await handleResponse<{ ingredients: string[] }>(res)
+  return json.ingredients
+}
+
 export async function apiGetPantrySuggestions(token: string, lang: string): Promise<RecipeCard[]> {
   const res = await fetch(`${API_URL}/api/chat/pantry-suggestions?lang=${lang}`, {
     method: 'POST',
@@ -109,6 +125,13 @@ export async function streamChatMessage(
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  // A dropped connection, proxy timeout, or server crash after headers were
+  // already sent ends the stream (reader.read() returns done) without ever
+  // delivering a 'done' or 'error' frame. Without this, neither callback
+  // ever fires — the caller's isStreaming flag stays true forever and the
+  // empty assistant placeholder bubble just sits there with no way to
+  // recover short of leaving and re-entering the conversation.
+  let gotTerminalFrame = false
 
   try {
     while (true) {
@@ -132,14 +155,21 @@ export async function streamChatMessage(
             | { type: 'done'; messageId: string; title?: string }
             | { type: 'error'; message: string }
 
-          if (frame.type === 'token') callbacks.onToken(frame.value)
-          else if (frame.type === 'done') callbacks.onDone({ messageId: frame.messageId, title: frame.title })
-          else if (frame.type === 'error') callbacks.onError(frame.message)
+          if (frame.type === 'token') {
+            callbacks.onToken(frame.value)
+          } else if (frame.type === 'done') {
+            gotTerminalFrame = true
+            callbacks.onDone({ messageId: frame.messageId, title: frame.title })
+          } else if (frame.type === 'error') {
+            gotTerminalFrame = true
+            callbacks.onError(frame.message)
+          }
         } catch {
           // Malformed frame — skip it rather than breaking the whole stream.
         }
       }
     }
+    if (!gotTerminalFrame) callbacks.onError('generic')
   } finally {
     reader.releaseLock()
   }
