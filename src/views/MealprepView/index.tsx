@@ -3,8 +3,17 @@ import type { UseMutationResult } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-react'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
-import { MdArrowBack, MdOutlineCalendarMonth, MdDeleteOutline, MdLocalShipping, MdOutlineSoupKitchen } from 'react-icons/md'
+import {
+  MdArrowBack,
+  MdOutlineCalendarMonth,
+  MdDeleteOutline,
+  MdLocalShipping,
+  MdOutlineSoupKitchen,
+  MdFavorite,
+  MdOutlineFavoriteBorder,
+} from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import WeeklyCalendar from './WeeklyCalendar'
 import MealPlanGenerator from './MealPlanGenerator'
@@ -13,6 +22,7 @@ import MealprepRecipeDetail from './MealprepRecipeDetail'
 import BatchPrepPlanView from './BatchPrepPlanView'
 import RefinePlanInput from './RefinePlanInput'
 import ConfirmActionDialog from '../../components/ConfirmActionDialog'
+import FavoriteMealPlanNameDialog from '../../components/FavoriteMealPlanNameDialog'
 import RecipesSkeleton from '../RecipesView/RecipesSkeleton'
 import {
   useCurrentMealPlan,
@@ -23,6 +33,7 @@ import {
   useRefineMealPlan,
   useSwapMeal,
 } from '../../hooks/useMealPlan'
+import { useFavoriteMealPlanSourceIds, useAddFavoriteMealPlan } from '../../hooks/useFavoriteMealPlans'
 import { useGeolocation } from '../../hooks/useGeolocation'
 import { Wrapper, TopBar, Title, EmptyState, ErrorState, BackRow, ActionsRow } from './MealprepView.styles'
 import type { RecipeIngredient } from '../../utils/types'
@@ -44,6 +55,7 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
   const [showPrepPlan, setShowPrepPlan] = useState(false)
   const [previewItems, setPreviewItems] = useState<ReturnType<typeof useConsolidateMealPlan>['data']>(undefined)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [favoriteNamePrompt, setFavoriteNamePrompt] = useState(false)
 
   const mealPlanQuery = useCurrentMealPlan()
   const generateMealPlan = useGenerateMealPlan()
@@ -52,6 +64,8 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
   const createShoppingList = useCreateShoppingListFromMealPlan()
   const refineMealPlan = useRefineMealPlan()
   const swapMeal = useSwapMeal()
+  const favoriteSourceIds = useFavoriteMealPlanSourceIds()
+  const addFavoriteMealPlan = useAddFavoriteMealPlan()
   const { coords, requestLocation } = useGeolocation()
 
   // Fire-and-forget, same as ChatView/MealPlanGenerator — best-effort geo
@@ -141,14 +155,32 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
       <TopBar>
         <Title>{t('mealprep.title')}</Title>
         {mealPlan && (
-          <Button
-            size="small"
-            color="error"
-            startIcon={<MdDeleteOutline size={16} />}
-            onClick={() => setDeleteConfirm(true)}
-          >
-            {t('mealprep.deletePlan')}
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <IconButton
+              size="small"
+              disabled={favoriteSourceIds.data?.includes(mealPlan.id)}
+              aria-label={
+                favoriteSourceIds.data?.includes(mealPlan.id)
+                  ? t('mealprep.favoritePlanAlready')
+                  : t('mealprep.favoritePlan')
+              }
+              onClick={() => setFavoriteNamePrompt(true)}
+            >
+              {favoriteSourceIds.data?.includes(mealPlan.id) ? (
+                <MdFavorite size={18} color="var(--scheme-primary)" />
+              ) : (
+                <MdOutlineFavoriteBorder size={18} />
+              )}
+            </IconButton>
+            <Button
+              size="small"
+              color="error"
+              startIcon={<MdDeleteOutline size={16} />}
+              onClick={() => setDeleteConfirm(true)}
+            >
+              {t('mealprep.deletePlan')}
+            </Button>
+          </div>
         )}
       </TopBar>
 
@@ -242,6 +274,20 @@ export default function MealprepView({ sendRecipeToShoppingList, onSentToList }:
           if (mealPlan) deleteMealPlan.mutate(mealPlan.id)
         }}
         onCancel={() => setDeleteConfirm(false)}
+      />
+
+      <FavoriteMealPlanNameDialog
+        open={favoriteNamePrompt}
+        isPending={addFavoriteMealPlan.isPending}
+        onConfirm={(name) => {
+          if (mealPlan) {
+            addFavoriteMealPlan.mutate(
+              { mealPlanId: mealPlan.id, name: name || undefined },
+              { onSuccess: () => setFavoriteNamePrompt(false) },
+            )
+          }
+        }}
+        onCancel={() => setFavoriteNamePrompt(false)}
       />
     </Wrapper>
   )

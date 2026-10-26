@@ -11,6 +11,7 @@ import chatRoutes from './routes/chat'
 import favoriteIngredientsRoutes from './routes/favoriteIngredients'
 import favoriteStoresRoutes from './routes/favoriteStores'
 import favoriteShoppingListsRoutes from './routes/favoriteShoppingLists'
+import favoriteMealPlansRoutes from './routes/favoriteMealPlans'
 
 const app = express()
 
@@ -69,6 +70,7 @@ app.use('/api/chat', chatLimiter, chatRoutes)
 app.use('/api/favorites/ingredients', limiter, favoriteIngredientsRoutes)
 app.use('/api/favorites/stores', limiter, favoriteStoresRoutes)
 app.use('/api/favorites/shopping-lists', limiter, favoriteShoppingListsRoutes)
+app.use('/api/favorites/meal-plans', limiter, favoriteMealPlansRoutes)
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 

@@ -32,6 +32,7 @@ model User {
   favoriteIngredients   FavoriteIngredient[]
   favoriteStores        FavoriteStore[]
   favoriteShoppingLists FavoriteShoppingList[]
+  favoriteMealPlans     FavoriteMealPlan[]
   chatConversations     ChatConversation[]
   mealPlans             MealPlan[]
 }
@@ -209,6 +210,51 @@ model MealPlanEntry {
   mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
   @@unique([mealPlanId, dayOfWeek, mealType])
+}
+
+// A snapshot, not a pointer — a MealPlan is transient (explicitly deleted,
+// or just buried once a new one is generated past the 10-per-user cap), and
+// there's no external id to re-hydrate from (same AI-generated-content
+// reasoning as MealPlanEntry itself). Favoriting copies the whole week's
+// content here, independent of the live MealPlan's lifecycle.
+model FavoriteMealPlan {
+  id      String @id @default(cuid())
+  ownerId String
+  name    String
+  // Metadata only, no FK — the live MealPlan can be deleted without
+  // affecting this row. Just lets Mealprep show "already favorited" for the
+  // plan currently on screen, so it doesn't offer to duplicate it silently.
+  sourceMealPlanId    String?
+  dietaryRestrictions String[] @default([])
+  servings            Int      @default(2)
+  includeBreakfast    Boolean  @default(false)
+  batchPrepPlan       Json?
+  createdAt           DateTime @default(now())
+
+  owner User                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  days  FavoriteMealPlanEntry[]
+
+  @@index([ownerId])
+}
+
+model FavoriteMealPlanEntry {
+  id                 String @id @default(cuid())
+  favoriteMealPlanId String
+  dayOfWeek          Int
+  mealType           String
+
+  title            String
+  description      String   @default("")
+  image            String   @default("")
+  ingredients      Json
+  steps            String[]
+  notes            String   @default("")
+  prepTimeMinutes  Int?
+  totalTimeMinutes Int?
+
+  favoriteMealPlan FavoriteMealPlan @relation(fields: [favoriteMealPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([favoriteMealPlanId, dayOfWeek, mealType])
 }
 
 model ShoppingList {

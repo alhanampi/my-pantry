@@ -314,6 +314,21 @@ export interface MealPlan {
   days: MealPlanEntry[]
 }
 
+// A snapshot of a whole week, saved from Favorites — not tied to the live
+// MealPlan's lifecycle (see backend/prisma/schema.prisma's own comment on
+// FavoriteMealPlan). sourceMealPlanId is metadata only, not a live pointer.
+export interface FavoriteMealPlan {
+  id: string
+  name: string
+  sourceMealPlanId: string | null
+  includeBreakfast: boolean
+  servings: number
+  dietaryRestrictions: string[]
+  batchPrepPlan: BatchPrepPlan | null
+  days: MealPlanEntry[]
+  createdAt: string
+}
+
 export interface ConsolidatedShoppingItem {
   name: string
   quantity: string

@@ -87,6 +87,7 @@ export default function App() {
                   sendRecipeToShoppingList={app.sendRecipeToShoppingList}
                   onSentToList={app.handleRecipeSentToList}
                   onSelectShoppingList={app.switchToShoppingList}
+                  onMealPlanRestored={() => app.handleViewChange('mealprep')}
                 />
               )}
               {app.currentView === 'chat' && (

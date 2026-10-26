@@ -1,4 +1,4 @@
-import type { FavoriteStore, FavoriteShoppingListSummary } from '../utils/types'
+import type { FavoriteStore, FavoriteShoppingListSummary, FavoriteMealPlan, MealPlan } from '../utils/types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -105,4 +105,48 @@ export async function apiRemoveFavoriteShoppingList(token: string, listId: strin
     headers: headers(token),
   })
   await handleResponse<{ success: boolean }>(res)
+}
+
+// ── Favorite meal plans — snapshots of a whole week (see FavoritesView and
+// MealprepView), independent of the live MealPlan's lifecycle. ──
+
+export async function apiGetFavoriteMealPlanSourceIds(token: string): Promise<string[]> {
+  const res = await fetch(`${API_URL}/api/favorites/meal-plans/source-ids`, { headers: headers(token) })
+  const json = await handleResponse<{ sourceMealPlanIds: string[] }>(res)
+  return json.sourceMealPlanIds
+}
+
+export async function apiGetFavoriteMealPlans(token: string): Promise<FavoriteMealPlan[]> {
+  const res = await fetch(`${API_URL}/api/favorites/meal-plans`, { headers: headers(token) })
+  const json = await handleResponse<{ results: FavoriteMealPlan[] }>(res)
+  return json.results
+}
+
+export async function apiAddFavoriteMealPlan(
+  token: string,
+  payload: { mealPlanId: string; name?: string },
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/favorites/meal-plans`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(payload),
+  })
+  await handleResponse<{ success: boolean }>(res)
+}
+
+export async function apiRemoveFavoriteMealPlan(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/favorites/meal-plans/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  })
+  await handleResponse<{ success: boolean }>(res)
+}
+
+export async function apiRestoreFavoriteMealPlan(token: string, id: string): Promise<MealPlan> {
+  const res = await fetch(`${API_URL}/api/favorites/meal-plans/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+    headers: headers(token),
+  })
+  const json = await handleResponse<{ mealPlan: MealPlan }>(res)
+  return json.mealPlan
 }
