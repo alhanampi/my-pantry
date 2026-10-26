@@ -11,11 +11,14 @@ export interface Product {
   expiryDate: string
   location: string
   details: string
+  preferredStoreName: string
 }
 
 export type ProductFormData = Omit<Product, 'id'>
 
-export interface ShoppingListItem extends Product {
+// preferredStoreName is pantry-only (see Product's own comment) — a
+// shopping-list item never collects or shows it.
+export interface ShoppingListItem extends Omit<Product, 'preferredStoreName'> {
   purchased: boolean
   listId: string
 }

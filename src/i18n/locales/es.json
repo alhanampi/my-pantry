@@ -67,6 +67,7 @@
     "location": "Lugar de compra",
     "expiryDate": "Vencimiento",
     "details": "Detalles",
+    "preferredStore": "Tienda preferida",
     "addToCart": "Agregar a lista de súper",
     "edit": "Editar",
     "delete": "Eliminar"
@@ -84,6 +85,7 @@
     "purchaseDate": "Fecha de compra",
     "expiryDate": "Fecha de vencimiento",
     "location": "Lugar de compra",
+    "preferredStore": "Tienda preferida",
     "details": "Otros detalles",
     "detailsPlaceholder": "Notas adicionales sobre el producto...",
     "save": "Guardar",

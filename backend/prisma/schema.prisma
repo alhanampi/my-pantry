@@ -280,6 +280,12 @@ model Product {
   expiryDate   DateTime?
   location     String    @default("")
   details      String    @default("")
+  // Free text, not a FavoriteStore FK — a product can be bought somewhere
+  // never searched/favorited, and FavoriteStore is personal (not shared via
+  // accessibleUserIds) while Product is, so a cross-owner FK would be messy.
+  // The add/edit form offers favorite store names as autocomplete
+  // suggestions, but always saves plain text.
+  preferredStoreName String @default("")
   ownerId      String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

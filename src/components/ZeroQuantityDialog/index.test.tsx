@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import ZeroQuantityDialog from './index'
 import '../../i18n'
 
-const product = { id: 1, name: 'Leche', quantity: '0', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
+const product = { id: 1, name: 'Leche', quantity: '0', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
 
 describe('ZeroQuantityDialog', () => {
   it('renders the product name when open', () => {

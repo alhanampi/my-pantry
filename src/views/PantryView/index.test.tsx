@@ -15,6 +15,7 @@ const product: Product = {
   expiryDate: '',
   location: '',
   details: '',
+  preferredStoreName: '',
 }
 
 const sortConfig: SortConfig = { key: null, direction: 'asc' }

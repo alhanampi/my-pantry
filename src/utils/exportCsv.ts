@@ -7,6 +7,7 @@ const CSV_COLUMNS: Array<{ key: keyof Product; header: string }> = [
   { key: 'purchaseDate', header: 'Fecha de compra' },
   { key: 'expiryDate', header: 'Vencimiento' },
   { key: 'location', header: 'Lugar de compra' },
+  { key: 'preferredStoreName', header: 'Tienda preferida' },
   { key: 'details', header: 'Detalles' },
 ]
 

@@ -102,6 +102,23 @@ describe('pantry routes', () => {
     )
   })
 
+  it('POST /api/pantry/products persists the preferred store name', async () => {
+    mockPrisma.product.create.mockResolvedValue({
+      id: 1, name: 'Arroz', quantity: '1kg', brand: '', purchaseDate: '', expiryDate: null, location: '', details: '', preferredStoreName: 'Coto', ownerId: 'user_1',
+    })
+
+    const res = await request(app)
+      .post('/api/pantry/products')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Arroz', quantity: '1kg', preferredStoreName: 'Coto' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.product.preferredStoreName).toBe('Coto')
+    expect(mockPrisma.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ preferredStoreName: 'Coto' }) })
+    )
+  })
+
   it('POST /api/pantry/products returns 400 when name is missing', async () => {
     const res = await request(app)
       .post('/api/pantry/products')
@@ -140,7 +157,7 @@ describe('pantry routes', () => {
   it('PUT /api/pantry/products/:id updates an owned product', async () => {
     mockPrisma.product.findFirst.mockResolvedValue({ id: 1, ownerId: 'user_1' })
     mockPrisma.product.update.mockResolvedValue({
-      id: 1, name: 'Leche descremada', quantity: '1L', brand: '', purchaseDate: '', expiryDate: null, location: '', details: '', ownerId: 'user_1',
+      id: 1, name: 'Leche descremada', quantity: '1L', brand: '', purchaseDate: '', expiryDate: null, location: '', details: '', preferredStoreName: '', ownerId: 'user_1',
     })
 
     const res = await request(app)
@@ -150,6 +167,23 @@ describe('pantry routes', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.product.name).toBe('Leche descremada')
+  })
+
+  it('PUT /api/pantry/products/:id updates the preferred store name', async () => {
+    mockPrisma.product.findFirst.mockResolvedValue({ id: 1, ownerId: 'user_1' })
+    mockPrisma.product.update.mockResolvedValue({
+      id: 1, name: 'Leche descremada', quantity: '1L', brand: '', purchaseDate: '', expiryDate: null, location: '', details: '', preferredStoreName: 'Dia', ownerId: 'user_1',
+    })
+
+    const res = await request(app)
+      .put('/api/pantry/products/1')
+      .set('Authorization', 'Bearer good-token')
+      .send({ name: 'Leche descremada', quantity: '1L', preferredStoreName: 'Dia' })
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.product.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ preferredStoreName: 'Dia' }) })
+    )
   })
 
   it('DELETE /api/pantry/products/:id deletes an owned product', async () => {

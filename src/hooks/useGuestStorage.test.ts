@@ -10,6 +10,7 @@ const productData: ProductFormData = {
   expiryDate: '',
   location: '',
   details: '',
+  preferredStoreName: '',
 }
 
 const shoppingData: Omit<ShoppingListItem, 'id'> = { ...productData, purchased: false, listId: 'guest-general' }

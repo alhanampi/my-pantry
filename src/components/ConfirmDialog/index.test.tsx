@@ -11,7 +11,7 @@ describe('ConfirmDialog', () => {
   })
 
   it('shows success content and the product name when type is success', () => {
-    const product = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
+    const product = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
     render(<ConfirmDialog open type="success" data={product} onClose={vi.fn()} />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText(/Leche/)).toBeInTheDocument()

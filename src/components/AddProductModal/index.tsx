@@ -11,6 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { MdClose, MdAddShoppingCart, MdStorefront, MdAdd, MdRemove } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { getProductSuggestions } from '../../data/productSuggestions'
+import { useFavoriteStores } from '../../hooks/useFavoriteStores'
 import {
   StyledDialog,
   StyledDialogTitle,
@@ -30,6 +31,7 @@ const emptyForm: ProductFormData = {
   expiryDate: '',
   location: '',
   details: '',
+  preferredStoreName: '',
 }
 
 function today(): string {
@@ -60,6 +62,8 @@ export default function AddProductModal({
   const isEditMode = Boolean(initialData)
 
   const suggestions = getProductSuggestions(i18n.language)
+  const favoriteStores = useFavoriteStores()
+  const favoriteStoreNames = [...new Set((favoriteStores.data ?? []).map((s) => s.name))]
 
   useLayoutEffect(() => {
     if (!open) return
@@ -250,6 +254,19 @@ export default function AddProductModal({
                 fullWidth
               />
             </Grid>
+            {context !== 'shopping' && (
+              <Grid item xs={12} sm={6}>
+                <Autocomplete<string, false, false, true>
+                  freeSolo
+                  options={favoriteStoreNames}
+                  inputValue={form.preferredStoreName}
+                  onInputChange={(_, value) => handleChange('preferredStoreName', value)}
+                  renderInput={(params) => (
+                    <TextField {...params} label={t('modal.preferredStore')} fullWidth />
+                  )}
+                />
+              </Grid>
+            )}
             <Grid item xs={12} sm={context === 'shopping' ? 12 : 6}>
               <TextField
                 label={t('modal.purchaseDate')}

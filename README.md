@@ -27,11 +27,13 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 
 ### Pantry
 
-- Add products with name, quantity, brand, expiration date, purchase date, location, and notes.
+- Add products with name, quantity, brand, expiration date, purchase date, location, preferred store, and notes.
+- A free-text "preferred store" field on the add/edit form, with autocomplete suggestions pulled from the user's favorite stores; shown on the product card (mobile) and as a tooltip icon on the desktop row.
 - Table view on desktop, expandable cards on mobile.
 - Sort by any column.
 - Real-time search.
 - Edit and delete products with confirmation.
+- Export the full pantry to CSV via a button in the table header.
 
 ### Shopping List
 
@@ -39,10 +41,12 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Add items manually.
 - Mark items as purchased with a checkbox.
 - Clear all purchased items in one click.
+- Export the current shopping list to PDF (`jspdf` + `jspdf-autotable`).
 
 ### Recipes
 
 - Search recipes by keyword, cuisine, diet, included ingredients, and max calories, via a server-side **Spoonacular** proxy (the API key never reaches the client).
+- **Edamam** is wired in as a second recipe provider — it supplements Spoonacular search results and resolves photos for AI-generated Mealprep recipes by name. Favorite/recipe ids use a compound `source:externalId` form so a Spoonacular numeric id and an Edamam uri can coexist without colliding.
 - Results are always random (`sort=random`, even with filters/a search query active) and reshuffle every time the tab is opened or the page reloads — there's no "default browsing order" to get stale.
 - Infinite-scroll results grid, 4 recipes per page (`IntersectionObserver` sentinel).
 - Search and detail responses are cached client-side (`src/utils/recipeCache.ts`, a TTL+LRU cache over `localStorage`: 1h for search results, 24h for recipe details) to reduce Spoonacular quota usage — a failed live call falls back to a stale cached value instead of erroring. Filter inputs in `RecipesFilterBar` are debounced (400ms) before triggering a new search, so typing doesn't fire a request per keystroke.
@@ -51,12 +55,17 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Recipe titles, ingredient names, and instructions are translated to Spanish via **Groq** when the UI is in Spanish (Spoonacular itself doesn't support Spanish content) — fixed nutrition labels/units stay on the normal i18n system. Falls back to English on any translation error.
 - Works fully for guests too (recipe browsing needs no auth; "send to list" writes to `localStorage` same as the rest of guest mode).
 
-### Favorite Recipes
+### Favorites
 
-- A heart icon in the top-right corner of a recipe's photo — on the search grid cards and on the detail view — saves/unsaves it as a favorite; filled red when saved, regardless of color scheme.
-- A separate **Favorites** tab (between Recipes and Shopping) lists saved recipes as the same card grid, no search bar or pagination (personal list, not expected to be huge).
-- Signed-in: favorites are a per-user DB table storing just the Spoonacular recipe id (`FavoriteRecipe`, capped at 100/user) — Spoonacular stays the single source of truth for content, so the list is re-hydrated (and re-translated, if needed) via the same recipe-detail lookup each time it's opened. Personal, not shared with a linked partner. Guests: same idea, ids only, in `localStorage`.
-- Saving a recipe is immediate; removing one asks for confirmation first ("Remove from favorites?") via a reusable `ConfirmActionDialog`.
+A **Favorites** tab (between Recipes and Shopping) is a hub of everything the user has bookmarked, grouped into collapsible per-category sections (`FavoriteSection`):
+
+- **Recipes** — a heart icon in the top-right corner of a recipe's photo (search grid cards and detail view) saves/unsaves it; filled red when saved, regardless of color scheme. Lists saved recipes as the same card grid, no search bar or pagination. Signed-in: a per-user DB table storing just the recipe id (`FavoriteRecipe`, compound `source:externalId` so a Spoonacular and an Edamam recipe can coexist, capped at 100/user) — the provider stays the single source of truth for content, so the list is re-hydrated (and re-translated, if needed) via the same recipe-detail lookup each time it's opened. Guests: same idea, ids only, in `localStorage`. Saving is immediate; removing asks for confirmation first ("Remove from favorites?") via a reusable `ConfirmActionDialog`.
+- **Ingredients** — bookmarks a free-text ingredient name (`FavoriteIngredient`), surfaced as a 4th chip source (alongside pantry / common / free text) in `IngredientPicker`, used by the Chat and Mealprep ingredient inputs.
+- **Stores** — a snapshot (name, type, coordinates), not a live lookup — Geoapify has no "detail by id" endpoint to re-hydrate from later, so what the search returned is saved as-is at favorite time (`FavoriteStore`). Favorite store names also feed the autocomplete suggestions on the pantry product's "preferred store" field.
+- **Shopping Lists** — a pointer (`FavoriteShoppingList`, just a `listId`) rather than a snapshot, since the list itself stays live; selecting one jumps straight to it.
+- **Mealprep weekly plans** — a full snapshot of a generated week (`FavoriteMealPlan`/`FavoriteMealPlanEntry`), saved via a heart icon in the Mealprep tab and a naming dialog (`FavoriteMealPlanNameDialog`). Restoring one from Favorites creates a new live `MealPlan`, asking for confirmation first if a plan is already active.
+
+All of the above are personal bookmarks, not shared with a linked partner.
 
 ### Chat (AI cooking assistant)
 
@@ -67,6 +76,17 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - A "Suggest a recipe" action turns the conversation so far into a real **Spoonacular** recipe suggestion (photo + link, not AI-invented text), reusing the same recipe detail view as the Recipes tab — including "send to a new shopping list".
 - Assistant replies render as Markdown (`react-markdown` + `remark-gfm`, sanitized with `rehype-sanitize`); user messages stay plain text.
 - A conversation stops accepting new messages after 60, with an explicit "conversation too long" error rather than silently truncating history.
+
+### Mealprep (AI weekly meal plan)
+
+- A **Mealprep** tab, sign-in required, generates a full week's worth of meals (breakfast optional, lunch + dinner by default) in one request via **Groq** (`mealPlanAi.ts`), based on dietary restrictions, servings, days to cover, time available, and ingredients on hand.
+- Unlike Chat's recipe suggestions, each meal's full content (title, description, ingredients, steps, notes, prep/total time) is generated and stored directly — there's no external recipe id to look back up. A matching photo is resolved afterward by name against Spoonacular, falling back to Edamam, and finally to a meal-type icon if neither has one.
+- `WeeklyCalendar` shows the week as a grid; selecting a day opens its full recipe in `MealprepRecipeDetail`, with the same servings scaling and "send to a new shopping list" action as the Recipes tab.
+- A single meal can be swapped for a new AI-generated alternative (`useSwapMeal`), optionally with a reason ("something lighter", an allergy, etc.) and the user's location as cuisine context.
+- `RefinePlanInput` lets the user adjust the whole week in free text (e.g. "more vegetarian options") without starting over — `/refine` rebuilds the plan's entries from the same generation context it was created with.
+- "Push to shopping list" consolidates every meal's ingredients into one deduplicated list (`ConsolidatedListPreview`) before creating a new shopping list from it.
+- An optional one-day **batch prep plan** (`BatchPrepPlanView`) — menu, total ingredient quantities, cooking order, storage notes, estimated total time — covering some or all of the week's meals in a single cooking session.
+- Only one active plan per user; generating a new one or deleting the current one are both explicit, confirmed actions. The whole week can be favorited (see Favorites above) and later restored as a new plan.
 
 ### Multiple Shopping Lists
 
@@ -85,6 +105,7 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 - Filter by distance range (0–40km) via a two-thumb slider — the max thumb also sets the actual Geoapify search radius (refetches only when released), the min thumb re-filters client-side without a new request. Displayed in km or miles per the account's existing metric/imperial preference (Header's Preferencias section) — no separate unit toggle on this filter itself.
 - 5-minute cache with React Query.
 - Clicking a store opens an interactive map dialog (MapLibre GL + OpenFreeMap tiles) with a "Open in Google Maps" directions link.
+- In the Shopping tab, the map (`StoresMap`) is always visible rather than click-to-open — every search result renders as a marker at once, Google-Maps style — and requests geolocation on mount to center itself before the user searches. Stores can be favorited directly from the map's popup.
 
 ### Loading States
 
@@ -130,10 +151,11 @@ This project uses `vite-plugin-pwa`, which automatically generates the `manifest
 
 ### Customization
 
+- Metric/imperial unit system preference (`UnitSystemToggle`, in Header's Preferencias section and on each recipe's/Mealprep meal's detail view) — a single persisted account-wide setting; unset defaults from the UI language (Spanish → metric, otherwise imperial) and is also what the AI chat/Mealprep prompts see.
 - Color theme picker.
 - Mobile-first design with bottom navigation on mobile and tabs on desktop.
 - On mobile, a hamburger drawer groups all header actions clearly.
-- All navigation icons (pantry/recipes/favorites/chat/shopping, on both the desktop tabs and the mobile bottom nav) come from `react-icons/md`'s `MdOutline*` set exclusively — `@mui/icons-material` was removed from the project. The selected tab visually merges into the page background (no separate "floating chip" or underline indicator) on both Header's desktop tabs and BottomNav's mobile tabs, which are icon-only (no text labels, `aria-label` kept for accessibility).
+- All navigation icons (pantry/recipes/chat/mealprep/shopping/favorites, on both the desktop tabs and the mobile bottom nav) come from `react-icons/md`'s `MdOutline*` set exclusively — `@mui/icons-material` was removed from the project. The selected tab visually merges into the page background (no separate "floating chip" or underline indicator) on both Header's desktop tabs and BottomNav's mobile tabs, which are icon-only (no text labels, `aria-label` kept for accessibility).
 
 ---
 
@@ -171,6 +193,7 @@ For local development, both frontend and backend start together with a single `n
 | react-icons v5               | Icon set (Material Design, `react-icons/md`) |
 | react-markdown + remark-gfm + rehype-sanitize | Renders assistant chat replies as sanitized Markdown |
 | axios                        | HTTP client for API calls                  |
+| jspdf + jspdf-autotable       | Exports the shopping list to PDF            |
 | vite-plugin-pwa              | Service worker and PWA manifest            |
 | concurrently                 | Runs frontend and backend in one terminal  |
 
@@ -194,18 +217,26 @@ For local development, both frontend and backend start together with a single `n
 ## Data Model
 
 ```
-User (Clerk ID)
- ├── UserLink[]           — links two users to share a pantry
- ├── LinkInvitation[]     — pending/accepted/declined invitations (48-hour expiry)
- ├── PushSubscription[]   — Web Push endpoints for this user
- ├── Product[]            — pantry items owned by this user
- ├── ShoppingItem[]       — shopping list items owned by this user (each belongs to a ShoppingList)
- ├── ShoppingList[]       — named shopping lists (one auto-created "General" list per user, plus any created manually or from Recipes)
- └── ChatConversation[]   — AI chat conversations (dietaryRestrictions, servings), personal, capped at 20/user
-      └── ChatMessage[]   — messages in a conversation (role: 'user' | 'assistant'), capped at 60/conversation
+User (Clerk ID, unitSystem: 'metric' | 'imperial' | null)
+ ├── UserLink[]              — links two users to share a pantry
+ ├── LinkInvitation[]        — pending/accepted/declined invitations (48-hour expiry)
+ ├── PushSubscription[]      — Web Push endpoints for this user
+ ├── Product[]               — pantry items owned by this user (incl. preferredStoreName, free text)
+ ├── ShoppingItem[]          — shopping list items owned by this user (each belongs to a ShoppingList)
+ ├── ShoppingList[]          — named shopping lists (one auto-created "General" list per user, plus any created manually or from Recipes/Mealprep)
+ ├── ChatConversation[]      — AI chat conversations (dietaryRestrictions, servings), personal, capped at 20/user
+ │    └── ChatMessage[]      — messages in a conversation (role: 'user' | 'assistant'), capped at 60/conversation
+ ├── MealPlan[]               — one active-at-a-time AI-generated weekly meal plan, personal
+ │    └── MealPlanEntry[]     — one per day/mealType slot, full AI-generated recipe content (no external id)
+ ├── FavoriteRecipe[]         — bookmark onto a recipe id ("source:externalId"), personal, capped at 100/user
+ ├── FavoriteIngredient[]     — bookmark onto a free-text ingredient name, personal
+ ├── FavoriteStore[]          — snapshot (name/type/coords) of a Geoapify place, personal
+ ├── FavoriteShoppingList[]   — pointer (listId) to a live ShoppingList, personal
+ └── FavoriteMealPlan[]       — snapshot of a whole MealPlan week, personal
+      └── FavoriteMealPlanEntry[] — snapshot of one day/mealType slot
 ```
 
-When two users are linked, all pantry and shopping list reads include items from both users. Writes always set the current user as owner.
+When two users are linked, all pantry and shopping list reads include items from both users. Writes always set the current user as owner. `ChatConversation`, `MealPlan`, and all `Favorite*` tables are personal and are never shared with a linked partner.
 
 > **Note**: `ShoppingItem.listId` is currently nullable in `schema.prisma` (phase 1 of a two-phase migration) — see `ROADMAP.md`'s "Multiple Shopping Lists" entry for why the `NOT NULL` phase 2 migration and the one-time backfill script haven't run yet on the shared dev database.
 
@@ -222,7 +253,7 @@ mi-despensa-app/
 │
 ├── backend/                  # Backend source
 │   ├── prisma/
-│   │   ├── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe, ChatConversation, ChatMessage
+│   │   ├── schema.prisma     # Models: User, UserLink, LinkInvitation, PushSubscription, Product, ShoppingItem, ShoppingList, FavoriteRecipe, FavoriteIngredient, FavoriteStore, FavoriteShoppingList, FavoriteMealPlan(+Entry), ChatConversation, ChatMessage, MealPlan, MealPlanEntry
 │   │   └── seed.ts           # Dev-only: seeds a fixed test user's pantry with products at various expiry distances
 │   ├── scripts/
 │   │   └── backfill-shopping-lists.ts # One-time idempotent backfill: General list per user + listId on old items
@@ -235,18 +266,25 @@ mi-despensa-app/
 │       │   ├── webpush.ts    # VAPID push delivery and stale-subscription cleanup
 │       │   ├── email.ts      # Resend transactional email (optional)
 │       │   ├── spoonacular.ts # Server-only Spoonacular client (searchRecipes/getRecipeInformation, always sort=random)
+│       │   ├── edamam.ts     # Second recipe provider — supplements Spoonacular search and resolves Mealprep recipe photos by name
 │       │   ├── groq.ts       # translateRecipeContent — recipe content → Spanish, cached, fails soft to English
 │       │   ├── chatAssistant.ts # streamChatReply (SSE streaming) + extractSearchCriteria — own Groq client, throws real errors (no fail-soft)
-│       │   └── recipeSerializers.ts # serializeCard/serializeDetail — shared between recipes.ts, recipeFavorites.ts, and chat.ts
+│       │   ├── mealPlanAi.ts # generateMealPlan/refineMealPlan — AI weekly meal plan + optional batch prep plan generation (Groq)
+│       │   ├── geoContext.ts # buildGeoHint — shared cuisine-bias location hint for chatAssistant.ts and mealPlanAi.ts
+│       │   └── recipeSerializers.ts # serializeCard/serializeDetail/makeRecipeId — shared between recipes.ts, recipeFavorites.ts, and chat.ts
 │       ├── middleware/
 │       │   └── auth.ts       # Clerk JWT verification
 │       └── routes/
 │           ├── auth.ts       # /sync, /me, /link, /invite
-│           ├── pantry.ts     # Products and shopping list CRUD (listId-aware)
+│           ├── pantry.ts     # Products and shopping list CRUD (listId-aware, incl. preferredStoreName)
 │           ├── shoppingLists.ts # Shopping list CRUD (/api/pantry/shopping-lists)
 │           ├── recipes.ts    # Public recipe search/detail proxy (/api/recipes), own rate limiter; mounts recipeFavorites.ts
 │           ├── recipeFavorites.ts # Favorites CRUD (/api/recipes/favorites), auth'd, capped at 100/user
-│           ├── chat.ts       # Chat conversations/messages CRUD + streaming reply (/api/chat), requireAuth everywhere, own rate limiter (15/min)
+│           ├── chat.ts       # Chat conversations/messages CRUD + streaming reply, plus Mealprep's /meal-plan* endpoints (generate/current/refine/swap-meal/delete/consolidate) (/api/chat), requireAuth everywhere, own rate limiter (15/min)
+│           ├── favoriteIngredients.ts # Favorite ingredients CRUD (/api/favorites/ingredients)
+│           ├── favoriteStores.ts      # Favorite stores CRUD (/api/favorites/stores), snapshot not re-hydrated
+│           ├── favoriteShoppingLists.ts # Favorite shopping list pointers CRUD (/api/favorites/shopping-lists)
+│           ├── favoriteMealPlans.ts   # Favorite meal plan snapshots CRUD + restore (/api/favorites/meal-plans)
 │           └── notifications.ts # Push subscription CRUD + cron handler
 │
 └── src/                      # Frontend
@@ -259,13 +297,15 @@ mi-despensa-app/
     │   ├── pantryApi.ts         # Products, shopping list, and shopping list CRUD calls
     │   ├── recipesApi.ts        # Recipe search/detail (public, no token) + favorites CRUD (auth'd, token as usual)
     │   ├── chatApi.ts           # Conversations CRUD + streamChatMessage (parses SSE frames via ReadableStream/TextDecoder)
+    │   ├── mealPlanApi.ts       # Mealprep: generate/current/refine/swap-meal/delete/consolidate (/api/chat/meal-plan*)
+    │   ├── favoritesApi.ts      # Favorite ingredients/stores/shopping lists/meal plans CRUD (/api/favorites/*)
     │   ├── overpass.ts          # Geoapify Places API wrapper and shop-type map
     │   ├── productSuggestionsApi.ts # Open Food Facts live suggestions
     │   └── notificationsApi.ts  # Push subscription register/unregister calls
     ├── components/
     │   ├── Header/              # AppBar with hamburger drawer (mobile) and tabs (desktop)
     │   ├── BottomNav/
-    │   ├── AddProductModal/
+    │   ├── AddProductModal/     # Includes the preferred-store autocomplete field
     │   ├── AuthModal/           # Account linking modal
     │   ├── ConfirmDialog/       # Actually a post-action success/cancel notice, despite the name
     │   ├── ConfirmActionDialog/ # Generic pre-action "are you sure?" — delete list, remove favorite
@@ -273,13 +313,18 @@ mi-despensa-app/
     │   ├── ZeroQuantityDialog/  # Prompt when a pantry item hits 0 (offer to add to cart)
     │   ├── ZeroShoppingQtyDialog/ # Prompt when a shopping item hits 0 (offer to delete)
     │   ├── NotificationBell/    # Bell icon with subscribe/unsubscribe toggle
-    │   └── ThemePicker/
+    │   ├── ThemePicker/
+    │   ├── UnitSystemToggle/    # Metric/imperial switch, shared by Header and RecipeDetailPanel
+    │   ├── IngredientPicker/    # Pantry / common / favorite / free-text ingredient chip picker (Chat, Mealprep)
+    │   ├── FavoriteSection/     # Collapsible per-category section used by FavoritesView
+    │   └── FavoriteMealPlanNameDialog/ # Naming prompt when favoriting a Mealprep week
     ├── views/
     │   ├── PantryView/
     │   │   └── PantrySkeleton.tsx   # Skeleton UI shown while pantry data loads
     │   ├── ShoppingView/
     │   │   ├── NearbyStores/    # Store list with type filter
-    │   │   ├── StoreMapDialog/  # MapLibre GL dialog opened per store
+    │   │   ├── StoresMap/       # Always-visible map in Shopping — every search result as a marker at once
+    │   │   ├── StoreMapDialog/  # MapLibre GL dialog for one store, still used by FavoriteStoresSection
     │   │   ├── ShoppingListSelector/ # List picker, shown when the user has more than one list
     │   │   └── ShoppingSkeleton.tsx # Skeleton UI shown while shopping list loads
     │   ├── RecipesView/
@@ -289,7 +334,11 @@ mi-despensa-app/
     │   │   ├── RecipeDetailPanel/ # Servings scaler, scaled ingredients/nutrition, favorite heart, "send to list"
     │   │   ├── ServingsStepper/   # Thin wrapper reusing QuantityStepper
     │   │   └── RecipesSkeleton.tsx # Skeleton UI shown while a search/detail loads
-    │   ├── FavoriteRecipesView/  # Bounded grid of saved recipes — reuses RecipeCardGrid/RecipeDetailPanel from RecipesView
+    │   ├── FavoritesView/        # Hub of collapsible per-category sections (recipes, ingredients, stores, shopping lists, meal plans); replaces the old FavoriteRecipesView
+    │   │   ├── FavoriteIngredientsSection.tsx
+    │   │   ├── FavoriteStoresSection.tsx
+    │   │   ├── FavoriteShoppingListsSection.tsx
+    │   │   └── FavoriteMealPlansSection.tsx
     │   ├── ChatView/             # AI cooking-assistant chat (sign-in required)
     │   │   ├── ChatSidebar/      # Conversation list
     │   │   ├── ChatMessageList/  # Rendered messages (Markdown for assistant replies)
@@ -298,6 +347,13 @@ mi-despensa-app/
     │   │   ├── NewChatOnboarding/ # Collects dietary restrictions + servings before the first message
     │   │   ├── DietaryChipPicker/ # Predefined + free-text dietary restriction chips
     │   │   └── ChatSkeleton.tsx  # Skeleton UI shown while a conversation loads
+    │   ├── MealprepView/         # AI weekly meal plan (sign-in required)
+    │   │   ├── MealPlanGenerator/    # Form to request a new plan (restrictions, servings, days, time, ingredients)
+    │   │   ├── WeeklyCalendar/       # Grid of the week's meal slots
+    │   │   ├── MealprepRecipeDetail/ # Full recipe for one day/slot — servings scaling, swap, send to list
+    │   │   ├── RefinePlanInput/      # Free-text "adjust the whole week" input
+    │   │   ├── ConsolidatedListPreview/ # Preview before pushing the week's ingredients to a new shopping list
+    │   │   └── BatchPrepPlanView/    # One-day batch cooking session covering some/all of the week's meals
     │   └── AboutView/
     ├── context/
     │   └── AuthContext.tsx      # Partner state, link/invite flow, and guest migration trigger
@@ -308,10 +364,17 @@ mi-despensa-app/
     │   ├── usePantry.ts         # React Query hooks for products, shopping lists (incl. delete), and shopping list items
     │   ├── useRecipes.ts        # React Query hooks for recipe search (infinite) and detail — public, no isSignedIn gate
     │   ├── useFavorites.ts      # Favorite recipe ids/cards + toggle — signed-in (DB) or guest (localStorage); useFavoriteToggle wraps the mutation with a confirm-before-remove step
+    │   ├── useFavoriteIngredients.ts  # Favorite ingredient bookmarks CRUD
+    │   ├── useFavoriteStores.ts       # Favorite store snapshots CRUD
+    │   ├── useFavoriteShoppingLists.ts # Favorite shopping list pointers CRUD
+    │   ├── useFavoriteMealPlans.ts    # Favorite meal plan snapshots CRUD + restore
+    │   ├── useMealPlan.ts       # Mealprep: current plan, generate/refine/swap/delete/consolidate as React Query hooks
+    │   ├── useUnitSystem.ts     # Metric/imperial preference — signed-in (DB) or guest (localStorage), defaults from UI language
     │   ├── useChat.ts           # Conversations list + suggest-recipe as normal React Query hooks
     │   ├── useChatSession.ts    # Sending a message — plain async function owning local message state (streaming doesn't fit useMutation)
-    │   ├── useGeolocation.ts    # Device geolocation, extracted from NearbyStores so ChatView can share it
+    │   ├── useGeolocation.ts    # Device geolocation, extracted from NearbyStores so ChatView/Mealprep can share it
     │   ├── useNearbyStores.ts
+    │   ├── useAvailableHeight.ts # Measures space below a ref down to the viewport bottom, used by ChatView to pin the composer
     │   ├── useLocalStorage.ts
     │   ├── useProductSuggestions.ts
     │   ├── usePushNotifications.ts  # Web Push subscription management
@@ -324,7 +387,9 @@ mi-despensa-app/
     │   ├── types.ts             # Shared TypeScript interfaces and types
     │   ├── helpers.ts           # Date formatting and other shared utilities
     │   ├── migrations.ts        # One-time localStorage key migration (ES → EN field names)
-    │   └── recipeCache.ts       # TTL+LRU cache over localStorage for Spoonacular search/detail responses
+    │   ├── recipeCache.ts       # TTL+LRU cache over localStorage for Spoonacular search/detail responses
+    │   ├── exportCsv.ts         # Serializes the pantry to CSV
+    │   └── exportPdf.ts         # Builds a jsPDF document for the current shopping list
     ├── i18n/
     │   ├── index.ts          # i18next init and language detection
     │   └── locales/
@@ -383,7 +448,9 @@ CRON_SECRET=...                    # any random secret string
 RESEND_API_KEY=...                 # optional — only needed to send invitation emails
 EMAIL_FROM=My Pantry <noreply@mypantry.app>  # optional — sender address for invitation emails
 SPOONACULAR_KEY=...                # optional — server-only; recipes routes return a configError without it
-GROQ_API_KEY=...                   # optional for recipe translation (falls back to English); required for the Chat tab (returns a config error without it)
+EDAMAM_APP_ID=...                  # optional — second recipe provider, supplements Spoonacular search and resolves Mealprep photos
+EDAMAM_API_KEY=...                 # optional — paired with EDAMAM_APP_ID
+GROQ_API_KEY=...                   # optional for recipe translation (falls back to English); required for the Chat and Mealprep tabs (returns a config error without it)
 ```
 
 ### 3. Generate VAPID keys (one-time)
@@ -489,13 +556,13 @@ Authentication is fully delegated to Clerk:
 - [x] Link invitation system (shareable URL, 48-hour expiry, optional email via Resend)
 - [x] Guest mode: unauthenticated users can add products stored in localStorage, migrated to the server on sign-in
 
-### v1.2 — Maps & Location
+### v1.2 — Maps & Location ✅
 
 - [x] Nearby supermarkets via Geoapify Places API
 - [x] Filter by store type (supermarket, grocery, bakery, deli, etc.)
-- [x] Interactive map dialog per store (MapLibre GL + OpenFreeMap) with Google Maps directions link
+- [x] Interactive map dialog per store (MapLibre GL + OpenFreeMap) with Google Maps directions link, plus an always-visible map in Shopping List showing every search result as a marker at once
 - [x] Filter supermarkets by distance — a two-thumb range slider (0–40km) next to the store-type filter; the max value also drives the actual Geoapify search radius, the min value is a client-side-only cutoff; displayed in km/miles per the existing account-wide metric/imperial preference
-- [ ] Save a preferred store per product
+- [x] Save a preferred store per product — free-text field on the pantry add/edit form (not shown for shopping-list items), with autocomplete suggestions pulled from the user's favorite stores
 
 ### v1.3 — Expiration Alerts
 
@@ -509,8 +576,9 @@ Authentication is fully delegated to Clerk:
 - [ ] Real-time sync between linked accounts (WebSockets or polling)
 - [x] Multiple shopping lists, to decide where to buy what — create, switch, and delete (with confirmation); archiving instead of deleting is planned for later, see `ROADMAP.md`
 - [ ] Send items from shopping list to pantry automatically
-- [ ] Share shopping list (public link or PDF)
-- [ ] Export pantry to CSV
+- [ ] Share shopping list (public link)
+- [x] Export pantry to CSV
+- [x] Export shopping list to PDF (`jspdf` + `jspdf-autotable`)
 - [x] Recipes tab — search/filter, always-random results, infinite scroll, detail with servings + nutrition scaling, "send to a new shopping list" (Spoonacular, server-side key)
 - [x] Favorite recipes — heart icon on the recipe photo (search cards and detail view) saves/unsaves it (removing asks for confirmation); separate Favorites tab lists them
 
@@ -552,7 +620,7 @@ See `ROADMAP.md` for the technical design.
 
 See `ROADMAP.md` for the technical design.
 
-- [ ] Weekly meal plan (via the AI chat) that generates a full shopping list, not just one recipe at a time
+- [x] Weekly meal plan (Mealprep tab, AI-generated via Groq) that generates a full shopping list, not just one recipe at a time — includes swap-a-meal, free-text refine, an optional one-day batch prep plan, and favoriting/restoring a whole week
 - [ ] Recurring items — mark a product as "repeats every N days/weeks" and get suggested to re-add it when due
 - [ ] Dietary tags (vegan, gluten-free, etc.) on products, respected by the recipe chat's suggestions
 

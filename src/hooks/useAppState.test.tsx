@@ -24,6 +24,7 @@ const product = (overrides: Partial<{ id: number; name: string; quantity: string
   expiryDate: '',
   location: '',
   details: '',
+  preferredStoreName: '',
   ...overrides,
 })
 

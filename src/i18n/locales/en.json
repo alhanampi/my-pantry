@@ -67,6 +67,7 @@
     "location": "Purchase location",
     "expiryDate": "Expiry",
     "details": "Notes",
+    "preferredStore": "Preferred store",
     "addToCart": "Add to shopping list",
     "edit": "Edit",
     "delete": "Delete"
@@ -84,6 +85,7 @@
     "purchaseDate": "Purchase date",
     "expiryDate": "Expiry date",
     "location": "Purchase location",
+    "preferredStore": "Preferred store",
     "details": "Other details",
     "detailsPlaceholder": "Additional notes about the product...",
     "save": "Save",

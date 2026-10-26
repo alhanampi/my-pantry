@@ -4,10 +4,6 @@ This file tracks the technical design of **pending** work only — data model ch
 
 ---
 
-## v1.2 remaining — Maps & Location
-
-- **Save a preferred store per product**: needs a new field on `Product` (e.g. `preferredStoreId` or a free-text `preferredStoreName` if we don't want a full `Store` table) plus UI on the product card/form.
-
 ## v1.3 remaining — Expiration Alerts
 
 - **Weekly expiration dashboard**: new view or section aggregating `Product.expiryDate` within the next 7 days, reusing the existing expiry-sorting logic already used for push notifications (`backend/src/services/webpush.ts` or wherever the daily cron query lives).
@@ -31,7 +27,7 @@ Backend: `backend/src/services/spoonacular.ts` (key server-only, proxied through
 
 **Randomized results** (added after initial ship): `searchRecipes` always passes `sort=random` to Spoonacular's `complexSearch`, including when a query/filters are active (a deliberate product decision — relevance sort was dropped entirely rather than only randomizing the unfiltered default view). Since Spoonacular re-randomizes per request rather than taking a stable seed, consecutive offset-paginated pages during one infinite-scroll session can occasionally repeat or skip a recipe — accepted trade-off, not worth a bespoke pagination/seeding scheme for a "browse for inspiration" feature.
 
-**Favorite recipes** (added after initial ship): a heart icon (top-right corner of the recipe photo, on both the search-result cards and the detail view) saves/unsaves a recipe; filled when saved. A separate **Favorites** tab (`src/views/FavoriteRecipesView/`, positioned Pantry → Recipes → Favorites → Shopping in the nav) lists saved recipes as the same card grid with no search bar or pagination — a personal, bounded list.
+**Favorite recipes** (added after initial ship): a heart icon (top-right corner of the recipe photo, on both the search-result cards and the detail view) saves/unsaves a recipe; filled when saved. A separate **Favorites** tab (originally `src/views/FavoriteRecipesView/`; later redesigned into the multi-category hub described below, `src/views/FavoritesView/`) lists saved recipes as the same card grid with no search bar or pagination — a personal, bounded list.
 - Schema: `FavoriteRecipe { id, ownerId, recipeId, createdAt }`, `@@unique([ownerId, recipeId])`, capped at `MAX_FAVORITES_PER_USER = 100`. Just a bookmark onto a Spoonacular recipe id in the DB — the list is still re-hydrated (and re-translated, if the UI language calls for it) via the same recipe-detail lookup used elsewhere. Personal per-user, not shared with a linked partner via `accessibleUserIds` like pantry/shopping data is — favoriting felt closer to a personal bookmark than shared household data.
 
 **Client-side response caching** (reversal, added after Spoonacular's free-tier daily quota got exhausted in development): the original decision here was "Spoonacular stays the single source of truth, no caching, on every read" — reversed, since real quota exhaustion (`402` from Spoonacular → `503 quotaExceeded` from the backend) made the app briefly unusable. `src/utils/recipeCache.ts` is a small TTL+LRU cache over `localStorage` (same defensive try/catch style as `useGuestStorage.ts`); `src/api/recipesApi.ts`'s `apiSearchRecipes`/`apiGetRecipeDetail` are cache-first (search: 1h TTL, detail: 24h TTL, since recipe content barely changes) and fall back to a stale cached value instead of throwing when the live call fails — so `quotaExceeded` degrades to "slightly old data" rather than an error screen wherever something was already seen. This applies to favorites hydration too, since it goes through the same `apiGetRecipeDetail`. Also fixed alongside this: `RecipesFilterBar`'s inputs had no debounce, so every keystroke fired a brand-new search (and thus a new Spoonacular call) — `RecipesView` now debounces `filters` (400ms, via the existing `useDebounce` hook) before passing them to `useRecipeSearch`.

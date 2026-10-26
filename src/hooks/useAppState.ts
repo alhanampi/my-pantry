@@ -136,7 +136,16 @@ export function useAppState() {
       open: true,
       context,
       id,
-      initialData: { name, quantity, brand, purchaseDate, expiryDate, location, details },
+      initialData: {
+        name,
+        quantity,
+        brand,
+        purchaseDate,
+        expiryDate,
+        location,
+        details,
+        preferredStoreName: 'preferredStoreName' in product ? product.preferredStoreName : '',
+      },
     })
   }
 
@@ -290,7 +299,7 @@ export function useAppState() {
     const item = visibleShoppingList.find((i) => i.id === id)
     if (!item) return
     const { purchased: _purchased, listId: _listId, id: _id, ...data } = item
-    const productData: ProductFormData = data
+    const productData: ProductFormData = { ...data, preferredStoreName: '' }
     pantry.createProduct.mutate(productData, {
       onSuccess: () => {
         pantry.deleteShoppingItem.mutate(id, { onError: showError })
