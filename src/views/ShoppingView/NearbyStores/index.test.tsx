@@ -109,7 +109,7 @@ describe('NearbyStores', () => {
   })
 
   it('shows a filled heart and the remove label for an already-favorited store', () => {
-    mockFavoriteStoreIds.mockReturnValueOnce({ data: ['1'] })
+    mockFavoriteStoreIds.mockReturnValue({ data: ['1'] })
     const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 120 }
     mockResult({ data: [store] })
     render(<NearbyStores />)
@@ -118,7 +118,7 @@ describe('NearbyStores', () => {
   })
 
   it('formats distances in miles when the account is set to imperial', () => {
-    mockUseUnitSystem.mockReturnValueOnce({ unitSystem: 'imperial', setUnitSystem: vi.fn(), isPending: false })
+    mockUseUnitSystem.mockReturnValue({ unitSystem: 'imperial', setUnitSystem: vi.fn(), isPending: false })
     const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 1609 }
     mockResult({ data: [store] })
     render(<NearbyStores />)

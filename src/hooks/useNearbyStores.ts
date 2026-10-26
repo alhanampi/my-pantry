@@ -29,7 +29,13 @@ export function useNearbyStores(
   coords: Coordinates | null,
   shopTypes: ShopType[],
   minDistance: number = MIN_DISTANCE,
-  maxDistance: number = DEFAULT_MAX_DISTANCE
+  maxDistance: number = DEFAULT_MAX_DISTANCE,
+  // NearbyStores now requests geolocation as soon as the tab opens (to
+  // center the map), without that by itself spending a Geoapify request —
+  // the actual search still only fires once the user presses "Buscar
+  // tiendas cercanas". ChatView's own call never passes this, so it keeps
+  // searching as soon as it has coords.
+  enabled: boolean = true
 ): UseQueryResult<NearbyStore[], Error> {
   return useQuery<RawNearbyStore[], Error, NearbyStore[]>({
     // maxDistance doubles as the Geoapify request radius (see fetchNearbyStores
@@ -39,7 +45,7 @@ export function useNearbyStores(
     // last time.
     queryKey: ['nearbyStores', coords?.lat, coords?.lng, shopTypes, maxDistance],
     queryFn: () => fetchNearbyStores(coords!, shopTypes, maxDistance),
-    enabled: !!coords && shopTypes.length > 0,
+    enabled: enabled && !!coords && shopTypes.length > 0,
     staleTime: 5 * 60 * 1000,
     select: (stores: RawNearbyStore[]): NearbyStore[] =>
       stores

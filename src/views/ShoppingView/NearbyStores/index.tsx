@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { ComponentType } from 'react'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
@@ -114,18 +114,30 @@ export default function NearbyStores() {
   const [distanceRange, setDistanceRange] = useState<[number, number]>([MIN_DISTANCE, DEFAULT_MAX_DISTANCE])
   const [draftRange, setDraftRange] = useState<[number, number]>(distanceRange)
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
+  // Requesting location on mount (below) only centers the map — it must not
+  // by itself spend a Geoapify search; that still waits for the button.
+  const [hasSearched, setHasSearched] = useState(false)
 
   const { data: stores, isLoading, isError } = useNearbyStores(
     coords,
     shopTypes,
     distanceRange[0],
     distanceRange[1],
+    hasSearched,
   )
   const favoriteStoreIds = useFavoriteStoreIds()
   const toggleFavoriteStore = useToggleFavoriteStore()
   const favoriteIdSet = useMemo(() => new Set(favoriteStoreIds.data ?? []), [favoriteStoreIds.data])
 
+  // So the map starts centered on the user instead of the default world
+  // view — the store search itself still only runs once they press "Buscar
+  // tiendas cercanas" (see hasSearched above).
+  useEffect(() => {
+    requestLocation()
+  }, [])
+
   const handleSearch = (): void => {
+    setHasSearched(true)
     requestLocation()
   }
 
