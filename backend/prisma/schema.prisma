@@ -29,6 +29,7 @@ model User {
   receivedInvitations LinkInvitation[]   @relation("ReceivedInvitations")
   shoppingLists       ShoppingList[]
   favoriteRecipes     FavoriteRecipe[]
+  favoriteIngredients FavoriteIngredient[]
   chatConversations   ChatConversation[]
   mealPlans           MealPlan[]
 }
@@ -86,6 +87,24 @@ model FavoriteRecipe {
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, recipeId])
+  @@index([ownerId])
+}
+
+// A bare bookmark of a free-text ingredient name — there's no reusable
+// "ingredient" entity elsewhere in the schema (Product is a full pantry
+// item, RecipeIngredient/MealIngredient are transient recipe-scoped
+// shapes), so this is just a saved string, surfaced as a 4th chip source in
+// IngredientPicker (pantry / common / favorites / free text). Personal, not
+// shared via accessibleUserIds — same reasoning as FavoriteRecipe.
+model FavoriteIngredient {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, name])
   @@index([ownerId])
 }
 

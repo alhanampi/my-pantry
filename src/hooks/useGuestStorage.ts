@@ -4,6 +4,7 @@ const PRODUCTS_KEY = 'guest_products'
 const SHOPPING_KEY = 'guest_shopping'
 const SHOPPING_LISTS_KEY = 'guest_shopping_lists'
 const FAVORITE_RECIPES_KEY = 'guest_favorite_recipes'
+const FAVORITE_INGREDIENTS_KEY = 'guest_favorite_ingredients'
 const UNIT_SYSTEM_KEY = 'guest_unit_system'
 
 const GENERAL_LIST_ID = 'guest-general'
@@ -58,6 +59,20 @@ function readFavoriteIds(): string[] {
 
 function writeFavoriteIds(ids: string[]): void {
   localStorage.setItem(FAVORITE_RECIPES_KEY, JSON.stringify(ids))
+}
+
+function readFavoriteIngredients(): string[] {
+  try {
+    const raw = localStorage.getItem(FAVORITE_INGREDIENTS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function writeFavoriteIngredients(names: string[]): void {
+  localStorage.setItem(FAVORITE_INGREDIENTS_KEY, JSON.stringify(names))
 }
 
 // Lazily seeds the guest "General" list on first access — mirrors the
@@ -139,6 +154,22 @@ export const guestStorage = {
     return next
   },
 
+  getFavoriteIngredients: readFavoriteIngredients,
+
+  addFavoriteIngredient(name: string): string[] {
+    const names = readFavoriteIngredients()
+    if (names.includes(name)) return names
+    const next = [...names, name]
+    writeFavoriteIngredients(next)
+    return next
+  },
+
+  removeFavoriteIngredient(name: string): string[] {
+    const next = readFavoriteIngredients().filter((n) => n !== name)
+    writeFavoriteIngredients(next)
+    return next
+  },
+
   createProduct(data: ProductFormData): Product {
     const product: Product = { ...data, id: Date.now() }
     writeProducts([...readProducts(), product])
@@ -188,6 +219,7 @@ export const guestStorage = {
     localStorage.removeItem(SHOPPING_KEY)
     localStorage.removeItem(SHOPPING_LISTS_KEY)
     localStorage.removeItem(FAVORITE_RECIPES_KEY)
+    localStorage.removeItem(FAVORITE_INGREDIENTS_KEY)
     localStorage.removeItem(UNIT_SYSTEM_KEY)
   },
 }

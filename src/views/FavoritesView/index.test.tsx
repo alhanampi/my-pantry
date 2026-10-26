@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import FavoriteRecipesView from './index'
+import FavoritesView from './index'
 import { useRecipeDetail } from '../../hooks/useRecipes'
 import { useFavoriteIds, useFavoriteRecipes, useFavoriteToggle } from '../../hooks/useFavorites'
+import { useFavoriteIngredients, useToggleFavoriteIngredient } from '../../hooks/useFavoriteIngredients'
 import '../../i18n'
 import type { RecipeCard, RecipeDetail } from '../../utils/types'
 
 vi.mock('../../hooks/useRecipes')
 vi.mock('../../hooks/useFavorites')
+vi.mock('../../hooks/useFavoriteIngredients')
 vi.mock('../../hooks/useUnitSystem', () => ({
   useUnitSystem: () => ({ unitSystem: 'metric', setUnitSystem: vi.fn(), isPending: false }),
 }))
@@ -58,7 +60,7 @@ function mutationSpy() {
   return { mutate: vi.fn(), isPending: false } as never
 }
 
-describe('FavoriteRecipesView', () => {
+describe('FavoritesView', () => {
   beforeEach(() => {
     vi.mocked(useFavoriteIds).mockReturnValue({ data: ['spoonacular:1'] } as never)
     vi.mocked(useFavoriteToggle).mockReturnValue({
@@ -70,21 +72,28 @@ describe('FavoriteRecipesView', () => {
       pendingRecipeId: undefined,
     })
     vi.mocked(useRecipeDetail).mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
+    vi.mocked(useFavoriteIngredients).mockReturnValue({ data: [] } as never)
+    vi.mocked(useToggleFavoriteIngredient).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      variables: undefined,
+    } as never)
   })
 
-  it('shows the empty state when there are no favorites', () => {
+  it('shows the empty state for recipes and ingredients when there are none', () => {
     vi.mocked(useFavoriteRecipes).mockReturnValue({ data: [], isLoading: false, isError: false } as never)
 
-    render(<FavoriteRecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+    render(<FavoritesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
 
     expect(screen.getByText(/no favorite recipes yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no favorite ingredients yet/i)).toBeInTheDocument()
   })
 
-  it('shows the grid, then switches to the detail panel when a favorite is selected', async () => {
+  it('shows the recipes section, then switches to the detail panel when a favorite is selected', async () => {
     vi.mocked(useFavoriteRecipes).mockReturnValue({ data: [recipe], isLoading: false, isError: false } as never)
     vi.mocked(useRecipeDetail).mockReturnValue({ data: detail, isLoading: false, isError: false } as never)
 
-    render(<FavoriteRecipesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+    render(<FavoritesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
 
     expect(screen.getByText('Pasta al pomodoro')).toBeInTheDocument()
 
@@ -94,5 +103,32 @@ describe('FavoriteRecipesView', () => {
     // Back to the grid.
     await userEvent.click(screen.getByLabelText('Back to recipes'))
     expect(screen.getByText('Pasta al pomodoro')).toBeInTheDocument()
+  })
+
+  it('shows favorite ingredient chips in the ingredients section', () => {
+    vi.mocked(useFavoriteRecipes).mockReturnValue({ data: [], isLoading: false, isError: false } as never)
+    vi.mocked(useFavoriteIngredients).mockReturnValue({ data: ['palta', 'sin maní'] } as never)
+
+    render(<FavoritesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+
+    expect(screen.getByText('palta')).toBeInTheDocument()
+    expect(screen.getByText('sin maní')).toBeInTheDocument()
+  })
+
+  it('adds a new favorite ingredient from the input in the ingredients section', async () => {
+    vi.mocked(useFavoriteRecipes).mockReturnValue({ data: [], isLoading: false, isError: false } as never)
+    const toggleMutate = vi.fn()
+    vi.mocked(useToggleFavoriteIngredient).mockReturnValue({
+      mutate: toggleMutate,
+      isPending: false,
+      variables: undefined,
+    } as never)
+
+    render(<FavoritesView sendRecipeToShoppingList={mutationSpy()} onSentToList={vi.fn()} />)
+
+    const input = screen.getByPlaceholderText(/add favorite ingredient/i)
+    await userEvent.type(input, 'ginger{enter}')
+
+    expect(toggleMutate).toHaveBeenCalledWith({ name: 'ginger', isFavorite: false })
   })
 })

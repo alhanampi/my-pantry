@@ -1,18 +1,21 @@
 import { useMemo, useState } from 'react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import Typography from '@mui/material/Typography'
-import { MdArrowBack, MdFavoriteBorder } from 'react-icons/md'
+import { MdArrowBack, MdOutlineRestaurantMenu, MdOutlineEco } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
+import FavoriteSection from '../../components/FavoriteSection'
 import RecipeCardGrid from '../RecipesView/RecipeCardGrid'
 import RecipeDetailPanel from '../RecipesView/RecipeDetailPanel'
 import RecipesSkeleton from '../RecipesView/RecipesSkeleton'
 import ConfirmActionDialog from '../../components/ConfirmActionDialog'
-import { Wrapper, EmptyState, ErrorState, BackRow, BackButton } from '../RecipesView/RecipesView.styles'
+import FavoriteIngredientsSection from './FavoriteIngredientsSection'
+import { Wrapper, ErrorState, BackRow, BackButton } from '../RecipesView/RecipesView.styles'
 import { useRecipeDetail } from '../../hooks/useRecipes'
 import { useFavoriteIds, useFavoriteRecipes, useFavoriteToggle } from '../../hooks/useFavorites'
+import { useFavoriteIngredients } from '../../hooks/useFavoriteIngredients'
 import type { RecipeIngredient } from '../../utils/types'
 
-export interface FavoriteRecipesViewProps {
+export interface FavoritesViewProps {
   sendRecipeToShoppingList: UseMutationResult<
     string,
     Error,
@@ -21,12 +24,12 @@ export interface FavoriteRecipesViewProps {
   onSentToList: (listId: string) => void
 }
 
-// Bounded personal list — no search bar, no infinite scroll, unlike
-// RecipesView. The "grid vs. detail" in-tab sub-state is duplicated from
-// RecipesView rather than factored out; the two views are similar but not
-// identical (no filters here), and the duplication is small enough that a
-// shared abstraction wasn't worth the indirection.
-export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentToList }: FavoriteRecipesViewProps) {
+// A hub of everything the user has bookmarked, grouped into collapsible
+// per-category sections (FavoriteSection) — recipes today, more categories
+// (stores, shopping lists, mealpreps) land in later passes. Selecting a
+// recipe breaks out of the section layout entirely to show the full detail
+// panel, same as the old FavoriteRecipesView this replaces.
+export default function FavoritesView({ sendRecipeToShoppingList, onSentToList }: FavoritesViewProps) {
   const { t } = useTranslation()
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
 
@@ -34,6 +37,7 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
   const detail = useRecipeDetail(selectedRecipeId)
   const favoriteIds = useFavoriteIds()
   const favoriteToggle = useFavoriteToggle()
+  const favoriteIngredients = useFavoriteIngredients()
 
   const favoriteIdSet = useMemo(() => new Set(favoriteIds.data ?? []), [favoriteIds.data])
 
@@ -90,32 +94,43 @@ export default function FavoriteRecipesView({ sendRecipeToShoppingList, onSentTo
 
   return (
     <Wrapper>
-      {favorites.isLoading && <RecipesSkeleton />}
+      <FavoriteSection
+        title={t('favorites.recipesSectionTitle')}
+        icon={MdOutlineRestaurantMenu}
+        count={favorites.data?.length ?? 0}
+      >
+        {favorites.isLoading && <RecipesSkeleton />}
 
-      {favorites.isError && (
-        <ErrorState>
-          <Typography variant="body1">{t('recipes.errors.generic')}</Typography>
-        </ErrorState>
-      )}
+        {favorites.isError && (
+          <ErrorState>
+            <Typography variant="body1">{t('recipes.errors.generic')}</Typography>
+          </ErrorState>
+        )}
 
-      {!favorites.isLoading && !favorites.isError && (favorites.data ?? []).length === 0 && (
-        <EmptyState>
-          <MdFavoriteBorder size={48} color="var(--scheme-accent-medium)" />
-          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+        {!favorites.isLoading && !favorites.isError && (favorites.data ?? []).length === 0 && (
+          <Typography variant="body2" color="text.secondary">
             {t('recipes.favoritesEmptyTitle')}
           </Typography>
-        </EmptyState>
-      )}
+        )}
 
-      {!favorites.isLoading && (favorites.data ?? []).length > 0 && (
-        <RecipeCardGrid
-          recipes={favorites.data ?? []}
-          onSelect={setSelectedRecipeId}
-          favoriteIds={favoriteIdSet}
-          onToggleFavorite={handleToggleFavorite}
-          pendingFavoriteId={favoriteToggle.pendingRecipeId}
-        />
-      )}
+        {!favorites.isLoading && (favorites.data ?? []).length > 0 && (
+          <RecipeCardGrid
+            recipes={favorites.data ?? []}
+            onSelect={setSelectedRecipeId}
+            favoriteIds={favoriteIdSet}
+            onToggleFavorite={handleToggleFavorite}
+            pendingFavoriteId={favoriteToggle.pendingRecipeId}
+          />
+        )}
+      </FavoriteSection>
+
+      <FavoriteSection
+        title={t('favorites.ingredientsSectionTitle')}
+        icon={MdOutlineEco}
+        count={favoriteIngredients.data?.length ?? 0}
+      >
+        <FavoriteIngredientsSection />
+      </FavoriteSection>
 
       <ConfirmActionDialog
         open={favoriteToggle.pendingRemoveId !== null}

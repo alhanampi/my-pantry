@@ -165,6 +165,29 @@ Split out on its own (rather than folded into v1.8) because it's chart/stats-hea
 
 ---
 
+## v1.11 — Settings panel & customizable pills
+
+Two related pieces meant to ship together: there's currently no dedicated settings view to put the new preference in, and the desktop `Header` is already overcrowded in a way a settings panel would directly fix.
+
+**Customizable quick-reply/dietary pills**: `src/views/ChatView/QuickReplies/index.tsx` hardcodes `TIME_OPTIONS`, `SERVINGS_OPTIONS`, and a 5-value `DIETARY_OPTIONS` subset; `src/views/ChatView/DietaryChipPicker/index.tsx` (reused as-is by `MealPlanGenerator`) hardcodes its own 13-value `PREDEFINED_RESTRICTIONS` list. Neither reflects what any given user actually cooks around — someone who's always vegetarian+nut-free re-picks (or re-types, for anything not in the predefined list) the same chips every single time, in both Chat and Mealprep. Goal: let the user choose/reorder which chips show by default, and pin their own frequently-used custom values (e.g. "sin maní") so they stop being one-off free-text entries.
+
+- **Schema**: a new nullable field on `User`, following the same pattern as the existing `unitSystem: String?` (null = "never customized", falls back to today's hardcoded defaults). Likely shape: `preferredDietaryChips: String[] @default([])` — a user-ordered subset of `PREDEFINED_RESTRICTIONS` plus any custom values they've saved, read by both `DietaryChipPicker` and `QuickReplies` instead of each hardcoding its own list. Whether `TIME_OPTIONS`/`SERVINGS_OPTIONS` need the same treatment or are fine fixed is an open decision below.
+- **Backend**: extend the existing user-preferences update path (wherever `unitSystem` is currently PATCHed — same route, same `requireAuth` + `req.clerkUserId` ownership pattern) with the new field, rather than a new endpoint.
+- **Frontend**: a management UI inside the new settings panel (below) — reuses `DietaryChipPicker`'s existing toggle/add-custom interaction, just persisted instead of per-conversation state. `QuickReplies` and `DietaryChipPicker` read the user's saved list (via whatever hook already resolves `unitSystem`, e.g. extending `useAuth`/a user-profile hook) with a fallback to the current hardcoded arrays when nothing's been customized yet (covers guests, who have no account to persist to).
+
+**Desktop settings panel (same iteration)**: there's no settings view today — `src/components/Header/index.tsx`'s `DesktopActions` directly inlines `ThemePicker`, `UnitSystemToggle`, a language-toggle button, `NotificationBell`, the link-partner button, sign-out, and the About button, all as separate controls in one row (8+ elements including the user greeting) — exactly the "demasiada información innecesaria en el header" this item is about. Mobile already doesn't have this problem: its `Drawer` (`mobileDrawer` in the same file) organizes most of this into clear "Estado de auth" / "Acciones de cuenta" / "Preferencias" sections.
+
+- Extract a new `SettingsView` (or a dialog/panel, TBD — see open decisions) consolidating language, `ThemePicker`, `UnitSystemToggle`, `NotificationBell`, and the new pill-customization UI above — same content the mobile drawer's "Preferencias" section already groups, now also reachable on desktop as one place instead of a scattered row.
+- `Header`'s `DesktopActions` shrinks to: search, nav tabs (unchanged), sign-in/user avatar + greeting, link-partner, sign-out, and a single settings (gear) icon opening the new panel — About either moves into the settings panel too or stays a separate icon (open decision).
+- Mobile's drawer likely keeps its current layout but swaps its inlined `ThemePicker`/`UnitSystemToggle`/language items for a single "Settings" entry pointing at the same `SettingsView`, so the preference UI (including the new pill customization) isn't duplicated between a desktop panel and a mobile drawer.
+
+**Open decisions**:
+- Settings as a full `src/views/` tab (reachable like Pantry/Recipes/etc., consistent with `AboutView`'s pattern) vs. a `Dialog`/side panel opened from the header — a full view fits the existing navigation model better; a dialog keeps it out of the tab strip, which is already fairly full (6 tabs). Recommend a dialog/drawer-on-desktop opened from a gear icon, mirroring the pattern mobile's own drawer already uses, rather than adding a 7th nav tab.
+- Whether `TIME_OPTIONS`/`SERVINGS_OPTIONS` in `QuickReplies` need to be customizable too, or whether "customizable pills" is scoped to dietary/ingredient chips only (the ones that actually vary a lot per person) — time/servings options are more universal and arguably don't need per-user tuning.
+- Whether `AboutView` folds into the new settings panel (they're adjacent concepts — app info vs. app preferences) or stays a separate, unrelated tab as it is today.
+
+---
+
 ## Ideas backlog (unprioritized)
 
 Suggestions to consider for future versions — not yet scheduled into a vX.Y block:

@@ -13,12 +13,14 @@ import {
 } from '../../hooks/useMealPlan'
 import { usePantry } from '../../hooks/usePantry'
 import { useGeolocation } from '../../hooks/useGeolocation'
+import { useFavoriteIngredients, useToggleFavoriteIngredient } from '../../hooks/useFavoriteIngredients'
 import '../../i18n'
 import i18n from '../../i18n'
 
 vi.mock('../../hooks/useMealPlan')
 vi.mock('../../hooks/usePantry')
 vi.mock('../../hooks/useGeolocation')
+vi.mock('../../hooks/useFavoriteIngredients')
 
 const mockUseAuth = vi.fn()
 vi.mock('@clerk/clerk-react', () => ({
@@ -74,6 +76,8 @@ describe('MealprepView', () => {
     vi.mocked(useCreateShoppingListFromMealPlan).mockReturnValue(mutationSpy() as never)
     vi.mocked(usePantry).mockReturnValue({ products: [] } as never)
     vi.mocked(useGeolocation).mockReturnValue({ coords: null, error: null, requestLocation: vi.fn() } as never)
+    vi.mocked(useFavoriteIngredients).mockReturnValue({ data: [] } as never)
+    vi.mocked(useToggleFavoriteIngredient).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
   })
 
   it('shows a signed-out prompt when not signed in', () => {

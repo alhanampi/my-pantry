@@ -543,7 +543,6 @@ See `ROADMAP.md` for the technical design.
 - [ ] Invite a partner via QR code, as an alternative to the shareable link
 - [ ] Production error monitoring (Sentry free tier)
 - [ ] More languages beyond ES/EN
-- [ ] header and general UI improvements to account for the app's growth
 - [ ] Conflict resolution for edits made on two devices while one was offline
 - [ ] Lightweight, privacy-friendly usage analytics
 - [x] Migrate from MUI icons to react-icons — `@mui/icons-material` removed from the project entirely
@@ -575,6 +574,14 @@ See `ROADMAP.md` for the technical design.
 - [ ] Monthly spending summary by category, with charts
 - [ ] Spending trends over time and most-bought items
 - [ ] Waste tracking: expired-unused vs. consumed, visualized
+
+### v1.11 — Settings panel & customizable pills
+
+See `ROADMAP.md` for the technical design.
+
+- [ ] Dedicated settings panel (currently nonexistent — preferences live inlined directly in the desktop header)
+- [ ] Desktop header decluttered: language/theme/units/notifications move into the new settings panel instead of sitting as a row of separate controls
+- [ ] Customizable dietary/ingredient pills shown by the AI chat and Mealprep, instead of a fixed hardcoded list
 
 ---
 

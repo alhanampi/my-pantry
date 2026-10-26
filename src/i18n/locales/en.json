@@ -17,6 +17,12 @@
     "mealprep": "Mealprep",
     "about": "About"
   },
+  "favorites": {
+    "recipesSectionTitle": "Recipes",
+    "ingredientsSectionTitle": "Ingredients",
+    "ingredientsEmpty": "No favorite ingredients yet. Add one below, or save one from the ingredient picker in Mealprep.",
+    "ingredientsAddPlaceholder": "Add favorite ingredient"
+  },
   "header": {
     "searchPlaceholder": "Search product...",
     "addProduct": "Add product",
@@ -345,6 +351,7 @@
     },
     "ingredientPicker": {
       "fromPantry": "From your pantry",
+      "fromFavorites": "From your favorites",
       "common": "Common ingredients",
       "addOtherPlaceholder": "Add another ingredient",
       "addOther": "Add ingredient",
