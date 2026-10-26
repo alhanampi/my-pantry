@@ -15,6 +15,7 @@ const product: Product = {
   expiryDate: '2026-08-25',
   location: 'Heladera',
   details: '',
+  preferredStoreName: '',
 }
 
 describe('ProductRow', () => {
@@ -51,5 +52,18 @@ describe('ProductRow', () => {
     render(<ProductRow product={product} onDelete={vi.fn()} onEdit={vi.fn()} onAddToCart={vi.fn()} onQuantityChange={onQuantityChange} />)
     await userEvent.click(screen.getByLabelText('decrease quantity'))
     expect(onQuantityChange).toHaveBeenCalledWith(1, -1)
+  })
+
+  it('shows the preferred store as a tooltip icon when set', () => {
+    render(
+      <ProductRow
+        product={{ ...product, preferredStoreName: 'Coto' }}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        onAddToCart={vi.fn()}
+        onQuantityChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText('Coto')).toBeInTheDocument()
   })
 })

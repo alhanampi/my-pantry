@@ -61,6 +61,7 @@ const productFields = [
   body('expiryDate').optional({ checkFalsy: true }).isISO8601().withMessage('Invalid date format'),
   body('location').optional().isString(),
   body('details').optional().isString(),
+  body('preferredStoreName').optional().isString(),
 ]
 
 router.post('/products', requireAuth, productFields, async (req: Request, res: Response): Promise<void> => {
@@ -71,9 +72,28 @@ router.post('/products', requireAuth, productFields, async (req: Request, res: R
   }
   try {
     const userId = req.clerkUserId!
-    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate, location = '', details = '' } = req.body as Record<string, string>
+    const {
+      name,
+      quantity = '',
+      brand = '',
+      purchaseDate = '',
+      expiryDate,
+      location = '',
+      details = '',
+      preferredStoreName = '',
+    } = req.body as Record<string, string>
     const product = await prisma.product.create({
-      data: { name, quantity, brand, purchaseDate, expiryDate: parseExpiryDate(expiryDate), location, details, ownerId: userId },
+      data: {
+        name,
+        quantity,
+        brand,
+        purchaseDate,
+        expiryDate: parseExpiryDate(expiryDate),
+        location,
+        details,
+        preferredStoreName,
+        ownerId: userId,
+      },
     })
     res.status(201).json({ product: serializeProduct(product) })
   } catch {
@@ -93,10 +113,28 @@ router.put('/products/:id', requireAuth, productFields, async (req: Request, res
     const ids = await accessibleUserIds(userId)
     const existing = await prisma.product.findFirst({ where: { id: productId, ownerId: { in: ids } } })
     if (!existing) { res.status(404).json({ error: 'Product not found' }); return }
-    const { name, quantity = '', brand = '', purchaseDate = '', expiryDate, location = '', details = '' } = req.body as Record<string, string>
+    const {
+      name,
+      quantity = '',
+      brand = '',
+      purchaseDate = '',
+      expiryDate,
+      location = '',
+      details = '',
+      preferredStoreName = '',
+    } = req.body as Record<string, string>
     const product = await prisma.product.update({
       where: { id: productId },
-      data: { name, quantity, brand, purchaseDate, expiryDate: parseExpiryDate(expiryDate), location, details },
+      data: {
+        name,
+        quantity,
+        brand,
+        purchaseDate,
+        expiryDate: parseExpiryDate(expiryDate),
+        location,
+        details,
+        preferredStoreName,
+      },
     })
     res.json({ product: serializeProduct(product) })
   } catch {

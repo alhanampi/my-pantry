@@ -1,6 +1,6 @@
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
-import { MdDeleteOutline, MdAddShoppingCart, MdModeEditOutline } from 'react-icons/md'
+import { MdDeleteOutline, MdAddShoppingCart, MdModeEditOutline, MdStorefront } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { formatDate, getExpiryStatus } from '../../../utils/helpers'
 import QuantityStepper from '../../../components/QuantityStepper'
@@ -16,6 +16,13 @@ export default function ProductRow({ product, onDelete, onEdit, onAddToCart, onQ
       <NameCell $flex={3} $minWidth="150px">
         <NameCellContent>
           {product.name}
+          {product.preferredStoreName && (
+            <Tooltip title={product.preferredStoreName}>
+              <span style={{ display: 'flex' }}>
+                <MdStorefront size={14} color="var(--scheme-text-secondary)" />
+              </span>
+            </Tooltip>
+          )}
           <QuantityStepper
             value={product.quantity}
             onIncrement={() => onQuantityChange(product.id, 1)}

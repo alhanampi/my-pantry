@@ -31,6 +31,7 @@ describe('pantryApi', () => {
       expiryDate: '',
       location: '',
       details: '',
+      preferredStoreName: '',
     }
     const created = { id: 2, ...data }
     vi.mocked(fetch).mockResolvedValueOnce(

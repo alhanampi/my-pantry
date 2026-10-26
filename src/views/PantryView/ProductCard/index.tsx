@@ -102,6 +102,7 @@ export default function ProductCard({
               [t('card.brand'), product.brand || '—'],
               [t('card.purchaseDate'), formatDate(product.purchaseDate)],
               [t('card.location'), product.location || '—'],
+              ...(product.preferredStoreName ? [[t('card.preferredStore'), product.preferredStoreName]] : []),
             ].map(([label, value]) => (
               <Fragment key={label}>
                 <DetailLabel>{label}</DetailLabel>

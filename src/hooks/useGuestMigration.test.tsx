@@ -48,8 +48,8 @@ describe('useGuestMigration', () => {
   })
 
   it('migrates what it can and surfaces an error when some items fail (Promise.allSettled)', async () => {
-    const good = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
-    const bad = { id: 2, name: 'Roto', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
+    const good = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
+    const bad = { id: 2, name: 'Roto', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
     vi.mocked(guestStorage.getProducts).mockReturnValue([good, bad])
     vi.mocked(guestStorage.getShopping).mockReturnValue([])
     vi.mocked(pantryApi.apiCreateProduct).mockImplementation(async (_token, data) => {
@@ -68,7 +68,7 @@ describe('useGuestMigration', () => {
   })
 
   it('succeeds and invalidates queries when everything migrates', async () => {
-    const good = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
+    const good = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
     vi.mocked(guestStorage.getProducts).mockReturnValue([good])
     vi.mocked(guestStorage.getShopping).mockReturnValue([])
     vi.mocked(pantryApi.apiCreateProduct).mockResolvedValue(good)
@@ -124,7 +124,7 @@ describe('useGuestMigration', () => {
   })
 
   it('throws when there is no auth token', async () => {
-    vi.mocked(guestStorage.getProducts).mockReturnValue([{ id: 1, name: 'x', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }])
+    vi.mocked(guestStorage.getProducts).mockReturnValue([{ id: 1, name: 'x', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }])
     vi.mocked(guestStorage.getShopping).mockReturnValue([])
     mockUseAuth.mockReturnValue({ getToken: vi.fn().mockResolvedValue(null) })
 

@@ -15,6 +15,7 @@ const product: Product = {
   expiryDate: '2026-08-25',
   location: 'Heladera',
   details: 'Descremada',
+  preferredStoreName: '',
 }
 
 describe('ProductCard', () => {
@@ -53,5 +54,19 @@ describe('ProductCard', () => {
     expect(onEdit).toHaveBeenCalledWith(1)
     await userEvent.click(screen.getByText(i18n.t('card.delete')))
     expect(onDelete).toHaveBeenCalledWith(1)
+  })
+
+  it('shows the preferred store in the details when set', async () => {
+    const withStore = { ...product, preferredStoreName: 'Coto' }
+    render(<ProductCard product={withStore} onDelete={vi.fn()} onEdit={vi.fn()} onAddToCart={vi.fn()} onQuantityChange={vi.fn()} />)
+    await userEvent.click(screen.getByText('Leche'))
+    expect(screen.getByText(i18n.t('card.preferredStore'))).toBeInTheDocument()
+    expect(screen.getByText('Coto')).toBeInTheDocument()
+  })
+
+  it('omits the preferred store row when not set', async () => {
+    render(<ProductCard product={product} onDelete={vi.fn()} onEdit={vi.fn()} onAddToCart={vi.fn()} onQuantityChange={vi.fn()} />)
+    await userEvent.click(screen.getByText('Leche'))
+    expect(screen.queryByText(i18n.t('card.preferredStore'))).not.toBeInTheDocument()
   })
 })

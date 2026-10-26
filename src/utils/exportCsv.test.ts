@@ -10,6 +10,7 @@ const product = (overrides: Partial<Product> = {}): Product => ({
   purchaseDate: '2026-01-01',
   expiryDate: '2026-02-01',
   location: 'Supermercado',
+  preferredStoreName: '',
   details: '',
   ...overrides,
 })
@@ -17,14 +18,14 @@ const product = (overrides: Partial<Product> = {}): Product => ({
 describe('productsToCsv', () => {
   it('returns just the header row for an empty list', () => {
     const csv = productsToCsv([])
-    expect(csv).toBe('Nombre,Cantidad,Marca,Fecha de compra,Vencimiento,Lugar de compra,Detalles')
+    expect(csv).toBe('Nombre,Cantidad,Marca,Fecha de compra,Vencimiento,Lugar de compra,Tienda preferida,Detalles')
   })
 
   it('serializes a product into a comma-separated row in column order', () => {
     const csv = productsToCsv([product()])
     const lines = csv.split('\r\n')
     expect(lines).toHaveLength(2)
-    expect(lines[1]).toBe('Leche,2,La Serenísima,2026-01-01,2026-02-01,Supermercado,')
+    expect(lines[1]).toBe('Leche,2,La Serenísima,2026-01-01,2026-02-01,Supermercado,,')
   })
 
   it('serializes multiple products, one row each', () => {

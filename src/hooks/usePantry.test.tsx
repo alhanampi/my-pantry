@@ -36,7 +36,7 @@ describe('usePantry', () => {
 
   it('authenticated: createProduct calls the API and invalidates the products query', async () => {
     mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true, getToken: vi.fn().mockResolvedValue('token-123') })
-    const createdProduct = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
+    const createdProduct = { id: 1, name: 'Leche', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
     vi.mocked(pantryApi.apiCreateProduct).mockResolvedValue(createdProduct)
     vi.mocked(pantryApi.apiGetProducts).mockResolvedValue([])
     vi.mocked(pantryApi.apiGetShoppingItems).mockResolvedValue([])
@@ -54,7 +54,7 @@ describe('usePantry', () => {
 
   it('guest mode: createProduct writes to guestStorage instead of calling the API', async () => {
     mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true, getToken: vi.fn() })
-    const guestProduct = { id: 2, name: 'Arroz', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }
+    const guestProduct = { id: 2, name: 'Arroz', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }
     vi.mocked(guestStorage.createProduct).mockReturnValue(guestProduct)
 
     const { result } = renderHook(() => usePantry(), { wrapper })
@@ -95,7 +95,7 @@ describe('usePantry', () => {
 
   it('guest mode: shows guestStorage data immediately with no loading state', () => {
     mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true, getToken: vi.fn() })
-    const guestProducts = [{ id: 3, name: 'Yerba', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '' }]
+    const guestProducts = [{ id: 3, name: 'Yerba', quantity: '', brand: '', purchaseDate: '', expiryDate: '', location: '', details: '', preferredStoreName: '' }]
     vi.mocked(guestStorage.getProducts).mockReturnValue(guestProducts)
 
     const { result } = renderHook(() => usePantry(), { wrapper })
