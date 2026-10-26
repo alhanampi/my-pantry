@@ -87,6 +87,7 @@ export default function App() {
                 <FavoritesView
                   sendRecipeToShoppingList={app.sendRecipeToShoppingList}
                   onSentToList={app.handleRecipeSentToList}
+                  onSelectShoppingList={app.switchToShoppingList}
                 />
               )}
               {app.currentView === 'chat' && (

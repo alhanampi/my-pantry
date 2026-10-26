@@ -20,18 +20,20 @@ model User {
   unitSystem String?
   createdAt  DateTime @default(now())
 
-  linksAsUser         UserLink[]         @relation("UserLinks")
-  linksAsPartner      UserLink[]         @relation("PartnerLinks")
-  products            Product[]
-  shoppingItems       ShoppingItem[]
-  pushSubscriptions   PushSubscription[]
-  sentInvitations     LinkInvitation[]   @relation("SentInvitations")
-  receivedInvitations LinkInvitation[]   @relation("ReceivedInvitations")
-  shoppingLists       ShoppingList[]
-  favoriteRecipes     FavoriteRecipe[]
-  favoriteIngredients FavoriteIngredient[]
-  chatConversations   ChatConversation[]
-  mealPlans           MealPlan[]
+  linksAsUser           UserLink[]             @relation("UserLinks")
+  linksAsPartner        UserLink[]             @relation("PartnerLinks")
+  products              Product[]
+  shoppingItems         ShoppingItem[]
+  pushSubscriptions     PushSubscription[]
+  sentInvitations       LinkInvitation[]       @relation("SentInvitations")
+  receivedInvitations   LinkInvitation[]       @relation("ReceivedInvitations")
+  shoppingLists         ShoppingList[]
+  favoriteRecipes       FavoriteRecipe[]
+  favoriteIngredients   FavoriteIngredient[]
+  favoriteStores        FavoriteStore[]
+  favoriteShoppingLists FavoriteShoppingList[]
+  chatConversations     ChatConversation[]
+  mealPlans             MealPlan[]
 }
 
 // Personal AI cooking-assistant conversations (Groq-backed "Chat" tab).
@@ -108,6 +110,49 @@ model FavoriteIngredient {
   @@index([ownerId])
 }
 
+// A snapshot, not a bookmark — unlike FavoriteRecipe, there's no backend
+// endpoint to re-hydrate a store by placeId later (Geoapify's Places API has
+// no "detail by id" call wired up here), so what the search already
+// returned (name/type/coords) is saved as-is at favorite time. `placeId` is
+// Geoapify's own id (RawNearbyStore.id). Personal, not shared via
+// accessibleUserIds — same reasoning as FavoriteRecipe.
+model FavoriteStore {
+  id        String   @id @default(cuid())
+  ownerId   String
+  placeId   String
+  name      String
+  type      String
+  lat       Float
+  lon       Float
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, placeId])
+  @@index([ownerId])
+}
+
+// A pointer, not a snapshot — unlike FavoriteStore, the ShoppingList itself
+// stays live in the DB (can be renamed, gets items added/removed), so this
+// just pins a listId. Distinct from the (not yet built, see ROADMAP.md)
+// "archive a list" idea: archiving hides a list from the normal dropdown,
+// this is an unrelated quick-access bookmark — a list could be both,
+// neither, or either independently. Personal: the bookmark itself isn't
+// shared via accessibleUserIds even though a shopping list can be (a linked
+// partner with access to the same list favorites it separately, if at all).
+model FavoriteShoppingList {
+  id        String   @id @default(cuid())
+  ownerId   String
+  listId    String
+  createdAt DateTime @default(now())
+
+  owner User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  list  ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, listId])
+  @@index([ownerId])
+}
+
 // A weekly meal plan — one MealPlanEntry per day, each just a bookmark onto
 // a compound recipe id (see FavoriteRecipe's own comment on the
 // "source:externalId" form, title/image cached here purely so the calendar
@@ -173,8 +218,9 @@ model ShoppingList {
   isGeneral Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  owner User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  items ShoppingItem[]
+  owner       User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items       ShoppingItem[]
+  favoritedBy FavoriteShoppingList[]
 
   @@index([ownerId])
 }

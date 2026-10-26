@@ -117,6 +117,18 @@ export interface NearbyStore extends RawNearbyStore {
   distance: number
 }
 
+// A saved snapshot (name/type/coords as they were at favorite time) — see
+// FavoriteStore's own comment in schema.prisma on why this isn't a bookmark.
+export interface FavoriteStore {
+  id: string
+  placeId: string
+  name: string
+  type: string
+  lat: number
+  lon: number
+  createdAt: string
+}
+
 // ─── Recipes (Spoonacular via backend proxy + Groq translation) ──────────────
 
 export interface RecipeMeasure {
@@ -208,6 +220,16 @@ export interface ShoppingList {
   ownerId: string
   isGeneral: boolean
   createdAt: string
+}
+
+// Hydrated favorite — the list's own name/isGeneral/item count, joined
+// server-side (or locally, for guests) rather than re-fetched by the
+// Favorites tab from the full ShoppingList list.
+export interface FavoriteShoppingListSummary {
+  id: string
+  name: string
+  isGeneral: boolean
+  itemCount: number
 }
 
 // ─── Chat (Groq AI cooking assistant) ──────────────────────────────────────

@@ -24,6 +24,12 @@ const mockUseUnitSystem = vi.fn(
 vi.mock('../../../hooks/useUnitSystem', () => ({
   useUnitSystem: () => mockUseUnitSystem(),
 }))
+const mockFavoriteStoreIds = vi.fn((): { data: string[] } => ({ data: [] }))
+const mockToggleFavoriteStoreMutate = vi.fn()
+vi.mock('../../../hooks/useFavoriteStores', () => ({
+  useFavoriteStoreIds: () => mockFavoriteStoreIds(),
+  useToggleFavoriteStore: () => ({ mutate: mockToggleFavoriteStoreMutate, isPending: false }),
+}))
 
 function mockResult(overrides: Partial<ReturnType<typeof useNearbyStores>> = {}) {
   vi.mocked(useNearbyStores).mockReturnValue({
@@ -80,6 +86,26 @@ describe('NearbyStores', () => {
     expect(screen.getByText(i18n.t('stores.distanceAway', { value: '120m' }))).toBeInTheDocument()
     await userEvent.click(screen.getByText('Coto'))
     expect(screen.getByTestId('map-dialog')).toBeInTheDocument()
+  })
+
+  it('favorites a store from its own heart icon, without opening the map dialog', async () => {
+    const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 120 }
+    mockResult({ data: [store] })
+    render(<NearbyStores />)
+
+    await userEvent.click(screen.getByLabelText(i18n.t('stores.addFavorite')))
+
+    expect(mockToggleFavoriteStoreMutate).toHaveBeenCalledWith({ store, isFavorite: false })
+    expect(screen.queryByTestId('map-dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows a filled heart and the remove label for an already-favorited store', () => {
+    mockFavoriteStoreIds.mockReturnValueOnce({ data: ['1'] })
+    const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 120 }
+    mockResult({ data: [store] })
+    render(<NearbyStores />)
+
+    expect(screen.getByLabelText(i18n.t('stores.removeFavorite'))).toBeInTheDocument()
   })
 
   it('formats distances in miles when the account is set to imperial', () => {

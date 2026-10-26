@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import Typography from '@mui/material/Typography'
-import { MdArrowBack, MdOutlineRestaurantMenu, MdOutlineEco } from 'react-icons/md'
+import { MdArrowBack, MdOutlineRestaurantMenu, MdOutlineEco, MdOutlineStorefront, MdOutlineShoppingCart } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import FavoriteSection from '../../components/FavoriteSection'
 import RecipeCardGrid from '../RecipesView/RecipeCardGrid'
@@ -9,10 +9,14 @@ import RecipeDetailPanel from '../RecipesView/RecipeDetailPanel'
 import RecipesSkeleton from '../RecipesView/RecipesSkeleton'
 import ConfirmActionDialog from '../../components/ConfirmActionDialog'
 import FavoriteIngredientsSection from './FavoriteIngredientsSection'
+import FavoriteStoresSection from './FavoriteStoresSection'
+import FavoriteShoppingListsSection from './FavoriteShoppingListsSection'
 import { Wrapper, ErrorState, BackRow, BackButton } from '../RecipesView/RecipesView.styles'
 import { useRecipeDetail } from '../../hooks/useRecipes'
 import { useFavoriteIds, useFavoriteRecipes, useFavoriteToggle } from '../../hooks/useFavorites'
 import { useFavoriteIngredients } from '../../hooks/useFavoriteIngredients'
+import { useFavoriteStores } from '../../hooks/useFavoriteStores'
+import { useFavoriteShoppingLists } from '../../hooks/useFavoriteShoppingLists'
 import type { RecipeIngredient } from '../../utils/types'
 
 export interface FavoritesViewProps {
@@ -22,14 +26,15 @@ export interface FavoritesViewProps {
     { recipeTitle: string; ingredients: RecipeIngredient[] }
   >
   onSentToList: (listId: string) => void
+  onSelectShoppingList?: (listId: string) => void
 }
 
 // A hub of everything the user has bookmarked, grouped into collapsible
-// per-category sections (FavoriteSection) — recipes today, more categories
-// (stores, shopping lists, mealpreps) land in later passes. Selecting a
+// per-category sections (FavoriteSection) — recipes, ingredients, stores,
+// and shopping lists today; mealpreps land in a later pass. Selecting a
 // recipe breaks out of the section layout entirely to show the full detail
 // panel, same as the old FavoriteRecipesView this replaces.
-export default function FavoritesView({ sendRecipeToShoppingList, onSentToList }: FavoritesViewProps) {
+export default function FavoritesView({ sendRecipeToShoppingList, onSentToList, onSelectShoppingList }: FavoritesViewProps) {
   const { t } = useTranslation()
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
 
@@ -38,6 +43,8 @@ export default function FavoritesView({ sendRecipeToShoppingList, onSentToList }
   const favoriteIds = useFavoriteIds()
   const favoriteToggle = useFavoriteToggle()
   const favoriteIngredients = useFavoriteIngredients()
+  const favoriteStores = useFavoriteStores()
+  const favoriteShoppingLists = useFavoriteShoppingLists()
 
   const favoriteIdSet = useMemo(() => new Set(favoriteIds.data ?? []), [favoriteIds.data])
 
@@ -130,6 +137,22 @@ export default function FavoritesView({ sendRecipeToShoppingList, onSentToList }
         count={favoriteIngredients.data?.length ?? 0}
       >
         <FavoriteIngredientsSection />
+      </FavoriteSection>
+
+      <FavoriteSection
+        title={t('favorites.storesSectionTitle')}
+        icon={MdOutlineStorefront}
+        count={favoriteStores.data?.length ?? 0}
+      >
+        <FavoriteStoresSection />
+      </FavoriteSection>
+
+      <FavoriteSection
+        title={t('favorites.shoppingListsSectionTitle')}
+        icon={MdOutlineShoppingCart}
+        count={favoriteShoppingLists.data?.length ?? 0}
+      >
+        <FavoriteShoppingListsSection onSelectList={onSelectShoppingList} />
       </FavoriteSection>
 
       <ConfirmActionDialog

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { ComponentType } from 'react'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
@@ -11,12 +11,13 @@ import MenuItem from '@mui/material/MenuItem'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import Slider from '@mui/material/Slider'
+import IconButton from '@mui/material/IconButton'
 import type { SelectChangeEvent } from '@mui/material/Select'
 import {
   MdStorefront, MdLocalGroceryStore, MdLocationOn,
   MdShoppingCart, MdStore, MdWarehouse, MdEco,
   MdOutdoorGrill, MdSetMeal, MdBakeryDining, MdLunchDining,
-  MdRestaurant, MdFavorite, MdNature,
+  MdRestaurant, MdFavorite, MdOutlineFavoriteBorder, MdNature,
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import {
@@ -28,6 +29,7 @@ import {
 import { useUnitSystem } from '../../../hooks/useUnitSystem'
 import type { UnitSystem } from '../../../hooks/useUnitSystem'
 import { useGeolocation } from '../../../hooks/useGeolocation'
+import { useFavoriteStoreIds, useToggleFavoriteStore } from '../../../hooks/useFavoriteStores'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
 import StoreMapDialog from '../StoreMapDialog'
 import type { ShopType, NearbyStore } from '../../../utils/types'
@@ -50,7 +52,10 @@ import {
 
 type IconComponent = ComponentType<{ size: number; color?: string }>
 
-const SHOP_ICONS: Record<string, IconComponent> = {
+// Exported for FavoriteStoresSection's own placeholder-icon-by-type lookup
+// (FavoriteStore has no logo, same reasoning as WeeklyCalendar's
+// MEAL_TYPE_ICON fallback for a mealprep entry with no resolved photo).
+export const SHOP_ICONS: Record<string, IconComponent> = {
   supermarket:        MdLocalGroceryStore,
   grocery:            MdShoppingCart,
   marketplace:        MdStorefront,
@@ -73,7 +78,7 @@ function ShopTypeIcon({ type, size = 18 }: { type: string; size?: number }) {
   return <Icon size={size} />
 }
 
-function getShopIcon(type: string) {
+export function getShopIcon(type: string) {
   const Icon = SHOP_ICONS[type] ?? MdStorefront
   const color = type in SHOP_ICONS ? 'var(--scheme-primary)' : 'var(--scheme-text-secondary)'
   return <Icon size={20} color={color} />
@@ -116,6 +121,9 @@ export default function NearbyStores() {
     distanceRange[0],
     distanceRange[1],
   )
+  const favoriteStoreIds = useFavoriteStoreIds()
+  const toggleFavoriteStore = useToggleFavoriteStore()
+  const favoriteIdSet = useMemo(() => new Set(favoriteStoreIds.data ?? []), [favoriteStoreIds.data])
 
   const handleSearch = (): void => {
     requestLocation()
@@ -222,23 +230,40 @@ export default function NearbyStores() {
         <>
           <StoreDivider />
           <List dense disablePadding>
-            {stores.map((store) => (
-              <StoreListItem
-                key={store.id}
-                disableGutters
-                onClick={() => setSelectedStore(store)}
-              >
-                <StoreIconCell>{getShopIcon(store.type)}</StoreIconCell>
-                <ListItemText
-                  primary={<StoreName>{store.name}</StoreName>}
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                      {t('stores.distanceAway', { value: formatDistance(store.distance, unitSystem) })}
-                    </Typography>
-                  }
-                />
-              </StoreListItem>
-            ))}
+            {stores.map((store) => {
+              const isFavorite = favoriteIdSet.has(store.id)
+              return (
+                <StoreListItem
+                  key={store.id}
+                  disableGutters
+                  onClick={() => setSelectedStore(store)}
+                >
+                  <StoreIconCell>{getShopIcon(store.type)}</StoreIconCell>
+                  <ListItemText
+                    primary={<StoreName>{store.name}</StoreName>}
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        {t('stores.distanceAway', { value: formatDistance(store.distance, unitSystem) })}
+                      </Typography>
+                    }
+                  />
+                  <IconButton
+                    size="small"
+                    aria-label={isFavorite ? t('stores.removeFavorite') : t('stores.addFavorite')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFavoriteStore.mutate({ store, isFavorite })
+                    }}
+                  >
+                    {isFavorite ? (
+                      <MdFavorite size={18} color="var(--scheme-primary)" />
+                    ) : (
+                      <MdOutlineFavoriteBorder size={18} />
+                    )}
+                  </IconButton>
+                </StoreListItem>
+              )
+            })}
           </List>
         </>
       )}

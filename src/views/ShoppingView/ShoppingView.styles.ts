@@ -19,6 +19,12 @@ export const EmptyState = styled.div`
   text-align: center;
 `
 
+export const ListSelectorRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`
+
 export const TopBar = styled.div`
   display: flex;
   align-items: center;

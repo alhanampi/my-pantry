@@ -2,15 +2,18 @@ import List from '@mui/material/List'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import { MdShoppingCart, MdAdd, MdDeleteSweep, MdDeleteOutline, MdFileDownload } from 'react-icons/md'
+import IconButton from '@mui/material/IconButton'
+import { MdShoppingCart, MdAdd, MdDeleteSweep, MdDeleteOutline, MdFileDownload, MdFavorite, MdOutlineFavoriteBorder } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import ShoppingItem from './ShoppingItem'
 import ShoppingListSelector from './ShoppingListSelector'
 import NearbyStores from './NearbyStores'
 import ShoppingSkeleton from './ShoppingSkeleton'
+import { useFavoriteShoppingListIds, useToggleFavoriteShoppingList } from '../../hooks/useFavoriteShoppingLists'
 import {
   Wrapper,
   EmptyState,
+  ListSelectorRow,
   TopBar,
   CountText,
   ClearButton,
@@ -36,17 +39,35 @@ export default function ShoppingView({
   isLoading = false,
 }: ShoppingListProps) {
   const { t } = useTranslation()
+  const favoriteListIds = useFavoriteShoppingListIds()
+  const toggleFavoriteList = useToggleFavoriteShoppingList()
 
   if (isLoading) return <ShoppingSkeleton />
 
   const pendingItems = items.filter((i) => !i.purchased)
   const purchasedItems = items.filter((i) => i.purchased)
   const selectedList = lists.find((l) => l.id === selectedListId)
+  const isFavoriteList = !!selectedList && (favoriteListIds.data ?? []).includes(selectedList.id)
 
   return (
     <Wrapper>
       {onSelectList && (
-        <ShoppingListSelector lists={lists} selectedListId={selectedListId} onSelectList={onSelectList} />
+        <ListSelectorRow>
+          <ShoppingListSelector lists={lists} selectedListId={selectedListId} onSelectList={onSelectList} />
+          {selectedList && (
+            <IconButton
+              size="small"
+              aria-label={isFavoriteList ? t('shopping.removeFavoriteList') : t('shopping.addFavoriteList')}
+              onClick={() => toggleFavoriteList.mutate({ listId: selectedList.id, isFavorite: isFavoriteList })}
+            >
+              {isFavoriteList ? (
+                <MdFavorite size={18} color="var(--scheme-primary)" />
+              ) : (
+                <MdOutlineFavoriteBorder size={18} />
+              )}
+            </IconButton>
+          )}
+        </ListSelectorRow>
       )}
       <TopBar>
         <Button

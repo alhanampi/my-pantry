@@ -21,7 +21,11 @@
     "recipesSectionTitle": "Recipes",
     "ingredientsSectionTitle": "Ingredients",
     "ingredientsEmpty": "No favorite ingredients yet. Add one below, or save one from the ingredient picker in Mealprep.",
-    "ingredientsAddPlaceholder": "Add favorite ingredient"
+    "ingredientsAddPlaceholder": "Add favorite ingredient",
+    "storesSectionTitle": "Stores",
+    "storesEmpty": "No favorite stores yet. Save one from the nearby stores search in Shopping List.",
+    "shoppingListsSectionTitle": "Shopping lists",
+    "shoppingListsEmpty": "No favorite shopping lists yet. Save one from the list selector in Shopping List."
   },
   "header": {
     "searchPlaceholder": "Search product...",
@@ -121,6 +125,8 @@
     "itemDeleted": "Item deleted",
     "sendToPantry": "Send to pantry",
     "sentToPantry": "{{name}} was sent to your pantry",
+    "addFavoriteList": "Save favorite list",
+    "removeFavoriteList": "Remove from favorite lists",
     "lists": {
       "general": "General"
     }
@@ -222,6 +228,8 @@
     "locationDenied": "Location permission denied.",
     "locationError": "Could not get your location.",
     "notSupported": "Your browser does not support geolocation.",
+    "addFavorite": "Save favorite store",
+    "removeFavorite": "Remove from favorite stores",
     "shopTypes": {
       "supermarket": "Supermarket",
       "grocery": "Grocery store",

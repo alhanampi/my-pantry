@@ -5,12 +5,16 @@ import FavoritesView from './index'
 import { useRecipeDetail } from '../../hooks/useRecipes'
 import { useFavoriteIds, useFavoriteRecipes, useFavoriteToggle } from '../../hooks/useFavorites'
 import { useFavoriteIngredients, useToggleFavoriteIngredient } from '../../hooks/useFavoriteIngredients'
+import { useFavoriteStores } from '../../hooks/useFavoriteStores'
+import { useFavoriteShoppingLists } from '../../hooks/useFavoriteShoppingLists'
 import '../../i18n'
 import type { RecipeCard, RecipeDetail } from '../../utils/types'
 
 vi.mock('../../hooks/useRecipes')
 vi.mock('../../hooks/useFavorites')
 vi.mock('../../hooks/useFavoriteIngredients')
+vi.mock('../../hooks/useFavoriteStores')
+vi.mock('../../hooks/useFavoriteShoppingLists')
 vi.mock('../../hooks/useUnitSystem', () => ({
   useUnitSystem: () => ({ unitSystem: 'metric', setUnitSystem: vi.fn(), isPending: false }),
 }))
@@ -78,6 +82,8 @@ describe('FavoritesView', () => {
       isPending: false,
       variables: undefined,
     } as never)
+    vi.mocked(useFavoriteStores).mockReturnValue({ data: [] } as never)
+    vi.mocked(useFavoriteShoppingLists).mockReturnValue({ data: [] } as never)
   })
 
   it('shows the empty state for recipes and ingredients when there are none', () => {
@@ -87,6 +93,8 @@ describe('FavoritesView', () => {
 
     expect(screen.getByText(/no favorite recipes yet/i)).toBeInTheDocument()
     expect(screen.getByText(/no favorite ingredients yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no favorite stores yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no favorite shopping lists yet/i)).toBeInTheDocument()
   })
 
   it('shows the recipes section, then switches to the detail panel when a favorite is selected', async () => {
