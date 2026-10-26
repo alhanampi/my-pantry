@@ -9,9 +9,18 @@ import i18n from '../../../i18n'
 import type { NearbyStore } from '../../../utils/types'
 
 vi.mock('../../../hooks/useNearbyStores')
-vi.mock('../StoreMapDialog', () => ({
-  default: ({ store, onClose }: { store: NearbyStore | null; onClose: () => void }) =>
-    store ? <div data-testid="map-dialog"><button onClick={onClose}>close</button>{store.name}</div> : null,
+vi.mock('maplibre-gl', () => ({
+  default: { LngLatBounds: vi.fn().mockImplementation(() => ({ extend: vi.fn() })) },
+}))
+vi.mock('react-map-gl/maplibre', () => ({
+  default: ({ children }: { children?: React.ReactNode }) => <div data-testid="map">{children}</div>,
+  Marker: ({ children, onClick }: { children?: React.ReactNode; onClick?: (e: unknown) => void }) => (
+    <div data-testid="marker" onClick={(e) => onClick?.({ originalEvent: e })}>
+      {children}
+    </div>
+  ),
+  NavigationControl: () => <div data-testid="nav-control" />,
+  Popup: ({ children }: { children?: React.ReactNode }) => <div data-testid="popup">{children}</div>,
 }))
 
 const mockUseUnitSystem = vi.fn(
@@ -77,7 +86,7 @@ describe('NearbyStores', () => {
     expect(screen.getByText(i18n.t('stores.noResults'))).toBeInTheDocument()
   })
 
-  it('lists stores (with metric distance) and opens the map dialog when one is selected', async () => {
+  it('lists stores (with metric distance) and opens the map popup when one is selected', async () => {
     const store: NearbyStore = { id: '1', name: 'Coto', type: 'supermarket', lat: 0, lon: 0, distance: 120 }
     mockResult({ data: [store] })
     render(<NearbyStores />)
@@ -85,7 +94,7 @@ describe('NearbyStores', () => {
     expect(screen.getByText('Coto')).toBeInTheDocument()
     expect(screen.getByText(i18n.t('stores.distanceAway', { value: '120m' }))).toBeInTheDocument()
     await userEvent.click(screen.getByText('Coto'))
-    expect(screen.getByTestId('map-dialog')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('stores.openMaps'))).toBeInTheDocument()
   })
 
   it('favorites a store from its own heart icon, without opening the map dialog', async () => {

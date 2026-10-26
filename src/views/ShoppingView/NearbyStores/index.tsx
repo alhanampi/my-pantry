@@ -31,8 +31,8 @@ import type { UnitSystem } from '../../../hooks/useUnitSystem'
 import { useGeolocation } from '../../../hooks/useGeolocation'
 import { useFavoriteStoreIds, useToggleFavoriteStore } from '../../../hooks/useFavoriteStores'
 import { ALL_SHOP_TYPES, DEFAULT_SHOP_TYPES } from '../../../api/overpass'
-import StoreMapDialog from '../StoreMapDialog'
-import type { ShopType, NearbyStore } from '../../../utils/types'
+import StoresMap from '../StoresMap'
+import type { ShopType } from '../../../utils/types'
 import {
   StoresPaper,
   StoresTitle,
@@ -113,7 +113,7 @@ export default function NearbyStores() {
   // Geoapify request (queryKey includes the max) on every pixel of drag.
   const [distanceRange, setDistanceRange] = useState<[number, number]>([MIN_DISTANCE, DEFAULT_MAX_DISTANCE])
   const [draftRange, setDraftRange] = useState<[number, number]>(distanceRange)
-  const [selectedStore, setSelectedStore] = useState<NearbyStore | null>(null)
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
 
   const { data: stores, isLoading, isError } = useNearbyStores(
     coords,
@@ -218,6 +218,16 @@ export default function NearbyStores() {
         {isLoading ? t('stores.searching') : t('stores.search')}
       </SearchButton>
 
+      <StoresMap
+        stores={stores ?? []}
+        userCoords={coords}
+        selectedStoreId={selectedStoreId}
+        onSelectStore={setSelectedStoreId}
+        isFavorite={(storeId) => favoriteIdSet.has(storeId)}
+        onToggleFavorite={(store, isFavorite) => toggleFavoriteStore.mutate({ store, isFavorite })}
+        formatDistance={(meters) => formatDistance(meters, unitSystem)}
+      />
+
       {geoError && <StoreAlert severity="warning">{geoError}</StoreAlert>}
       {isError && <StoreAlert severity="error">{t('stores.error')}</StoreAlert>}
       {stores && stores.length === 0 && (
@@ -236,7 +246,8 @@ export default function NearbyStores() {
                 <StoreListItem
                   key={store.id}
                   disableGutters
-                  onClick={() => setSelectedStore(store)}
+                  selected={store.id === selectedStoreId}
+                  onClick={() => setSelectedStoreId(store.id)}
                 >
                   <StoreIconCell>{getShopIcon(store.type)}</StoreIconCell>
                   <ListItemText
@@ -267,12 +278,6 @@ export default function NearbyStores() {
           </List>
         </>
       )}
-
-      <StoreMapDialog
-        store={selectedStore}
-        userCoords={coords}
-        onClose={() => setSelectedStore(null)}
-      />
     </StoresPaper>
   )
 }
