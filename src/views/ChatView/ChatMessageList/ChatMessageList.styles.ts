@@ -13,7 +13,7 @@ export const Bubble = styled.div<{ $role: 'user' | 'assistant' }>`
   max-width: 80%;
   align-self: ${(p) => (p.$role === 'user' ? 'flex-end' : 'flex-start')};
   background: ${(p) => (p.$role === 'user' ? 'var(--scheme-primary)' : 'var(--scheme-surface-alt)')};
-  color: ${(p) => (p.$role === 'user' ? 'var(--scheme-on-primary, #fff)' : 'var(--scheme-text-primary)')};
+  color: ${(p) => (p.$role === 'user' ? 'var(--scheme-primary-contrast, #fff)' : 'var(--scheme-text-primary)')};
   border-radius: 14px;
   padding: 10px 14px;
   font-size: 0.85rem;

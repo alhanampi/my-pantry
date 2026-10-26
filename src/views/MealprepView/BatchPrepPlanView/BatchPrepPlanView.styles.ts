@@ -147,7 +147,7 @@ export const StepNumber = styled.span`
   height: 28px;
   border-radius: 50%;
   background: var(--scheme-primary);
-  color: var(--scheme-on-primary);
+  color: var(--scheme-primary-contrast);
   font-weight: 700;
   font-size: 0.8rem;
   display: flex;

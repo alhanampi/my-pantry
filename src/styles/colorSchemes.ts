@@ -63,6 +63,10 @@ export const schemes: Record<ColorScheme, SchemeConfig> = {
       '--scheme-on-primary-search-focus': 'rgba(255,255,255,0.28)',
       '--scheme-on-primary-tabs': 'rgba(0,0,0,0.15)',
       '--scheme-on-primary-overlay': 'rgba(255,255,255,0.2)',
+      // Mirrors --scheme-on-primary(-overlay) — see the 'dark' scheme's own
+      // comment for why these two can differ there but not here.
+      '--scheme-primary-contrast': '#ffffff',
+      '--scheme-primary-contrast-overlay': 'rgba(255,255,255,0.2)',
       '--scheme-hover-overlay': 'rgba(0,0,0,0.06)',
       '--scheme-swatch-active-border': 'rgba(0,0,0,0.45)',
       '--scheme-shadow-xs': 'rgba(0,0,0,0.08)',
@@ -103,6 +107,10 @@ export const schemes: Record<ColorScheme, SchemeConfig> = {
       '--scheme-on-primary-search-focus': 'rgba(255,255,255,0.28)',
       '--scheme-on-primary-tabs': 'rgba(0,0,0,0.15)',
       '--scheme-on-primary-overlay': 'rgba(255,255,255,0.2)',
+      // Mirrors --scheme-on-primary(-overlay) — see the 'dark' scheme's own
+      // comment for why these two can differ there but not here.
+      '--scheme-primary-contrast': '#ffffff',
+      '--scheme-primary-contrast-overlay': 'rgba(255,255,255,0.2)',
       '--scheme-hover-overlay': 'rgba(0,0,0,0.06)',
       '--scheme-swatch-active-border': 'rgba(0,0,0,0.45)',
       '--scheme-shadow-xs': 'rgba(0,0,0,0.08)',
@@ -143,6 +151,22 @@ export const schemes: Record<ColorScheme, SchemeConfig> = {
       '--scheme-on-primary-search-focus': 'rgba(255,255,255,0.18)',
       '--scheme-on-primary-tabs': 'rgba(0,0,0,0.3)',
       '--scheme-on-primary-overlay': 'rgba(255,255,255,0.15)',
+      // --scheme-on-primary* above is for content on the Header's actual
+      // rendered app bar background — which, in dark mode, MUI's own AppBar
+      // silently swaps to a flat dark color (theme.palette.AppBar.darkBg)
+      // instead of using palette.primary.main, regardless of this scheme's
+      // --scheme-primary swatch (see AppBar.js: dark mode + no
+      // enableColorOnDark forces a dark bg + light text). So on-primary stays
+      // light here, same as every other scheme.
+      // --scheme-primary-contrast* below is for content that sits literally
+      // on var(--scheme-primary) itself (chat bubbles, the About banner,
+      // recipe-detail headers, etc.) — those really do render against this
+      // scheme's light pastel blue (#90caf9), so they need dark text, unlike
+      // on-primary above. Only this scheme needs the two to differ; every
+      // other scheme's primary swatch and rendered app bar bg are the same
+      // color, so their primary-contrast values just mirror on-primary.
+      '--scheme-primary-contrast': '#102a3d',
+      '--scheme-primary-contrast-overlay': 'rgba(0,0,0,0.15)',
       '--scheme-hover-overlay': 'rgba(255,255,255,0.06)',
       '--scheme-swatch-active-border': 'rgba(255,255,255,0.55)',
       '--scheme-shadow-xs': 'rgba(0,0,0,0.15)',
@@ -183,6 +207,10 @@ export const schemes: Record<ColorScheme, SchemeConfig> = {
       '--scheme-on-primary-search-focus': 'rgba(255,255,255,0.28)',
       '--scheme-on-primary-tabs': 'rgba(0,0,0,0.15)',
       '--scheme-on-primary-overlay': 'rgba(255,255,255,0.2)',
+      // Mirrors --scheme-on-primary(-overlay) — see the 'dark' scheme's own
+      // comment for why these two can differ there but not here.
+      '--scheme-primary-contrast': '#ffffff',
+      '--scheme-primary-contrast-overlay': 'rgba(255,255,255,0.2)',
       '--scheme-hover-overlay': 'rgba(0,0,0,0.06)',
       '--scheme-swatch-active-border': 'rgba(0,0,0,0.45)',
       '--scheme-shadow-xs': 'rgba(0,0,0,0.08)',
@@ -223,6 +251,10 @@ export const schemes: Record<ColorScheme, SchemeConfig> = {
       '--scheme-on-primary-search-focus': 'rgba(255,255,255,0.28)',
       '--scheme-on-primary-tabs': 'rgba(0,0,0,0.15)',
       '--scheme-on-primary-overlay': 'rgba(255,255,255,0.2)',
+      // Mirrors --scheme-on-primary(-overlay) — see the 'dark' scheme's own
+      // comment for why these two can differ there but not here.
+      '--scheme-primary-contrast': '#ffffff',
+      '--scheme-primary-contrast-overlay': 'rgba(255,255,255,0.2)',
       '--scheme-hover-overlay': 'rgba(0,0,0,0.06)',
       '--scheme-swatch-active-border': 'rgba(0,0,0,0.45)',
       '--scheme-shadow-xs': 'rgba(0,0,0,0.08)',
@@ -263,6 +295,10 @@ export const schemes: Record<ColorScheme, SchemeConfig> = {
       '--scheme-on-primary-search-focus': 'rgba(255,255,255,0.28)',
       '--scheme-on-primary-tabs': 'rgba(0,0,0,0.15)',
       '--scheme-on-primary-overlay': 'rgba(255,255,255,0.2)',
+      // Mirrors --scheme-on-primary(-overlay) — see the 'dark' scheme's own
+      // comment for why these two can differ there but not here.
+      '--scheme-primary-contrast': '#ffffff',
+      '--scheme-primary-contrast-overlay': 'rgba(255,255,255,0.2)',
       '--scheme-hover-overlay': 'rgba(0,0,0,0.06)',
       '--scheme-swatch-active-border': 'rgba(0,0,0,0.45)',
       '--scheme-shadow-xs': 'rgba(0,0,0,0.08)',
